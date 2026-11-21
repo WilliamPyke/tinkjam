@@ -66,18 +66,17 @@ function Tooltip<Payload>(props: TooltipPrimitive.Root.Props<Payload>) {
   const actionsRef = props.actionsRef ?? localActionsRef;
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- releases this tooltip from the scroll tracker on unmount
   useEffect(() => () => tracker?.release(actionsRef), [actionsRef, tracker]);
+  const onOpenChange: NonNullable<typeof props.onOpenChange> = (open, details) => {
+    props.onOpenChange?.(open, details);
+    // A tooltip is not a layer: the Escape that closes it still closes the dialog or menu behind it.
+    if (details.reason === "escape-key") details.allowPropagation();
+    if (!open && !details.isCanceled) tracker?.release(actionsRef);
+  };
 
-  if (!tracker) return <TooltipPrimitive.Root {...props} />;
+  if (!tracker) return <TooltipPrimitive.Root {...props} onOpenChange={onOpenChange} />;
   return (
     <TooltipHoverContext value={actionsRef}>
-      <TooltipPrimitive.Root
-        {...props}
-        actionsRef={actionsRef}
-        onOpenChange={(open, details) => {
-          props.onOpenChange?.(open, details);
-          if (!open && !details.isCanceled) tracker.release(actionsRef);
-        }}
-      />
+      <TooltipPrimitive.Root {...props} actionsRef={actionsRef} onOpenChange={onOpenChange} />
     </TooltipHoverContext>
   );
 }

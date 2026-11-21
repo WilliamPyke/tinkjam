@@ -27,6 +27,22 @@ describe("AppRouteModal", () => {
     expect(onCommit).toHaveBeenCalledWith("Keep titles short");
   });
 
+  it("closes on Escape while its Close button has focus", async () => {
+    await using screen = await render(
+      <AppRouteModal label="Settings">
+        <AppRouteModalClose />
+      </AppRouteModal>,
+      { router: "/settings" },
+    );
+
+    page.getByRole("button", { name: "Close" }).element().focus();
+    // The tooltip is open; it is the layer that would hear the key first.
+    await expect.element(page.getByText("Close (Esc)")).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+
+    await vi.waitFor(() => expect(screen.router?.state.location.pathname).toBe("/"));
+  });
+
   it("leaves for the home when opened from its own address, even with no animation frames", async () => {
     await using screen = await render(
       <AppRouteModal label="Settings">
