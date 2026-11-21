@@ -4,6 +4,41 @@ T3 Code is a minimal GUI for coding agents. A Node WebSocket server wraps provid
 
 You can think of T3 Code as an open source "bring-your-own-subscription" alternative to apps like Claude Desktop, Codex App, Cursor Glass and Conductor.
 
+## Tinkjam
+
+This repository is Tinkjam, a fork of T3 Code. Where this section and the rest of the file disagree, this section wins. The rest still describes the engine underneath and its rules still apply.
+
+**What it is.** A shared whiteboard for product teams who do not write code. Each person brings their own agent, which runs on their own computer through Tinkjam Sync and works on the board beside everyone else. The people using it are not developers: write copy, errors and flows for them.
+
+**What matters.** The hosted web app (`apps/web`, live at app.tinkjam.com) and the board in it (`apps/web/src/components/room`, `apps/web/src/components/boards`) are the product. The chat view, mobile app and most provider adapters are inherited from T3 Code: keep them working, do not grow them.
+
+**The Send rule. Never loosen it.** Content written by one person must never start a turn on another person's agent, and must never enter another person's agent's context, unless that person sees it and presses Send themselves. This follows from the terms of the agent subscriptions people bring. The one exception is an owner who turned on "Send without asking" for a Claude or Codex agent signed in with an API key (`providerAllowsDirectGuestSend`). Do not add a second exception, a shortcut, or a default that sends for someone. If a task seems to need one, stop and ask a maintainer.
+
+**Where Tinkjam's code lives.**
+
+- `apps/web/src/components/room` - the board: cards, lines, agent boxes, Plan.
+- `apps/web/src/components/boards` - the boards home and a new account's first run.
+- `infra/boards` - the board host, a Cloudflare Worker with Durable Objects that holds every cloud board. `pnpm --dir infra/boards dev` runs it on port 8799; start the web app with `VITE_CLOUD_BOARDS_URL=http://localhost:8799` to use it.
+- `infra/relay` - sign-in checks and the relay between a browser and a person's computer.
+- `apps/marketing` - tinkjam.com.
+- `scripts/sync-package` - the Tinkjam Sync helper that runs on a person's computer.
+- The Tinkjam Sync desktop apps (Mac, Windows, Linux) are in their own repository, [WilliamPyke/tinkjam-sync](https://github.com/WilliamPyke/tinkjam-sync).
+
+**Look and words.**
+
+- Cobalt is the brand colour. Use the theme's tokens, never raw palette colours.
+- Dark mode is equal to light. Check both before calling UI work done.
+- Copy is short and literal: say what the thing is or does. No filler, no marketing voice, no jargon ("environment", "provider", "thread" and "turn" are engine words, not words a user of the board sees).
+- New screens are designed before they are built. Ask the maintainer for the current designs.
+
+**Working here.**
+
+- The working branch is `multiplayer-guest-rooms`. Branch from it and open pull requests against it, not `main`.
+- Sign-in runs on a Clerk development instance. Any address of the form `name+clerk_test@example.com` signs up with the code `424242`.
+- You do not need, and must not ask for or commit, deploy credentials, the Clerk secret key or release signing keys. Maintainers deploy.
+- `tinkjam.com` is the address. Links on the older `trellium.org` must keep working (`apps/web/src/domainMove.ts`).
+- On Windows, about 41 tests under `apps/server/src/cli` and `apps/server/src/cloud` fail for file-system reasons. Compare failures before and after your change instead of expecting none.
+
 ## What makes T3 Code special?
 
 We have over 500,000 users who love T3 Code. It's important we maintain the things they love as we continue to iterate on the product. Here's a brief list of the things we can never compromise on.
