@@ -145,7 +145,7 @@ export function RoomArtifactBody({
         <p className="text-xs text-muted-foreground">
           {links?.unmade === true
             ? "This page isn't made yet. Ask your agent to write it: the first page goes along as context."
-            : "Nothing here yet. Draw a line from a thread box to this card, or use Attach my agent, then prompt that box. Its reply shows here for everyone. A line from another artifact makes this a live view of it."}
+            : "A page on the board that an agent writes, or you write yourself. Everyone sees it. For an agent, use Attach my agent, or draw a line from a thread box to this card, then prompt that box. Or write it yourself."}
         </p>
         {onWrite === undefined ? null : (
           <Button
@@ -645,7 +645,7 @@ function RoomArtifactEditor({
         ref={(field) => field?.focus({ preventScroll: true })}
         value={text}
         maxLength={ROOM_ARTIFACT_MAX_LENGTH}
-        placeholder="Write Markdown, or paste a whole HTML page"
+        placeholder="Write here. Headings and lists work. Paste a web page's code to show the page."
         className="min-h-24 flex-1 resize-none bg-transparent font-mono text-xs leading-snug outline-none placeholder:text-placeholder"
         data-board-text
         onPointerDown={stopPointer}
