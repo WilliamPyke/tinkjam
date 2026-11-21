@@ -1129,6 +1129,10 @@ export interface BoardLineEnds {
   readonly slots?: BoardLineSlots | undefined;
 }
 
+// Across a gap this short a line has no room to bend: its ends line up, or it runs straight.
+const SHORT_GAP = 64;
+const NO_BEND_GAP = 16;
+
 // A line attaches no nearer a corner than this.
 const SLOT_MARGIN = 12;
 const SLOT_BAND = 32;
@@ -1167,7 +1171,8 @@ function facingSlots(
   };
   let pa = at(a, held[0]);
   let pb = at(b, held[1]);
-  // Only as far as it takes for the line to run no steeper than it is long.
+  // As far as it takes for the line to run straight across a short gap, and no steeper than the
+  // rest of a longer one is long.
   const gap = Math.max(
     0,
     across
@@ -1175,7 +1180,7 @@ function facingSlots(
       : Math.max(to.y - from.y - from.height, from.y - to.y - to.height),
   );
   const way = Math.sign(pb - pa);
-  let excess = Math.abs(pb - pa) - gap;
+  let excess = Math.abs(pb - pa) - Math.max(0, gap - SHORT_GAP);
   if (excess <= 0) return held;
   const reachA = reach(a, held[0], pa, way > 0);
   const reachB = reach(b, held[1], pb, way < 0);
@@ -1206,10 +1211,10 @@ export function boardLineEnds(from: BoardBox, to: BoardBox, ends?: BoardLineEnds
 const clamp = (value: number, low: number, high: number) => Math.max(low, Math.min(high, value));
 
 /**
- * A curve from one box's side to another's, leaving and arriving square to its sides, and the
- * point halfway along it. Facing sides make an S whose bend grows with how far off to the side
- * the end is, never past the gap; a turn makes one quarter curve. `sway` pulls its belly off its
- * resting course while it springs back.
+ * A curve from one box's side to another's, square to both, and the point halfway along it.
+ * Facing sides make an S whose bend grows with how far aside the end is, never past the gap, and
+ * flattens to straight as the gap gets too short to bend in; a turn makes one quarter curve.
+ * `sway` pulls its belly off its resting course while it springs back.
  */
 export function boardConnector(
   from: BoardBox,
@@ -1224,7 +1229,9 @@ export function boardConnector(
     const ahead = ((end.x - start.x) * way.x + (end.y - start.y) * way.y) * sign;
     const aside = Math.abs((end.x - start.x) * way.y) + Math.abs((end.y - start.y) * way.x);
     if (ahead <= 0) return clamp((aside - ahead) / 4, MIN_HOOK, MAX_HOOK);
-    return turning ? ahead * TURN_BEND : clamp(aside / 2, ahead / 2, ahead);
+    if (turning) return ahead * TURN_BEND;
+    const room = clamp((ahead - NO_BEND_GAP) / (SHORT_GAP - NO_BEND_GAP), 0, 1);
+    return clamp(aside / 2, ahead / 2, ahead) * room;
   };
   const leave = bend(out, 1);
   const arrive = bend(into, -1);

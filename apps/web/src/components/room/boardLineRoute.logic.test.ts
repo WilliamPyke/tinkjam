@@ -46,8 +46,8 @@ describe("boardElbow", () => {
       { x: 520, y: 620 },
       "M320 120 L608 120 Q616 120 616 128 L616 616",
     ],
-    // Too close for the usual run out of each side: it still leaves and arrives square.
-    ["across a narrow gap", { x: 350, y: 60 }, "M320 120 L327 120 Q333 120 333 126"],
+    // Too close for corners: its ends line up and it runs straight.
+    ["across a narrow gap", { x: 350, y: 60 }, "M320 126 L346 126"],
   ] as const)("runs %s", (_, at, path) => {
     expect(boardElbow(card, boardNoteBox(at)).path.startsWith(path)).toBe(true);
   });

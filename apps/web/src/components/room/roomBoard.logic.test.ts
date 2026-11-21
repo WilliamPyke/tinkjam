@@ -1098,7 +1098,7 @@ describe("boardConnector", () => {
     ["above it", { x: 100, y: -300 }, ["top", "bottom"], "M160 0 ", " 196 -152"],
     // Further across than down: the wider gap decides, so the line never cuts a card.
     ["below and far right", { x: 700, y: 300 }, ["right", "left"], "M320 120 ", " 696 372"],
-    ["right and far below", { x: 400, y: 600 }, ["bottom", "top"], "M160 240 ", " 496 596"],
+    ["right and far below", { x: 400, y: 600 }, ["bottom", "top"], "M180 240 ", " 476 596"],
     // Off both ways and too steep for an S: one turn, out of the higher box's side into the
     // lower one's top.
     ["below and left", { x: -400, y: 300 }, ["left", "top"], "M0 120 ", " -304 296"],
@@ -1120,18 +1120,20 @@ describe("boardConnector", () => {
     expect(below.middle).toEqual({ x: 160, y: 318 });
     const ahead = boardConnector(card, boardNoteBox({ x: 500, y: 48 }));
     expect(ahead.path).toBe("M320 120 C408 120, 408 120, 496 120");
-    // A short gap bends no further than it reaches, so the line does not loop back.
+    // A gap too short to bend in gets a straight line, offset or not.
     expect(boardConnector(card, boardCardBox({ x: 340, y: 0 })).path).toBe(
-      "M320 120 C328 120, 328 120, 336 120",
+      "M320 120 C320 120, 336 120, 336 120",
+    );
+    expect(boardConnector(card, boardCardBox({ x: 340, y: 230 })).path).toBe(
+      "M320 212 C320 212, 336 258, 336 258",
     );
     // A long line bends in proportion: an even S, not two small hooks on a straight run.
     expect(boardConnector(card, boardNoteBox({ x: 2_000, y: 900 })).path).toBe(
       "M320 120 C1158 120, 1158 972, 1996 972",
     );
-    // Far off to the side of a narrow gap, its ends slide along their sides until it is no taller
-    // than the gap is wide.
+    // Far off to the side of a narrow gap, its ends slide along their sides until they line up.
     const tall = boardCardBox({ x: 380, y: 80 }, { w: 380, h: 600 });
-    expect(boardConnector(card, tall).path).toBe("M320 212 C350 212, 346 272, 376 272");
+    expect(boardConnector(card, tall).path).toBe("M320 212 C343.3 212, 352.7 212, 376 212");
     // A turn is one quarter curve, each end pulled along its own leg.
     expect(boardConnector(card, boardNoteBox({ x: 520, y: 620 })).path).toBe(
       "M320 120 C497.6 120, 616 318.4, 616 616",
