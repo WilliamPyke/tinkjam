@@ -68,6 +68,20 @@ export function accountDisplayName(profile: AccountProfile): {
 }
 
 /**
+ * The name a field may start with for an account that gave only an email: the part before `@`
+ * and `+`, split on `.`, `_` and `-`, empty and all-digit parts dropped, each capitalised. ""
+ * when nothing usable remains, such as "1234@x.com".
+ */
+export function emailNameGuess(email: string | null | undefined): string {
+  const local = email?.split("@")[0]?.split("+")[0] ?? "";
+  const parts = local
+    .split(/[._-]/)
+    .filter((part) => part !== "" && !/^\d+$/.test(part))
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`);
+  return fitName(parts.join(" ")) ?? "";
+}
+
+/**
  * Who has used this browser, for the names it shows. `name` is the one typed while signed out
  * since an account last signed out here; `accounts` are the accounts that ever signed in here;
  * `current` is the one signed in when this browser last looked.

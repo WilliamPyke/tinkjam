@@ -45,6 +45,7 @@ export function BoardAccountBridge() {
   const name = shown?.name ?? null;
   const realName = shown?.real ?? false;
   const imageUrl = user?.hasImage === true ? user.imageUrl : undefined;
+  const email = user?.primaryEmailAddress?.emailAddress ?? null;
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- hands Clerk's signed-in account to the cloud board client, which lives outside React
   useEffect(() => {
     if (!isLoaded) return;
@@ -54,6 +55,7 @@ export function BoardAccountBridge() {
             userId,
             name,
             realName,
+            email,
             imageUrl,
             readToken: () => getToken(),
             saveName: (saved) =>
@@ -64,6 +66,6 @@ export function BoardAccountBridge() {
         : null,
     );
     syncWorkspaces(userId ?? null);
-  }, [isLoaded, userId, user, name, realName, imageUrl, getToken]);
+  }, [isLoaded, userId, user, name, realName, email, imageUrl, getToken]);
   return null;
 }

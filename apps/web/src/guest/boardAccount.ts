@@ -40,6 +40,8 @@ interface BoardAccountSession {
   readonly name: string | null;
   /** Whether that name is the account's own, rather than this browser's or its username. */
   readonly realName: boolean;
+  /** Its email, which stays here: only a field may guess a name from it. */
+  readonly email: string | null;
   /** Its picture, which its workspaces show beside its name. */
   readonly imageUrl?: string | undefined;
   readonly readToken: () => Promise<string | null>;
@@ -80,6 +82,7 @@ export type BoardAccountState =
       readonly status: "signed-in";
       readonly name: string | null;
       readonly realName: boolean;
+      readonly email: string | null;
       /** Whether the account's list of boards has been read since it signed in (or failed to). */
       readonly listed: boolean;
     };
@@ -100,7 +103,13 @@ export function useBoardAccount(): BoardAccountState {
   if (!loaded || (changing && account === null)) return { status: "loading" };
   return account === null
     ? { status: "signed-out" }
-    : { status: "signed-in", name: account.name, realName: account.realName, listed };
+    : {
+        status: "signed-in",
+        name: account.name,
+        realName: account.realName,
+        email: account.email,
+        listed,
+      };
 }
 
 /**

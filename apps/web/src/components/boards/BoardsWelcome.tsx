@@ -4,6 +4,7 @@ import { useLocation } from "@tanstack/react-router";
 import { type FormEvent, type ReactNode, useId, useState } from "react";
 
 import { boardAccountsEnabled, useBoardAccount } from "~/guest/boardAccount";
+import { emailNameGuess } from "~/guest/boardAccount.logic";
 import { knownBoardName, rememberBoardName, suggestedBoardName } from "~/guest/cloudBoards";
 import { cloudBoardsOrigin } from "~/guest/cloudBoardsHost";
 import { clearWelcomeDraft, keepWelcomeDraft, readWelcomeDraft } from "~/guest/welcomeDraft";
@@ -122,7 +123,9 @@ export function StartBoardForm({
   // Signing in from here with an account that has a name: it shows where the field was.
   const named = asked && accountName !== null && !submitted;
   const typing = asked && !named;
-  const name = draft.name ?? suggested;
+  const name =
+    draft.name ??
+    (suggested || (account.status === "signed-in" ? emailNameGuess(account.email) : ""));
   const needsName = typing && name.trim() === "";
   const change = (patch: Partial<WelcomeDraft>) => {
     const next = { ...draft, ...patch };

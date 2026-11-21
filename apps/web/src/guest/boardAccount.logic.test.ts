@@ -7,6 +7,7 @@ import {
   accountNameSeed,
   boardsToClaim,
   browserAfterSignIn,
+  emailNameGuess,
   friendlyName,
   resolveBoardName,
   sharedNameIds,
@@ -85,6 +86,22 @@ describe("the name a person joins a board under", () => {
     ],
   ] as const)("takes %s", (_case, profile, name, real) => {
     expect(accountDisplayName(profile)).toEqual({ name, real });
+  });
+
+  it.each([
+    ["first and last parts", "priya.raman@x.com", "Priya Raman"],
+    ["nothing after a plus", "sam+clerk_test@example.com", "Sam"],
+    ["a part with digits kept", "j_doe99@x.com", "J Doe99"],
+    ["a dash for a space", "ada-lovelace@x.com", "Ada Lovelace"],
+    ["only digits: no guess", "1234@x.com", ""],
+    ["no email: no guess", null, ""],
+    [
+      "a long one, cut to fit",
+      `${"a".repeat(80)}@x.com`,
+      `A${"a".repeat(GUEST_NAME_MAX_LENGTH - 1)}`,
+    ],
+  ] as const)("guesses a name from %s", (_case, email, name) => {
+    expect(emailNameGuess(email)).toBe(name);
   });
 
   // A: an account that signed in here before; B: the one signing in now.
