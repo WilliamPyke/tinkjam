@@ -1151,7 +1151,7 @@ export function RoomBoard({
   readonly summary?: string;
   /** Who is in the room and the way to share it, shown after the title in place of the summary. */
   readonly sharing?: ReactNode;
-  /** `sharing` narrows itself on a narrow board, so it stays in the header, not behind a menu. */
+  /** `sharing` narrows itself on a narrow board; the narrowest still folds it behind a menu. */
   readonly sharingFolds?: boolean;
   /** Shown in place of the title in the header, to rename the board there. */
   readonly titleEditor?: ReactNode;
@@ -5488,7 +5488,7 @@ export function RoomBoard({
               <ToolLabel>{backLabel}</ToolLabel>
             </Button>
             <span aria-hidden className="me-1.5 h-4 w-px shrink-0 bg-board-hairline" />
-            <h1 className="min-w-0 truncate text-ui-md font-semibold text-foreground">
+            <h1 className="min-w-0 @max-xl/board:min-w-20 truncate text-ui-md font-semibold text-foreground">
               {titleEditor ?? title}
               {sharing === undefined ? (
                 <span className="ms-2 text-ui-sm font-normal text-muted-foreground">
@@ -5582,14 +5582,19 @@ export function RoomBoard({
                 }
               />
             )}
-            {sharing === undefined ? null : sharingFolds ? (
-              <div className="flex min-w-0 items-center gap-2 @max-xl/board:gap-1">{sharing}</div>
-            ) : (
+            {sharing === undefined ? null : (
               <>
-                <div className="flex min-w-0 items-center gap-2 @max-xl/board:hidden">
+                <div
+                  className={cn(
+                    "flex min-w-0 items-center gap-2 @max-xl/board:gap-1",
+                    sharingFolds ? "@max-lg/board:hidden" : "@max-xl/board:hidden",
+                  )}
+                >
                   {sharing}
                 </div>
-                <div className="flex @xl/board:hidden">
+                <div
+                  className={sharingFolds ? "hidden @max-lg/board:flex" : "flex @xl/board:hidden"}
+                >
                   <Popover>
                     <PopoverTrigger
                       render={
