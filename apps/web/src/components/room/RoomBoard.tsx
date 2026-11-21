@@ -8199,9 +8199,11 @@ function BoardNote({
                 leaveText(event.currentTarget);
               }
             }}
-            onBlur={() => {
+            onBlur={(event) => {
               setDrafting(false);
               mention.close();
+              // A long note rests at its first lines, not where typing left it scrolled.
+              event.currentTarget.scrollTop = 0;
               onBlur(target);
             }}
             onPaste={(event) => {

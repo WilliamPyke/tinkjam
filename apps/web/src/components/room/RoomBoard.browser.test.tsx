@@ -880,6 +880,37 @@ describe("RoomBoard keys and pointer", () => {
     expect(puts(onChange)[2]).toMatchObject({ noteId: "a", text: "First" });
   });
 
+  it("shows a long note's first lines again once its text is left, by Escape or a click away", async () => {
+    await using _viewport = await boardSizedViewport();
+    const board = renderBoard(
+      [{ id: "a", text: "one\ntwo\nthree\nfour\nfive\nsix\nseven\neight", x: 0, y: 0 }],
+      "scroll-note:test",
+    );
+    await using screen = await board.screen;
+    const field = screen.getByRole("textbox", { name: "Note", exact: true });
+    const area = () => field.element() as HTMLTextAreaElement;
+    const scrolled = () => {
+      if (area().scrollHeight <= area().clientHeight) {
+        throw new Error("The note's text does not scroll");
+      }
+      area().scrollTop = area().scrollHeight;
+    };
+
+    await userEvent.dblClick(field);
+    await expect.element(field).toHaveFocus();
+    scrolled();
+    await userEvent.keyboard("{Escape}");
+    expect(area().scrollTop).toBe(0);
+
+    await userEvent.dblClick(field);
+    await expect.element(field).toHaveFocus();
+    scrolled();
+    await userEvent.click(screen.getByRole("application", { name: "Room board" }), {
+      position: { x: 100, y: 100 },
+    });
+    await vi.waitFor(() => expect(area().scrollTop).toBe(0));
+  });
+
   it("brings the hidden first-run guide back from the board menu, and ticks a step once the board takes the note", async () => {
     await using _viewport = await boardSizedViewport();
     const board = renderBoard([{ id: "a", text: "First", x: 0, y: 0 }]);
