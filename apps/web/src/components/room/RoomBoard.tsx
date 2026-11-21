@@ -7521,7 +7521,7 @@ function LineLegend() {
           <span className="flex items-center gap-2">
             <span aria-hidden className={cn(swatch, "border-primary")} />
             Into a thread box, or into an artifact its agent rewrites: the card goes to the agent
-            with the next message. From a section, every card in it goes
+            with the next message. From a section, every card in it goes.
           </span>
           <span className="flex items-center gap-2">
             <span aria-hidden className={cn(swatch, "border-t-3 border-primary")} />
@@ -7529,12 +7529,12 @@ function LineLegend() {
           </span>
           <span className="flex items-center gap-2">
             <span aria-hidden className={cn(swatch, "border-dashed border-muted-foreground")} />
-            Sent: the agent has the card. It goes again once the card changes
+            Sent: the agent has the card. It goes again once the card changes.
           </span>
           <span className="flex items-center gap-2">
             <span aria-hidden className={cn(swatch, "border-person-2")} />
             From a thread box to an artifact, in its owner's colour: the agent's answers rewrite the
-            artifact. To a code window: the window shows the files the agent changed
+            artifact. To a code window: the window shows the files the agent changed.
           </span>
           <span className="flex items-center gap-2">
             <span aria-hidden className={cn(swatch, "border-muted-foreground/70")} />
