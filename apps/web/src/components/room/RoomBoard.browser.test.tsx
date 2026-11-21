@@ -97,6 +97,7 @@ describe("RoomBoard comments", () => {
     const { onChange } = board;
     await using screen = await board.screen;
     await userEvent.click(screen.getByRole("button", { name: "Comment", exact: true }));
+    await expect.element(screen.getByText(/card or the board to comment/)).toBeVisible();
     const box = screen.container.querySelector('[data-board-item="note:box"]');
     const layer = screen.container.querySelector<HTMLElement>("[data-board-overlay][aria-hidden]");
     if (box === null || layer === null) throw new Error("The board did not draw the box");
@@ -108,6 +109,7 @@ describe("RoomBoard comments", () => {
         y: over.top + over.height / 2 - under.top,
       },
     });
+    await expect.element(screen.getByText(/card or the board to comment/)).not.toBeInTheDocument();
     const field = screen.getByRole("textbox", { name: "Comment", exact: true });
     await expect.element(field).toHaveFocus();
 

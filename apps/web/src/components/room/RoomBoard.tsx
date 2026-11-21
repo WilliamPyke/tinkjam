@@ -7286,6 +7286,11 @@ export function RoomBoard({
                 : `Now ${touchFirst() ? "tap" : "click"} the card it points to.`}
             </BoardToolHint>
           ) : null}
+          {placingComment ? (
+            <BoardToolHint onCancel={() => setPlacingComment(false)}>
+              {touchFirst() ? "Tap" : "Click"} a card or the board to comment.
+            </BoardToolHint>
+          ) : null}
           {commentPanel()}
           {room === null ? (
             <p className="pointer-events-none absolute inset-x-0 bottom-20 flex justify-center px-4">
