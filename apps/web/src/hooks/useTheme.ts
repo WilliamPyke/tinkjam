@@ -463,9 +463,11 @@ function handleStorageChange(e: StorageEvent) {
 
 // For the life of the page, not of a subscriber: pages with no theme reader (a board, the welcome)
 // must follow the system's light or dark too.
-if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
-  window.matchMedia(MEDIA_QUERY).addEventListener("change", handleSystemAppearanceChange);
-}
+const systemAppearanceQuery =
+  typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia(MEDIA_QUERY)
+    : null;
+systemAppearanceQuery?.addEventListener("change", handleSystemAppearanceChange);
 
 let removeWindowListeners: (() => void) | null = null;
 
