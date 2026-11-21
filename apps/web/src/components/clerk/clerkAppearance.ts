@@ -69,6 +69,9 @@ export const signInScreenAppearance = {
   options: {
     logoPlacement: "none",
     socialButtonsVariant: "blockButton",
+    // Clerk's field-hint swap keeps the old hint visible and the new one at zero height until
+    // its animation ends, and where the animation stalls the password hint contradicts itself.
+    animations: false,
   },
   variables: {
     colorBackground: "var(--background)",
