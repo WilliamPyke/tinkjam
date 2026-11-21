@@ -1,3 +1,5 @@
+import { isSignInPath } from "../sidebar/mainAppLocation";
+
 export interface ClerkSignInProps {
   forceRedirectUrl?: string;
   signUpForceRedirectUrl?: string;
@@ -60,7 +62,8 @@ export function parseSignInPageRequest(raw: string | null, origin: string): Sign
 }
 
 // The home and the two invite pages follow the account as it changes and hold their invite in
-// memory, so a sign-in never has to load them again.
+// memory, so a sign-in never has to load them again. The sign-in steps move in place too: Clerk
+// carries the email typed on the first step to "Create an account" only in memory.
 const IN_APP_PATHS: ReadonlySet<string> = new Set(["/", "/guest", "/join-workspace"]);
 
 /**
@@ -71,7 +74,11 @@ const IN_APP_PATHS: ReadonlySet<string> = new Set(["/", "/guest", "/join-workspa
 export function staysInApp(to: string, origin: string): boolean {
   try {
     const url = new URL(to, origin);
-    return url.origin === origin && IN_APP_PATHS.has(url.pathname) && url.hash === "";
+    return (
+      url.origin === origin &&
+      (IN_APP_PATHS.has(url.pathname) || isSignInPath(url.pathname)) &&
+      url.hash === ""
+    );
   } catch {
     return false;
   }

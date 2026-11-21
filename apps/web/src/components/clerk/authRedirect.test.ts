@@ -77,6 +77,8 @@ describe("staysInApp", () => {
       "/join-workspace?signed-in=1#code",
       false,
     ],
+    // Clerk holds the email typed on the first step in memory for the next one.
+    ["a later sign-in step, such as making an account", "/sign-in/create?__clerk_ticket=abc", true],
     // These read a session or a pairing as they load, so they keep their new document.
     ["a board", "/b/abc", false],
     ["a pairing page", "/pair?token=abc", false],
