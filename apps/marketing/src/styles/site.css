@@ -1088,11 +1088,17 @@ a {
   :root {
     --gutter: 16px;
   }
-  .nav__links .navlink {
-    display: none;
+  .nav {
+    gap: 12px;
+  }
+  .nav__links {
+    gap: 12px;
+  }
+  .nav__links .btn {
+    padding: 12px 14px;
   }
   .nav__logo {
-    height: 28px;
+    height: 22px;
   }
   .panel {
     min-height: 360px;
