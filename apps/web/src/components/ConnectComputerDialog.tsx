@@ -363,6 +363,29 @@ function ConnectedScreen({
           })}
         </ul>
       )}
+      {providers.length > 0 && agents.every((agent) => agent.state === "not-installed") ? (
+        <p className="mt-4 text-sm text-muted-foreground">
+          To bring an agent, install{" "}
+          <a
+            href="https://claude.com/product/claude-code"
+            target="_blank"
+            rel="noreferrer"
+            className={splitLinkClassName}
+          >
+            Claude Code
+          </a>{" "}
+          or{" "}
+          <a
+            href="https://developers.openai.com/codex"
+            target="_blank"
+            rel="noreferrer"
+            className={splitLinkClassName}
+          >
+            Codex
+          </a>{" "}
+          on {computer.name}, then sign in with your Claude or ChatGPT account.
+        </p>
+      ) : null}
       <div className="mt-7.5 flex flex-wrap items-center gap-x-4.5 gap-y-3">
         {flow.done}
         <button type="button" className={splitLinkClassName} onClick={onAnother}>
