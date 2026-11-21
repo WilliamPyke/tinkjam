@@ -38,6 +38,7 @@ import { ensureLocalApi } from "~/localApi";
 
 import { useDeleteCloudBoard, useForgetJoinedBoard } from "../boards/removeJoinedBoard";
 import { PersonDot } from "../room/BoardChrome";
+import { markBoardGuideStep } from "../room/boardGuideState";
 import { boardCursorColor } from "../room/roomBoard.logic";
 import {
   AlertDialog,
@@ -166,7 +167,10 @@ export function CloudBoardSharing({
 }) {
   const editLink = links.edit == null ? null : cloudBoardLink(share, links.edit);
   const { copyToClipboard, isCopied } = useCopyToClipboard({
-    onCopy: () => toastManager.add({ type: "success", title: "Edit link copied" }),
+    onCopy: () => {
+      markBoardGuideStep("invite");
+      toastManager.add({ type: "success", title: "Edit link copied" });
+    },
     onError: () => toastManager.add({ type: "error", title: "Could not copy the link" }),
   });
   const forget = useForgetJoinedBoard();
@@ -553,7 +557,10 @@ function BoardLinkRow({
 }) {
   const words = LINK_WORDS[kind];
   const { copyToClipboard, isCopied } = useCopyToClipboard({
-    onCopy: () => toastManager.add({ type: "success", title: `${words.title} copied` }),
+    onCopy: () => {
+      markBoardGuideStep("invite");
+      toastManager.add({ type: "success", title: `${words.title} copied` });
+    },
     onError: () =>
       toastManager.add({
         type: "error",

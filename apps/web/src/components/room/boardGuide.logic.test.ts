@@ -33,6 +33,11 @@ describe("boardGuideSteps", () => {
       steps: ["note:done", "line:todo", "invite:todo", "agent:done"],
     },
     {
+      name: "a copied invite link ticks inviting",
+      input: { ...maker, done: ["invite"] },
+      steps: ["note:todo", "line:todo", "invite:done", "agent:todo"],
+    },
+    {
       name: "the board itself ticks inviting and the agent: someone joined, their agent is here",
       input: { ...maker, othersJoined: true, agent: "here" as const },
       steps: ["note:todo", "line:todo", "invite:done", "agent:done"],

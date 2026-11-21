@@ -78,6 +78,7 @@ import { buildExpandedImagePreview, type ExpandedImagePreview } from "./Expanded
 import { GuestMessageAttachments } from "./GuestMessageAttachments";
 import { GuestMessageName, guestBubbleClassName } from "./guestMessageStyle";
 import { ThreadBoardModelPicker, composerDraftPick } from "../room/BoardModelPicker";
+import { markBoardGuideStep } from "../room/boardGuideState";
 import { roomBoardLocation } from "../room/roomBoardNavigation";
 import { GuestTurnList } from "./GuestTurnList";
 import { linkEndsLabel, linkEndsSoon, linkLifetimeDays } from "./guestLinkTiming";
@@ -142,7 +143,10 @@ function GuestShareDialog({
   const clearRoomBoard = useOrchestrationCommand(threadEnvironment.clearRoomBoard, {
     label: "clear room board",
   });
-  const { copyToClipboard, isCopied } = useCopyToClipboard({ target: "guest link" });
+  const { copyToClipboard, isCopied } = useCopyToClipboard({
+    target: "guest link",
+    onCopy: () => markBoardGuideStep("invite"),
+  });
   const [state, setState] = useState<CreateState>({ status: "idle" });
   const [days, setDays] = useState<GuestShareLifetimeDays>(GUEST_SHARE_LIFETIME_DAYS[0]);
 
