@@ -19,7 +19,7 @@ type Step = "computer" | "board";
 
 const readStep = (): Step => {
   try {
-    return window.localStorage.getItem(STEP_KEY) === "board" ? "board" : "computer";
+    return window.sessionStorage.getItem(STEP_KEY) === "board" ? "board" : "computer";
   } catch {
     return "computer";
   }
@@ -41,7 +41,7 @@ export function FirstRun() {
   const go = (next: Step) => {
     setStep(next);
     try {
-      window.localStorage.setItem(STEP_KEY, next);
+      window.sessionStorage.setItem(STEP_KEY, next);
     } catch {
       // Blocked storage only means a reload starts at the first step.
     }
