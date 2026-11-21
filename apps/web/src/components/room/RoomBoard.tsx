@@ -5417,11 +5417,15 @@ export function RoomBoard({
       [...(surfaceRef.current?.parentElement?.querySelectorAll<HTMLElement>(selector) ?? [])].find(
         (element) => element.getClientRects().length > 0,
       ) ?? null;
-    (
+    const invite =
       control("[data-cloud-board-invite]") ??
       control("[data-board-share], [data-cloud-board-people]") ??
-      control("[data-board-share-more]")
-    )?.click();
+      control("[data-board-share-more]");
+    if (invite === null) {
+      toastManager.add({ type: "info", title: "You cannot invite anyone to this board" });
+      return;
+    }
+    invite.click();
   });
   const noteFromGuide = useStableCallback((event: MouseEvent<HTMLElement>) =>
     pickCardTool("note", event),

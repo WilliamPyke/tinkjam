@@ -15,6 +15,7 @@ import "../../index.css";
 import { openCommandPalette } from "../../commandPaletteBus";
 import { useCommandPaletteStore } from "../../commandPaletteStore";
 import { CommandPalette } from "../CommandPalette";
+import { toastManager } from "../ui/toast";
 
 import { RoomBoard, RoomCursors } from "./RoomBoard";
 import { rememberRoomBoardView } from "./roomBoardNavigation";
@@ -1741,6 +1742,53 @@ describe("RoomBoard card menus", () => {
     await userEvent.click(page.getByRole("menuitem", { name: "React 👍" }));
     await vi.waitFor(() =>
       expect(onChange).toHaveBeenCalledWith({ type: "note.react", noteId: "idea", emoji: "👍" }),
+    );
+  });
+});
+
+describe("RoomBoard guide", () => {
+  const guideBoard = (sharing: ComponentProps<typeof RoomBoard>["sharing"]) => {
+    localStorage.setItem(
+      "t3code:board-guide:v2",
+      JSON.stringify({ owner: null, hidden: false, collapsed: false, done: [] }),
+    );
+    return render(
+      <RoomBoard
+        title="Launch"
+        room={{ messages: [], board: { positions: {}, notes: [], edges: [] } }}
+        online={[]}
+        messages={[]}
+        viewer={null}
+        ownerName={undefined}
+        cursorLayer={null}
+        onOpenThread={() => {}}
+        onOpenReply={() => {}}
+        onChange={vi.fn()}
+        onCursor={undefined}
+        onUseNote={undefined}
+        sharing={sharing}
+      />,
+      { container: sizedContainer() },
+    );
+  };
+
+  it("clicks the board's invite control when the guide's invite step is pressed", async () => {
+    const onInviteClick = vi.fn();
+    await using screen = await guideBoard(
+      <button type="button" data-cloud-board-invite onClick={onInviteClick}>
+        Copy invite link
+      </button>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Invite a teammate" }));
+    expect(onInviteClick).toHaveBeenCalled();
+  });
+
+  it("says so when there is no invite control to press", async () => {
+    const add = vi.spyOn(toastManager, "add");
+    await using screen = await guideBoard(<span>Not shared</span>);
+    await userEvent.click(screen.getByRole("button", { name: "Invite a teammate" }));
+    expect(add).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "info", title: "You cannot invite anyone to this board" }),
     );
   });
 });
