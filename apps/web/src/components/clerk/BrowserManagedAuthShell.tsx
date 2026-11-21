@@ -30,7 +30,8 @@ export default function BrowserManagedAuthShell({
         return (metadata?.windowNavigate ?? window.location.assign.bind(window.location))(to);
       }
       // Clerk leaves the sign-in page before it says who signed in.
-      if (isSignInPath(window.location.pathname)) expectBoardAccountChange();
+      const leaves = !isSignInPath(new URL(to, window.location.origin).pathname);
+      if (leaves && isSignInPath(window.location.pathname)) expectBoardAccountChange();
       return navigate(to, replace);
     };
   return (
