@@ -5662,6 +5662,7 @@ export function RoomBoard({
                   <WhyNot reason={cannotAdd}>
                     <BoardTool
                       label="Task"
+                      hint="Task: a to-do anyone can tick off or assign"
                       variant={armedTool === "task" ? "default" : "ghost"}
                       aria-pressed={armedTool === "task"}
                       disabled={cannotAdd !== null}
@@ -5675,6 +5676,7 @@ export function RoomBoard({
                       <WhyNot reason={cannotAdd}>
                         <BoardTool
                           label="Section"
+                          hint="Section: a titled area that groups cards"
                           variant={armedTool === "section" ? "default" : "ghost"}
                           aria-pressed={armedTool === "section"}
                           disabled={cannotAdd !== null}
@@ -5689,6 +5691,7 @@ export function RoomBoard({
                     <WhyNot reason={cannotAdd}>
                       <BoardTool
                         label="Link"
+                        hint="Link: a card for a web address"
                         disabled={cannotAdd !== null}
                         onClick={startLinkDraft}
                       >
@@ -5701,7 +5704,7 @@ export function RoomBoard({
                     <WhyNot reason={cannotAddThread}>
                       <BoardTool
                         label="Thread"
-                        hint="Thread box: an agent the room can prompt"
+                        hint="Thread box: write to your agent here, and everyone sees its replies"
                         disabled={cannotAddThread !== null}
                         onClick={
                           bringAgent ?? (() => addAndType(() => addCard({ kind: "thread" })))
@@ -5726,7 +5729,7 @@ export function RoomBoard({
                             <ChevronDownIcon className="absolute end-0.5 bottom-0.5 size-2.5 opacity-60" />
                           </TooltipTrigger>
                           <TooltipPopup side={toolsAlongBottom ? "top" : "right"}>
-                            Thread box: an agent the room can prompt
+                            Thread box: write to your agent here, and everyone sees its replies
                           </TooltipPopup>
                         </Tooltip>
                       </WhyNot>
@@ -5755,6 +5758,7 @@ export function RoomBoard({
                     <WhyNot reason={cannotAddArtifact}>
                       <BoardTool
                         label="Artifact"
+                        hint="Artifact: a page an agent writes, or you write yourself, for everyone to see"
                         disabled={cannotAddArtifact !== null}
                         onClick={() => addAndType(() => addCard({ kind: "artifact" }))}
                       >
@@ -5807,6 +5811,7 @@ export function RoomBoard({
                     <WhyNot reason={cannotAdd}>
                       <BoardTool
                         label="Comment"
+                        hint="Comment: a pin where the room talks about something"
                         variant={placingComment ? "default" : "ghost"}
                         aria-pressed={placingComment}
                         disabled={cannotAdd !== null}
