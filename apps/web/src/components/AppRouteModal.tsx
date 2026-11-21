@@ -1,6 +1,6 @@
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { XIcon } from "lucide-react";
-import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useRef, type CSSProperties, type ReactNode } from "react";
 
 import { useNativeTitlebarHeight } from "../lib/windowControlsOverlay";
 import { useCloseAppModal } from "./sidebar/mainAppLocation";
@@ -15,7 +15,6 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
  */
 export function AppRouteModal({ label, children }: { label: string; children: ReactNode }) {
   const closeAppModal = useCloseAppModal();
-  const [open, setOpen] = useState(true);
   // Text selection that ends on the backdrop is not a dismissal.
   const backdropPressRef = useRef(false);
   // Focus the surface, not its first control: no stray focus ring, no phone keyboard.
@@ -25,22 +24,23 @@ export function AppRouteModal({ label, children }: { label: string; children: Re
   // buttons). Below sm the modal fills the window and leaves that strip empty; up to lg its
   // 1.5rem inset is shorter than the strip.
   const nativeTitlebarHeight = useNativeTitlebarHeight();
+  // Leaves at once: waiting for the closing animation waits on animation frames, which a
+  // background tab never runs, and holds the page for a beat even when they do.
+  const close = () => {
+    // Closing unmounts a focused field without a blur, so commit-on-blur rows would
+    // drop what was typed. Blur first so they commit.
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && popupRef.current?.contains(focused)) focused.blur();
+    void closeAppModal();
+  };
 
   return (
     <DialogPrimitive.Root
-      open={open}
+      open
       // Portaled layers outside this tree (toasts, Clerk, confirm dialogs) are not backdrop presses.
       disablePointerDismissal
       onOpenChange={(nextOpen) => {
-        if (nextOpen) return;
-        // Closing unmounts a focused field without a blur, so commit-on-blur rows would
-        // drop what was typed. Blur first so they commit.
-        const focused = document.activeElement;
-        if (focused instanceof HTMLElement && popupRef.current?.contains(focused)) focused.blur();
-        setOpen(false);
-      }}
-      onOpenChangeComplete={(nextOpen) => {
-        if (!nextOpen) void closeAppModal();
+        if (!nextOpen) close();
       }}
     >
       <DialogPrimitive.Portal>
@@ -58,7 +58,7 @@ export function AppRouteModal({ label, children }: { label: string; children: Re
             backdropPressRef.current = event.target === event.currentTarget;
           }}
           onClick={(event) => {
-            if (backdropPressRef.current && event.target === event.currentTarget) setOpen(false);
+            if (backdropPressRef.current && event.target === event.currentTarget) close();
             backdropPressRef.current = false;
           }}
         >
@@ -69,7 +69,7 @@ export function AppRouteModal({ label, children }: { label: string; children: Re
             aria-label={label}
             data-slot="dialog-popup"
             data-app-modal=""
-            className="relative flex size-full min-h-0 min-w-0 flex-col overflow-hidden bg-background max-sm:pt-(--app-modal-top-inset) max-sm:pb-safe text-foreground outline-none transition-[opacity,scale] duration-150 ease-out [-webkit-app-region:no-drag] data-ending-style:scale-[0.985] data-ending-style:opacity-0 data-starting-style:scale-[0.985] data-starting-style:opacity-0 sm:max-h-[60rem] sm:max-w-[80rem] sm:rounded-2xl sm:border sm:shadow-2xl/40"
+            className="relative flex size-full min-h-0 min-w-0 flex-col overflow-hidden bg-background max-sm:pt-(--app-modal-top-inset) max-sm:pb-safe text-foreground outline-none transition-[opacity,scale] duration-150 ease-out [-webkit-app-region:no-drag] data-starting-style:scale-[0.985] data-starting-style:opacity-0 sm:max-h-[60rem] sm:max-w-[80rem] sm:rounded-2xl sm:border sm:shadow-2xl/40"
           >
             {/* The emptied strip still moves the window, as the titlebar it replaces does. */}
             <div
