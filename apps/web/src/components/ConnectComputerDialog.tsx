@@ -172,11 +172,7 @@ function GetSyncScreen({
   return (
     <SplitScreen
       corner={flow.corner}
-      footer={
-        <button type="button" className={splitLinkClassName} onClick={flow.onSkip}>
-          Skip for now
-        </button>
-      }
+      footer={<Copyright />}
       art={
         <BrandArtPanel headline={{ kind: "bring" }}>
           <ComputerCard name="Your computer" line="Tinkjam Sync not found yet" />
@@ -235,6 +231,12 @@ function GetSyncScreen({
           </div>
         </>
       )}
+      <p className="mt-6 text-sm text-muted-foreground">
+        <button type="button" className={splitLinkClassName} onClick={flow.onSkip}>
+          Skip for now
+        </button>
+        . You can connect it later in Settings.
+      </p>
       {computers.length > 0 ? (
         <section className="mt-9 flex flex-col gap-2" data-your-computers>
           <h2 className="text-sm font-semibold text-foreground">Your computers</h2>
