@@ -2,6 +2,8 @@ import { ClerkProvider } from "@clerk/react";
 import type { ComponentProps, ReactNode } from "react";
 
 import { ManagedRelayAuthProvider } from "../../cloud/managedAuth";
+import { expectBoardAccountChange } from "../../guest/boardAccount";
+import { isSignInPath } from "../sidebar/mainAppLocation";
 import { staysInApp } from "./authRedirect";
 import { BoardAccountBridge } from "./BoardAccountBridge";
 import { clerkAppearance, clerkLocalization } from "./clerkAppearance";
@@ -23,10 +25,14 @@ export default function BrowserManagedAuthShell({
   // screen and empties whatever form the person was in.
   const move =
     (replace: boolean): ClerkRouterFn =>
-    (to, metadata) =>
-      staysInApp(to, window.location.origin)
-        ? navigate(to, replace)
-        : (metadata?.windowNavigate ?? window.location.assign.bind(window.location))(to);
+    (to, metadata) => {
+      if (!staysInApp(to, window.location.origin)) {
+        return (metadata?.windowNavigate ?? window.location.assign.bind(window.location))(to);
+      }
+      // Clerk leaves the sign-in page before it says who signed in.
+      if (isSignInPath(window.location.pathname)) expectBoardAccountChange();
+      return navigate(to, replace);
+    };
   return (
     <ClerkProvider
       appearance={clerkAppearance}

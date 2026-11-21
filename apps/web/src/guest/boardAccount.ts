@@ -58,6 +58,12 @@ const boardAccountLoadedAtom = Atom.make(false).pipe(
   Atom.withLabel("board-account-loaded"),
 );
 
+// A sign-in just finished: Clerk moves the page before it says who signed in.
+const boardAccountChangingAtom = Atom.make(false).pipe(
+  Atom.keepAlive,
+  Atom.withLabel("board-account-changing"),
+);
+
 /**
  * Whether this build signs people in to keep their cloud boards: a browser build with sign-in and
  * a cloud board host. Without, everything works signed out and no sign-in shows.
@@ -89,8 +95,9 @@ export function useBoardAccount(): BoardAccountState {
   const account = useAtomValue(boardAccountAtom);
   const loaded = useAtomValue(boardAccountLoadedAtom);
   const listed = useAtomValue(accountListSettledAtom);
+  const changing = useAtomValue(boardAccountChangingAtom);
   if (!boardAccountsEnabled()) return { status: "off" };
-  if (!loaded) return { status: "loading" };
+  if (!loaded || (changing && account === null)) return { status: "loading" };
   return account === null
     ? { status: "signed-out" }
     : { status: "signed-in", name: account.name, realName: account.realName, listed };
@@ -148,6 +155,21 @@ async function boardAccountAuth(): Promise<{
 // How long making or joining a board waits to learn who is signed in. Past it (sign-in blocked
 // or unreachable), the board is made or joined signed out, as on a browser without accounts.
 const ACCOUNT_LOAD_WAIT_MS = 8_000;
+
+let changingTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * Holds "signed out" back as not yet known until sign-in next says who is signed in, or until
+ * that takes too long, so a page sign-in leaves for never shows its signed-out version first.
+ */
+export function expectBoardAccountChange(): void {
+  clearTimeout(changingTimer);
+  appAtomRegistry.set(boardAccountChangingAtom, true);
+  changingTimer = setTimeout(
+    () => appAtomRegistry.set(boardAccountChangingAtom, false),
+    ACCOUNT_LOAD_WAIT_MS,
+  );
+}
 
 const accountLoaded = (): Promise<void> =>
   !boardAccountsEnabled() || appAtomRegistry.get(boardAccountLoadedAtom)
@@ -273,6 +295,8 @@ async function claimLocalBoards(): Promise<void> {
 export function syncBoardAccount(session: BoardAccountSession | null): void {
   // Before anything shows as loaded: the board's guide is this person's from its first paint.
   keepBoardGuideFor(session?.userId ?? null);
+  clearTimeout(changingTimer);
+  appAtomRegistry.set(boardAccountChangingAtom, false);
   appAtomRegistry.set(boardAccountLoadedAtom, true);
   const before = readBoardAccount();
   const listedBefore = appAtomRegistry.get(accountBoardsAtom) ?? [];
