@@ -117,6 +117,13 @@ export const BOARD_SHORTCUTS: ReadonlyArray<BoardShortcutGroup> = [
       { label: "Next card, previous card", keys: [{ key: "Tab" }, { key: "Tab", shift: true }] },
       { label: "Select all", keys: [{ key: "A", mod: true }] },
       {
+        label: "Add a card to the selection, or take it out",
+        keys: [
+          { key: "Click", shift: true },
+          { key: "Click", mod: true },
+        ],
+      },
+      {
         label: "Copy, paste at the pointer",
         keys: [
           { key: "C", mod: true },
