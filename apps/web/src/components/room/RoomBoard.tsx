@@ -6973,7 +6973,7 @@ export function RoomBoard({
                   <div
                     key={edge.id}
                     // Kept at least its own size as the board zooms out, so it stays readable and pressable.
-                    className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border border-border bg-popover p-1 shadow-sm [scale:var(--board-line-scale,1)]"
+                    className="absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border border-border bg-popover p-1 shadow-sm [scale:var(--board-line-scale,1)]"
                     style={{ left: middle.x, top: middle.y }}
                     onPointerDown={stopPointer}
                     // On the group, so the keys work from the shape buttons too.
