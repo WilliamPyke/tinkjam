@@ -891,7 +891,7 @@ function ResizeHandle({
 const THREAD_DROP = "thread";
 const CLOUD_NO_AGENTS = "Agents cannot join this board.";
 const CLOUD_NO_WINDOWS =
-  "Needs a board kept on your computer. Start one from New board with On this computer switched on.";
+  "Needs a board kept on your computer. Connect your computer, then start one from New board with On this computer switched on.";
 const OWN_AGENT_DROP = "own-agent";
 
 /**
