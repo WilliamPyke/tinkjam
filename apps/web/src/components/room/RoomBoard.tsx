@@ -5771,7 +5771,7 @@ export function RoomBoard({
                       <WhyNot reason={cannotAddCode}>
                         <BoardTool
                           label="Code"
-                          hint="A code window shows the changes of the thread box you draw a line from it. Everyone in the room sees its files and diffs."
+                          hint="Code: shows the files an agent changed. Draw a line to it from that agent's thread box."
                           disabled={cannotAddCode !== null}
                           onClick={() => addAndType(() => addCard({ kind: "code" }))}
                         >

@@ -145,7 +145,7 @@ export function RoomArtifactBody({
         <p className="text-xs text-muted-foreground">
           {links?.unmade === true
             ? "This page isn't made yet. Ask your agent to write it: the first page goes along as context."
-            : "A page on the board that an agent writes, or you write yourself. Everyone sees it. For an agent, use Attach my agent, or draw a line from a thread box to this card, then prompt that box. Or write it yourself."}
+            : "A page on the board that an agent writes, or you write yourself. Everyone sees it. To have an agent write it, use Attach my agent, or draw a line from a thread box to this card, then prompt that box."}
         </p>
         {onWrite === undefined ? null : (
           <Button
