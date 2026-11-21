@@ -7510,25 +7510,25 @@ function LineLegend() {
         <div className="flex flex-col gap-1.5 text-2xs text-muted-foreground">
           <span className="flex items-center gap-2">
             <span aria-hidden className={cn(swatch, "border-primary")} />
-            Into a thread, or into the artifact it rewrites: goes with the next prompt. From a
-            section, every card in it goes
+            Into a thread box, or into an artifact its agent rewrites: the card goes to the agent
+            with the next message. From a section, every card in it goes
           </span>
           <span className="flex items-center gap-2">
             <span aria-hidden className={cn(swatch, "border-t-3 border-primary")} />
-            Pinned: goes with every prompt
+            Always sent: the card goes to the agent with every message
           </span>
           <span className="flex items-center gap-2">
             <span aria-hidden className={cn(swatch, "border-dashed border-muted-foreground")} />
-            Already sent: goes again once the card changes
+            Sent: the agent has the card. It goes again once the card changes
           </span>
           <span className="flex items-center gap-2">
             <span aria-hidden className={cn(swatch, "border-person-2")} />
-            From a thread to an artifact, in its owner's colour: its replies rewrite it. To a code
-            window: it shows the thread's changes
+            From a thread box to an artifact, in its owner's colour: the agent's answers rewrite the
+            artifact. To a code window: the window shows the files the agent changed
           </span>
           <span className="flex items-center gap-2">
             <span aria-hidden className={cn(swatch, "border-muted-foreground/70")} />
-            Any other line: only shows a link
+            Any other line: only joins two cards
           </span>
           <span className="mt-1 border-t border-board-hairline pt-1.5 pointer-coarse:hidden">
             {boardVoteShortcut()} votes for the selected cards, or takes your votes back
