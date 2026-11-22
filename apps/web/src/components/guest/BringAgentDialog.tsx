@@ -226,8 +226,9 @@ export function BringAgentDialog({
         <DialogHeader>
           <DialogTitle>Bring your agent to this board</DialogTitle>
           <DialogDescription>
-            Your agent runs on your own computer, under your own Claude, Codex or other AI account.
-            Only you can start it. Everyone on the board sees what it makes.
+            Optional: the board works without an agent. Yours runs on your own computer, under your
+            own Claude, Codex or other AI account. Only you can start it. Everyone on the board sees
+            what it makes.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>
