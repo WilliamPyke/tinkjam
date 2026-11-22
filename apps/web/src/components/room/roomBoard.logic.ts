@@ -1229,14 +1229,20 @@ export function boardConnector(
     const ahead = ((end.x - start.x) * way.x + (end.y - start.y) * way.y) * sign;
     const aside = Math.abs((end.x - start.x) * way.y) + Math.abs((end.y - start.y) * way.x);
     if (ahead <= 0) return clamp((aside - ahead) / 4, MIN_HOOK, MAX_HOOK);
-    if (turning) return ahead * TURN_BEND;
-    const room = clamp((ahead - NO_BEND_GAP) / (SHORT_GAP - NO_BEND_GAP), 0, 1);
-    return clamp(aside / 2, ahead / 2, ahead) * room;
+    return turning ? ahead * TURN_BEND : clamp(aside / 2, ahead / 2, ahead);
   };
   const leave = bend(out, 1);
   const arrive = bend(into, -1);
-  const c1 = { x: start.x + out.x * leave, y: start.y + out.y * leave };
-  const c2 = { x: end.x + into.x * arrive, y: end.y + into.y * arrive };
+  // With no room to bend, each control point slides onto the straight run between the ends.
+  const ahead = (end.x - start.x) * out.x + (end.y - start.y) * out.y;
+  const room =
+    turning || ahead <= 0 ? 1 : clamp((ahead - NO_BEND_GAP) / (SHORT_GAP - NO_BEND_GAP), 0, 1);
+  const control = (at: BoardPoint, way: BoardPoint, length: number, other: BoardPoint) => ({
+    x: (at.x + way.x * length) * room + (at.x + (other.x - at.x) / 3) * (1 - room),
+    y: (at.y + way.y * length) * room + (at.y + (other.y - at.y) / 3) * (1 - room),
+  });
+  const c1 = control(start, out, leave, end);
+  const c2 = control(end, into, arrive, start);
   const middle = {
     x: (start.x + 3 * c1.x + 3 * c2.x + end.x) / 8,
     y: (start.y + 3 * c1.y + 3 * c2.y + end.y) / 8,

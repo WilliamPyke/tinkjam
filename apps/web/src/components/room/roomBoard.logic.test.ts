@@ -1122,10 +1122,10 @@ describe("boardConnector", () => {
     expect(ahead.path).toBe("M320 120 C408 120, 408 120, 496 120");
     // A gap too short to bend in gets a straight line, offset or not.
     expect(boardConnector(card, boardCardBox({ x: 340, y: 0 })).path).toBe(
-      "M320 120 C320 120, 336 120, 336 120",
+      "M320 120 C325.3 120, 330.7 120, 336 120",
     );
     expect(boardConnector(card, boardCardBox({ x: 340, y: 230 })).path).toBe(
-      "M320 212 C320 212, 336 258, 336 258",
+      "M320 212 C325.3 227.3, 330.7 242.7, 336 258",
     );
     // A long line bends in proportion: an even S, not two small hooks on a straight run.
     expect(boardConnector(card, boardNoteBox({ x: 2_000, y: 900 })).path).toBe(
