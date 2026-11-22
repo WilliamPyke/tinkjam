@@ -3152,19 +3152,49 @@ describe("selecting several cards", () => {
       at: { x: 124, y: 0 },
     },
     {
-      name: "taken, one bounds-height and gap down",
+      name: "its right taken, below it",
       bounds: { x: 0, y: 0, width: 100, height: 100 },
       taken: [
         { x: 0, y: 0, width: 100, height: 100 },
         { x: 124, y: 0, width: 50, height: 50 },
       ],
-      at: { x: 124, y: 124 },
+      at: { x: 0, y: 124 },
     },
     {
-      name: "taken every try down, on the first spot anyway",
+      name: "its right and below taken, left of it, tops level",
       bounds: { x: 0, y: 0, width: 100, height: 100 },
-      taken: [{ x: 100, y: -10, width: 500, height: 2_000 }],
-      at: { x: 124, y: 0 },
+      taken: [
+        { x: 0, y: 0, width: 100, height: 100 },
+        { x: 124, y: 0, width: 100, height: 100 },
+        { x: 0, y: 124, width: 100, height: 100 },
+      ],
+      at: { x: -124, y: 0 },
+    },
+    {
+      name: "three sides taken, above it",
+      bounds: { x: 0, y: 0, width: 100, height: 100 },
+      taken: [
+        { x: 0, y: 0, width: 100, height: 100 },
+        { x: 124, y: 0, width: 100, height: 100 },
+        { x: 0, y: 124, width: 100, height: 100 },
+        { x: -124, y: 0, width: 100, height: 100 },
+      ],
+      at: { x: 0, y: -124 },
+    },
+    {
+      name: "every side taken, a small step right and down",
+      bounds: { x: 0, y: 0, width: 100, height: 100 },
+      taken: [{ x: -500, y: -500, width: 2_000, height: 2_000 }],
+      at: { x: 24, y: 24 },
+    },
+    {
+      name: "a copy where it steps, the next step on",
+      bounds: { x: 0, y: 0, width: 100, height: 100 },
+      taken: [
+        { x: -500, y: -500, width: 2_000, height: 2_000 },
+        { x: 24, y: 24, width: 100, height: 100 },
+      ],
+      at: { x: 48, y: 48 },
     },
   ] as const)("puts a duplicate $name", ({ bounds, taken, at }) => {
     expect(boardDuplicateSpot(bounds, taken)).toEqual(at);

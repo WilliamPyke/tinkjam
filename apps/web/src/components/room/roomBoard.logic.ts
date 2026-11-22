@@ -3260,29 +3260,35 @@ export function boardSectionAround(
   };
 }
 
-/** How many spots the copies try before they land on the first anyway. */
+/** How many small steps down-right the copies try before they land on the last one anyway. */
 const DUPLICATE_TRIES = 8;
 
 /**
  * Where copies of the cards bounded by `bounds` land together, each keeping its place next to the
- * others: right of the bounds, tops level, else the same spot moved down the bounds' height and
- * the next-note gap at a time until it sits on no card, for a few tries; the first spot else.
+ * others: right of the bounds, tops level, else below, left or above in that order. All four
+ * taken, a small step right and down, stepped on while a copy's top-left corner would sit exactly
+ * on a card's, for a few steps.
  */
 export function boardDuplicateSpot(bounds: BoardRect, taken: ReadonlyArray<BoardRect>): BoardPoint {
-  const first = {
-    x: Math.round(bounds.x + bounds.width + NEXT_NOTE_GAP),
-    y: Math.round(bounds.y),
-  };
-  const stepY = Math.round(bounds.height + NEXT_NOTE_GAP);
-  for (let tries = 0; tries < DUPLICATE_TRIES; tries += 1) {
-    const at = { x: first.x, y: first.y + tries * stepY };
-    if (
-      !taken.some((rect) => rectsMeet({ ...at, width: bounds.width, height: bounds.height }, rect))
-    ) {
-      return at;
-    }
+  const free = (at: BoardPoint) =>
+    !taken.some((rect) => rectsMeet({ ...at, width: bounds.width, height: bounds.height }, rect));
+  for (const at of [
+    { x: Math.round(bounds.x + bounds.width + NEXT_NOTE_GAP), y: Math.round(bounds.y) },
+    { x: Math.round(bounds.x), y: Math.round(bounds.y + bounds.height + NEXT_NOTE_GAP) },
+    { x: Math.round(bounds.x - bounds.width - NEXT_NOTE_GAP), y: Math.round(bounds.y) },
+    { x: Math.round(bounds.x), y: Math.round(bounds.y - bounds.height - NEXT_NOTE_GAP) },
+  ]) {
+    if (free(at)) return at;
   }
-  return first;
+  let at = {
+    x: Math.round(bounds.x + NEXT_NOTE_GAP),
+    y: Math.round(bounds.y + NEXT_NOTE_GAP),
+  };
+  for (let steps = 0; steps < DUPLICATE_TRIES; steps += 1) {
+    if (!taken.some((rect) => rect.x === at.x && rect.y === at.y)) return at;
+    at = { x: at.x + NEXT_NOTE_GAP, y: at.y + NEXT_NOTE_GAP };
+  }
+  return at;
 }
 
 /**
