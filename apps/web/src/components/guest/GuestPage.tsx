@@ -421,8 +421,8 @@ function NameForm({
               {invite.title !== undefined && invite.maker !== undefined
                 ? `${invite.maker} made this board. `
                 : null}
-              Pick the name everyone on it will see.{" "}
-              {naming ? "It becomes the name on your account." : "You can change it later."}
+              Pick the name everyone on it will see.
+              {naming ? " It becomes the name on your account." : null}
             </>
           ) : (
             <>
