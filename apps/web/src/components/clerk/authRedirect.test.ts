@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { parseSignInPageRequest, resolveClerkSignInProps, staysInApp } from "./authRedirect";
+import {
+  parseSignInPageRequest,
+  resolveClerkSignInProps,
+  signInFromBoard,
+  staysInApp,
+} from "./authRedirect";
 
 describe("resolveClerkSignInProps", () => {
   it("removes a Clerk virtual pathname and callback params while preserving the desktop route", () => {
@@ -61,6 +66,20 @@ describe("parseSignInPageRequest", () => {
     ["something that is not JSON", "{"],
   ] as const)("goes home, never elsewhere, from %s", (_case, raw) => {
     expect(parseSignInPageRequest(raw, origin)).toEqual({ from: "/", withSignUp: true });
+  });
+});
+
+describe("signInFromBoard", () => {
+  it.each([
+    ["a cloud board", "/b/abc", true],
+    ["a cloud board at its long address", "/guest-share-abc/board-abc", true],
+    ["a board's invite page", "/guest?host=boards.example.org&share=abc", true],
+    ["a thread shared from someone's computer", "/guest-share-abc/thread-1", false],
+    ["the boards home", "/", false],
+    ["a workspace's invite page", "/join-workspace", false],
+    ["settings", "/settings", false],
+  ] as const)("%s", (_case, from, onBoard) => {
+    expect(signInFromBoard(from)).toBe(onBoard);
   });
 });
 

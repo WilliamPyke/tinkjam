@@ -11,6 +11,7 @@ import { Copyright, SplitScreen, splitLinkClassName } from "../brand/SplitScreen
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { signInScreenAppearance } from "./clerkAppearance";
+import { signInFromBoard } from "./authRedirect";
 import { readSignInPageRequest } from "./signInPageRequest";
 
 /**
@@ -73,14 +74,21 @@ export function SignInPage() {
             : {})}
         />
       </div>
-      {cloudBoardsOrigin() !== null ? (
+      {cloudBoardsOrigin() === null ? null : signInFromBoard(request.from) ? (
+        <p className="mt-10 border-t border-border pt-5.5 text-ui-md text-muted-foreground">
+          Your boards and what you added to them come with you.{" "}
+          <button type="button" className={splitLinkClassName} onClick={() => leave(request.from)}>
+            Back to the board
+          </button>
+        </p>
+      ) : (
         <p className="mt-10 border-t border-border pt-5.5 text-ui-md text-muted-foreground">
           Just want to try it?{" "}
           <button type="button" className={splitLinkClassName} onClick={() => leave("/")}>
             Start a board without an account
           </button>
         </p>
-      ) : null}
+      )}
     </SplitScreen>
   );
 }

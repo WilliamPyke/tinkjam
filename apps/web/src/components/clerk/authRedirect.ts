@@ -1,3 +1,4 @@
+import { cloudBoardShareIdOf } from "../../guest/boardAddress";
 import { isSignInPath } from "../sidebar/mainAppLocation";
 
 export interface ClerkSignInProps {
@@ -59,6 +60,15 @@ export function parseSignInPageRequest(raw: string | null, origin: string): Sign
     ...(forceRedirectUrl ? { forceRedirectUrl } : {}),
     ...(signUpForceRedirectUrl ? { signUpForceRedirectUrl } : {}),
   };
+}
+
+/** Whether sign-in was opened from a cloud board or a board's invite page, `from` a path here. */
+export function signInFromBoard(from: string): boolean {
+  const { pathname } = new URL(from, "https://app.invalid");
+  if (pathname === "/guest") return true;
+  const [, first, second, ...rest] = pathname.split("/");
+  if (rest.length > 0 || !second) return false;
+  return first === "b" || cloudBoardShareIdOf({ environmentId: first, threadId: second }) !== null;
 }
 
 // The home and the two invite pages follow the account as it changes and hold their invite in
