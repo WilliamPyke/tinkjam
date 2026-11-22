@@ -19,7 +19,7 @@ describe("linkRefusalNotice", () => {
       detail: "Ask whoever shared it for the view link.",
     });
     expect(linkRefusalNotice("replaced")).toEqual({
-      title: "This link does not open the board any more",
+      title: "This link does not open a board",
       detail: "Ask whoever shared it for a new one.",
     });
   });
@@ -40,7 +40,7 @@ describe("linkRefusalMessage", () => {
       "This board's link now only lets people look at it. Ask whoever shared it for the view link.",
     );
     expect(linkRefusalMessage({ detail: "replaced" })).toBe(
-      "This link does not open the board any more. Ask whoever shared it for a new one.",
+      "This link does not open a board. Ask whoever shared it for a new one.",
     );
   });
 

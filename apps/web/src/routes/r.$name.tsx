@@ -5,7 +5,7 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
 import { resolveCloudPublicConfig } from "../cloud/publicConfig";
-import { GuestNotice } from "../components/guest/GuestThreadView";
+import { GoToTinkjam, GuestNotice } from "../components/guest/GuestThreadView";
 import { linkRefusalNotice, refusalDetailOf } from "../guest/linkRefusal.logic";
 import { guestLinkHost, guestShareOrigin } from "../guest/guestShares";
 import { GUEST_PAGE_PATH } from "../guestPage";
@@ -58,7 +58,11 @@ const NOTICES = {
 } as const;
 
 function ShortGuestLinkPage() {
-  return <GuestNotice {...Route.useLoaderData()} />;
+  const outcome = Route.useLoaderData();
+  // A named outcome is a final answer; the one without detail is the link still opening.
+  return (
+    <GuestNotice {...outcome}>{outcome.detail === undefined ? null : <GoToTinkjam />}</GuestNotice>
+  );
 }
 
 export const Route = createFileRoute("/r/$name")({

@@ -28,7 +28,7 @@ const NOTICES: Readonly<Record<string, RefusalNotice>> = {
     detail: "Ask whoever shared it for the view link.",
   },
   replaced: {
-    title: "This link does not open the board any more",
+    title: "This link does not open a board",
     detail: "Ask whoever shared it for a new one.",
   },
 };

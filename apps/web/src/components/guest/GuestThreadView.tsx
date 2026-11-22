@@ -52,7 +52,7 @@ import {
   type ThreadGuestMessageStatus,
 } from "@t3tools/contracts";
 import { buildJoinLink } from "@t3tools/shared/promptLinks";
-import { Navigate, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, Navigate, useNavigate, useParams } from "@tanstack/react-router";
 import type { LegendListRef } from "@legendapp/list/react";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -380,6 +380,11 @@ export function GuestNotice({
   );
 }
 
+/** The way out a full-page notice gives someone whose link opened nothing: the app's home. */
+export function GoToTinkjam() {
+  return <Button render={<Link to="/" replace />}>Go to Tinkjam</Button>;
+}
+
 /** A board's own address with no session here: a member who signs in opens it as themselves. */
 function SignedOutBoardNotice() {
   const { openAuthPrompt } = useT3ConnectAuthPrompt();
@@ -435,14 +440,18 @@ export function GuestThreadRoute({ threadRef }: { readonly threadRef: ScopedThre
       {share === null && step === "opening" ? (
         <TinkjamLoading cover={isLandingOnBoard()} label="Opening the board" />
       ) : share === null && endedNotice !== null ? (
-        <GuestNotice title={endedNotice.title} detail={endedNotice.detail} />
+        <GuestNotice title={endedNotice.title} detail={endedNotice.detail}>
+          <GoToTinkjam />
+        </GuestNotice>
       ) : share === null && signedOut && cloudBoardsHost() !== null ? (
         <SignedOutBoardNotice />
       ) : share === null || share.threadId !== threadRef.threadId ? (
         <GuestNotice
           title="This board has ended, or the link is not valid"
           detail="Ask whoever shared it with you for a new link."
-        />
+        >
+          <GoToTinkjam />
+        </GuestNotice>
       ) : (
         // A new session (asked-for edit access) opens the board anew.
         <GuestThreadSession

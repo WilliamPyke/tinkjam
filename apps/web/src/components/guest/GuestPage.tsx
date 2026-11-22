@@ -44,7 +44,7 @@ import { TinkjamWordmark } from "../TinkjamLogo";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { useAccountBoardOpen } from "./useAccountBoardOpen";
-import { GuestNotice, noteGuestSignInFailure } from "./GuestThreadView";
+import { GoToTinkjam, GuestNotice, noteGuestSignInFailure } from "./GuestThreadView";
 import {
   guestEntryStep,
   guestLinkInvite,
@@ -143,13 +143,19 @@ function takeGuestEntry(): GuestEntry {
   return captured.entry;
 }
 
-const INVALID = <GuestNotice {...ENDED_NOTICE} />;
+const INVALID = (
+  <GuestNotice {...ENDED_NOTICE}>
+    <GoToTinkjam />
+  </GuestNotice>
+);
 // The address a link leaves has no invite in it, so it opens nothing in another tab or device.
 const NO_INVITE = (
   <GuestNotice
     title={ENDED_NOTICE.title}
     detail="Open the link you were sent. The address in the browser bar does not open the board by itself."
-  />
+  >
+    <GoToTinkjam />
+  </GuestNotice>
 );
 
 /**
@@ -236,7 +242,9 @@ export function GuestPage() {
             INVALID
           )
         ) : (
-          <GuestNotice {...endedNotice} />
+          <GuestNotice {...endedNotice}>
+            <GoToTinkjam />
+          </GuestNotice>
         )
       ) : isCloudBoardViewCredential(credential) ? (
         <ViewStep credential={credential} host={host} onJoined={onJoined} />
@@ -370,7 +378,11 @@ function NameForm({
   }, [cloud, credential, host]);
   // A refusal is a notice of its own; only an invite that opens something shows the form.
   if (told !== null && "detail" in told) {
-    return <GuestNotice title={told.title} detail={told.detail} />;
+    return (
+      <GuestNotice title={told.title} detail={told.detail}>
+        <GoToTinkjam />
+      </GuestNotice>
+    );
   }
   // The cloud host answers at once; waiting for it shows the card whole, with nothing changing.
   if (cloud && told === null) return <TinkjamLoading cover label="Opening the invite" />;
