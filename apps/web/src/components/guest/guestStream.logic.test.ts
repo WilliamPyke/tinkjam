@@ -16,6 +16,7 @@ import {
   guestBoardOpenStep,
   guestEntryStep,
   guestFilesProblem,
+  guestLinkInvite,
   guestShareIdOfEnvironment,
   inviteJoinStep,
   inviteShareId,
@@ -138,6 +139,76 @@ describe("inviteShareId", () => {
     expect(inviteShareId("no-signature")).toBeNull();
     expect(inviteShareId(".sig")).toBeNull();
     expect(inviteShareId("")).toBeNull();
+  });
+});
+
+describe("guestLinkInvite", () => {
+  const host = "boards.example.org";
+  const link = { fromLink: "", shareId: null, host, followed: true, kept: null };
+  it.each([
+    [
+      "keeps an edit link's invite for its board and host",
+      { ...link, fromLink: "board-1.secret" },
+      "board-1.secret",
+      { shareId: "board-1", host, credential: "board-1.secret" },
+    ],
+    [
+      "keeps a view link's invite the same way",
+      { ...link, fromLink: "board-1.v.secret" },
+      "board-1.v.secret",
+      { shareId: "board-1", host, credential: "board-1.v.secret" },
+    ],
+    [
+      "finds the kept invite when the address it left is loaded again",
+      {
+        ...link,
+        shareId: "board-1",
+        kept: { shareId: "board-1", host, credential: "board-1.secret" },
+      },
+      "board-1.secret",
+      { shareId: "board-1", host, credential: "board-1.secret" },
+    ],
+    [
+      "uses no invite kept for another board",
+      {
+        ...link,
+        shareId: "board-2",
+        kept: { shareId: "board-1", host, credential: "board-1.secret" },
+      },
+      null,
+      null,
+    ],
+    [
+      "uses no invite kept for the same board on another host",
+      {
+        ...link,
+        shareId: "board-1",
+        kept: { shareId: "board-1", host: "other.example.org", credential: "board-1.secret" },
+      },
+      null,
+      null,
+    ],
+    [
+      "prefers the link's own invite to a kept one",
+      {
+        ...link,
+        fromLink: "board-1.newer",
+        kept: { shareId: "board-1", host, credential: "board-1.secret" },
+      },
+      "board-1.newer",
+      { shareId: "board-1", host, credential: "board-1.newer" },
+    ],
+    [
+      "keeps nothing from a link that may not be followed",
+      { ...link, fromLink: "board-1.secret", followed: false },
+      "board-1.secret",
+      null,
+    ],
+    ["has nothing to keep with no invite", { ...link, shareId: "board-1" }, null, null],
+  ])("%s", (_name, input, credential, keep) => {
+    const invite = guestLinkInvite(input);
+    expect(invite.credential).toBe(credential);
+    expect(invite.keep).toEqual(keep);
   });
 });
 

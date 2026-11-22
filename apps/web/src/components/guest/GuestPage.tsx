@@ -45,7 +45,12 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { useAccountBoardOpen } from "./useAccountBoardOpen";
 import { GuestNotice, noteGuestSignInFailure } from "./GuestThreadView";
-import { guestEntryStep, inviteJoinStep, inviteShareId } from "./guestStream.logic";
+import {
+  guestEntryStep,
+  guestLinkInvite,
+  inviteJoinStep,
+  type KeptInvite,
+} from "./guestStream.logic";
 
 interface GuestEntry {
   /** Unspent invite from the URL hash, if this load came from a link. */
@@ -62,15 +67,19 @@ let captured: { readonly href: string; readonly entry: GuestEntry } | null = nul
 const decodeSignInFailure = Schema.decodeUnknownOption(GuestSignInFailure);
 const decodeInvitePreview = Schema.decodeUnknownOption(GuestInvitePreview);
 
-// Per tab: an invite kept while its person signs in, since a sign-in that leaves the page comes
-// back without the address's hash. Never sent anywhere; read back once, for the same board.
+// Per tab: the invite between reading its link and joining, so a reload of the address the link
+// leaves, or a sign-in that leaves the page, finds it again. Never sent anywhere from here.
 const PENDING_INVITE_KEY = "t3code:pending-invite:v1";
-const PendingInvite = Schema.Struct({ shareId: Schema.String, credential: Schema.String });
+const PendingInvite = Schema.Struct({
+  shareId: Schema.String,
+  host: Schema.NullOr(Schema.String),
+  credential: Schema.String,
+});
 const decodePendingInvite = Schema.decodeUnknownOption(Schema.fromJsonString(PendingInvite));
 
-function keepInviteForSignIn(shareId: string, credential: string) {
+function keepInvite(invite: KeptInvite) {
   try {
-    window.sessionStorage.setItem(PENDING_INVITE_KEY, JSON.stringify({ shareId, credential }));
+    window.sessionStorage.setItem(PENDING_INVITE_KEY, JSON.stringify(invite));
   } catch {}
 }
 
@@ -80,13 +89,11 @@ function forgetKeptInvite() {
   } catch {}
 }
 
-function takeKeptInvite(shareId: string | null): string | null {
+function readKeptInvite(): KeptInvite | null {
   try {
-    const kept = Option.getOrNull(
+    return Option.getOrNull(
       decodePendingInvite(window.sessionStorage.getItem(PENDING_INVITE_KEY) ?? ""),
     );
-    window.sessionStorage.removeItem(PENDING_INVITE_KEY);
-    return kept !== null && kept.shareId === shareId ? kept.credential : null;
   } catch {
     return null;
   }
@@ -94,20 +101,27 @@ function takeKeptInvite(shareId: string | null): string | null {
 
 /**
  * The invite credential travels in the URL hash so it never reaches a server log. It is read
- * once and removed from history, so it lives only in memory. Opening the page never redeems it:
- * only submitting a name does, so a reload before that leaves the link usable.
+ * once and removed from the address and history, and kept for this tab until the person joins.
+ * Opening the page never redeems it: only submitting a name does.
  */
 function takeGuestEntry(): GuestEntry {
   if (captured === null || captured.href !== window.location.href) {
     // A malformed fragment is an invalid link, not a crash.
-    let credential = "";
+    let fromLink = "";
     try {
-      credential = decodeURIComponent(window.location.hash.slice(1)).trim();
+      fromLink = decodeURIComponent(window.location.hash.slice(1)).trim();
     } catch {}
     const query = new URLSearchParams(window.location.search);
     const requestedHost = query.get(GUEST_HOST_PARAM);
-    const shareId = credential !== "" ? inviteShareId(credential) : query.get(GUEST_SHARE_PARAM);
-    if (credential === "") credential = takeKeptInvite(shareId) ?? "";
+    const host = guestLinkHost(requestedHost);
+    const { credential, shareId, keep } = guestLinkInvite({
+      fromLink,
+      shareId: query.get(GUEST_SHARE_PARAM),
+      host: requestedHost,
+      followed: host !== null,
+      kept: readKeptInvite(),
+    });
+    if (keep !== null) keepInvite(keep);
     const signInFailure = Option.getOrNull(decodeSignInFailure(query.get(GUEST_SIGN_IN_PARAM)));
     if (shareId !== null && signInFailure !== null) noteGuestSignInFailure(shareId, signInFailure);
     // The share and its host stay in the URL, so a reload finds this browser's session for it.
@@ -123,17 +137,20 @@ function takeGuestEntry(): GuestEntry {
     );
     captured = {
       href: window.location.href,
-      entry: {
-        credential: credential === "" ? null : credential,
-        host: guestLinkHost(requestedHost),
-        shareId,
-      },
+      entry: { credential, host, shareId },
     };
   }
   return captured.entry;
 }
 
 const INVALID = <GuestNotice {...ENDED_NOTICE} />;
+// The address a link leaves has no invite in it, so it opens nothing in another tab or device.
+const NO_INVITE = (
+  <GuestNotice
+    title={ENDED_NOTICE.title}
+    detail="Open the link you were sent. The address in the browser bar does not open the board by itself."
+  />
+);
 
 /**
  * Where a guest link lands. It asks for the guest's name, joins the share on the owner's host,
@@ -178,10 +195,15 @@ export function GuestPage() {
           if (!stopped) {
             forgetGuestShare(checking.shareId, Option.getOrNull(decodeRefusalBody(body))?.detail);
           }
-        } else setJoined(checking);
+        } else {
+          forgetKeptInvite();
+          setJoined(checking);
+        }
       },
       () => {
-        if (!stopped) setJoined(checking);
+        if (stopped) return;
+        forgetKeptInvite();
+        setJoined(checking);
       },
     );
     return () => {
@@ -191,7 +213,6 @@ export function GuestPage() {
 
   const open = joined ?? (step.step === "open" ? step.share : null);
   const onJoined = (share: JoinedGuestShare) => {
-    // Signing in without leaving the page never read the invite back; it is spent now.
     forgetKeptInvite();
     rememberGuestShare(share);
     setJoined(share);
@@ -209,7 +230,11 @@ export function GuestPage() {
         <TinkjamLoading cover label="Opening the board" />
       ) : step.step === "invalid" || host === null || credential === null ? (
         endedNotice === null ? (
-          INVALID
+          host !== null && credential === null ? (
+            NO_INVITE
+          ) : (
+            INVALID
+          )
         ) : (
           <GuestNotice {...endedNotice} />
         )
@@ -325,6 +350,7 @@ function NameForm({
         // Only a plain refusal counts: an older host has no such route.
         async (response) => {
           if (SESSION_REFUSED.has(response.status)) {
+            forgetKeptInvite();
             const body: unknown = await response.json().catch(() => null);
             return linkRefusalNotice(Option.getOrNull(decodeRefusalBody(body))?.detail);
           }
@@ -412,7 +438,7 @@ function NameForm({
       <Button type="submit" size="lg" disabled={submitting || name.trim() === ""} data-guest-join>
         Join the board
       </Button>
-      {cloud && boardAccountsEnabled() ? <SignInInstead credential={credential} /> : null}
+      {cloud && boardAccountsEnabled() ? <SignInInstead /> : null}
       {cloud ? null : (
         <p className="text-xs text-muted-foreground">
           The owner sees your name and approves each message before the agent gets it.
@@ -431,21 +457,13 @@ const inviteHeading = ({ title, maker }: GuestInvitePreview) =>
       : "You're invited to a board";
 
 /** Signs in first, to join under the account and find the board again on any device. */
-function SignInInstead({ credential }: { readonly credential: string }) {
+function SignInInstead() {
   const account = useBoardAccount();
   const { openAuthPrompt } = useT3ConnectAuthPrompt();
   if (account.status !== "signed-out") return null;
   return (
     <p className="flex flex-wrap items-center justify-center text-center text-sm text-muted-foreground">
-      <Button
-        variant="link"
-        size="sm"
-        onClick={() => {
-          keepInviteForSignIn(inviteShareId(credential) ?? "", credential);
-          openAuthPrompt();
-        }}
-        data-guest-sign-in
-      >
+      <Button variant="link" size="sm" onClick={() => openAuthPrompt()} data-guest-sign-in>
         Sign in or create an account
       </Button>
       to find this board on every device.

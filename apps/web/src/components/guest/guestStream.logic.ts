@@ -60,6 +60,50 @@ export function inviteShareId(credential: string): string | null {
   return shareId && signature ? shareId : null;
 }
 
+/** An invite this tab keeps between reading its link and joining, for its board and host only. */
+export interface KeptInvite {
+  readonly shareId: string;
+  /** The link's `host` as written, null for a link to this page's own host. */
+  readonly host: string | null;
+  readonly credential: string;
+}
+
+/**
+ * The invite a guest link's page holds, and what this tab keeps of it. Reading the link takes the
+ * invite out of the address, so a reload finds it only in what was kept, and only for the same
+ * board and host. A link that may not be followed keeps nothing.
+ */
+export function guestLinkInvite(input: {
+  /** The address's hash, decoded, or "" when it has none. */
+  readonly fromLink: string;
+  /** The share the address's query names. */
+  readonly shareId: string | null;
+  readonly host: string | null;
+  readonly followed: boolean;
+  readonly kept: KeptInvite | null;
+}): {
+  readonly credential: string | null;
+  readonly shareId: string | null;
+  readonly keep: KeptInvite | null;
+} {
+  const { fromLink, host, kept } = input;
+  const shareId = fromLink !== "" ? inviteShareId(fromLink) : input.shareId;
+  const credential =
+    fromLink !== ""
+      ? fromLink
+      : kept !== null && kept.shareId === shareId && kept.host === host
+        ? kept.credential
+        : null;
+  return {
+    credential,
+    shareId,
+    keep:
+      input.followed && credential !== null && shareId !== null
+        ? { shareId, host, credential }
+        : null,
+  };
+}
+
 /**
  * What opening a guest link does. A share this browser already joined opens with its stored
  * session, so the same person does not join twice under a new name; with an invite in hand that
