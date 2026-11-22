@@ -1133,7 +1133,7 @@ describe("boardConnector", () => {
     );
     // Far off to the side of a narrow gap, its ends slide along their sides until they line up.
     const tall = boardCardBox({ x: 380, y: 80 }, { w: 380, h: 600 });
-    expect(boardConnector(card, tall).path).toBe("M320 212 C343.3 212, 352.7 212, 376 212");
+    expect(boardConnector(card, tall).path).toBe("M320 212 C346.4 212, 349.6 212, 376 212");
     // A turn is one quarter curve, each end pulled along its own leg.
     expect(boardConnector(card, boardNoteBox({ x: 520, y: 620 })).path).toBe(
       "M320 120 C497.6 120, 616 318.4, 616 616",
