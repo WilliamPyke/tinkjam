@@ -333,6 +333,8 @@ export const BoardEdgeLine = memo(function BoardEdgeLine({
           fill="none"
           stroke="transparent"
           style={{ strokeWidth: boardStroke(16) }}
+          // Round, so a short straight line's tilt while it sways never cuts its ends' reach.
+          strokeLinecap="round"
           pointerEvents="stroke"
           data-board-edge={id}
           className="cursor-pointer"
