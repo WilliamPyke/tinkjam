@@ -2633,6 +2633,8 @@ export function RoomBoard({
   };
   // Everyone else reads the text as it is typed, with the pointer; the board stores it on blur.
   const writeNote = (note: RoomBoardNote, text: string, added?: RoomBoardMention) => {
+    // Written in once, a new note is kept: emptied later, Escape still leaves it on the board.
+    if (justAdded.current === note.id) justAdded.current = null;
     const current = noteNow(note);
     // Someone picked with `@` stays mentioned while the text names them.
     const mentions = roomMentionsIn([...(current.mentions ?? []), ...(added ? [added] : [])], text);
@@ -2841,6 +2843,9 @@ export function RoomBoard({
   };
   // The card this person last added or selected alone, which a new card joins in its section.
   const lastCard = useRef<string | null>(null);
+  // A blank note this person just added and has not written in: Escape takes it off the board,
+  // while leaving its text any other way keeps it.
+  const justAdded = useRef<string | null>(null);
   const lastPointer = useRef<BoardPoint | null>(null);
   // A new card lands where this person is working: in the section they are on, else nearest the
   // middle of the view, clear of everything there at drawn sizes.
@@ -2916,6 +2921,7 @@ export function RoomBoard({
     });
     send({ kind: "note", id }, value);
     lastCard.current = noteRef(id);
+    if (fields.kind === undefined && value.text === "") justAdded.current = id;
     const size = boardNewNoteSize(fields.kind, fields.url);
     const rect = { x: value.x, y: value.y, width: size.w, height: size.h };
     if (touchFirst() && (fields.kind === undefined || fields.kind === "task"))
@@ -3079,6 +3085,7 @@ export function RoomBoard({
     });
     send({ kind: "note", id }, value);
     lastCard.current = noteRef(id);
+    if (note.kind === undefined) justAdded.current = id;
     setSelection(new Set([noteRef(id)]));
     reveal({ x: value.x, y: value.y, width: size.w, height: size.h }, true);
     return id;
@@ -6842,8 +6849,17 @@ export function RoomBoard({
                     }
                     onMove={dragNote}
                     onDrop={dropNote}
-                    onBlur={(target) => release(() => letGo(target))}
+                    onBlur={(target) => {
+                      if (justAdded.current === target.id) justAdded.current = null;
+                      release(() => letGo(target));
+                    }}
                     onRevert={revertText}
+                    onEscape={(target) => {
+                      const note = shown.notes.find((each) => each.id === target.id);
+                      if (justAdded.current !== target.id || note?.text !== "") return;
+                      justAdded.current = null;
+                      send(target, null);
+                    }}
                     onText={writeNote}
                     onTick={tickTask}
                     onPasteLink={full ? undefined : pasteLinkInto}
@@ -7693,6 +7709,7 @@ function BoardNote({
   onDrop,
   onBlur,
   onRevert,
+  onEscape,
   onText,
   onTick,
   onPasteLink,
@@ -7789,6 +7806,8 @@ function BoardNote({
   readonly onDrop: (note: RoomBoardNote) => void;
   readonly onBlur: (target: BoardTarget) => void;
   readonly onRevert: (target: BoardTarget) => void;
+  /** Escape in the text, where a title's is `onRevert` instead. */
+  readonly onEscape: ((target: BoardTarget) => void) | undefined;
   /** `added`: someone just picked with `@`. */
   readonly onText: (note: RoomBoardNote, text: string, added?: RoomBoardMention) => void;
   /** Ticks a task done, or unticks it back to where it was in the Plan. */
@@ -8189,6 +8208,7 @@ function BoardNote({
               if (event.key === "Escape") {
                 event.stopPropagation();
                 if (titleLine) onRevert(target);
+                else onEscape?.(target);
                 leaveText(event.currentTarget);
               }
               if (titleLine && event.key === "Enter") {

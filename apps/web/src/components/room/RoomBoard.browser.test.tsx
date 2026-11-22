@@ -890,6 +890,50 @@ describe("RoomBoard keys and pointer", () => {
     expect(puts(onChange)[2]).toMatchObject({ noteId: "a", text: "First" });
   });
 
+  it("takes a new note never written in off the board on Escape, keeping it left any other way", async () => {
+    const board = renderBoard([{ id: "a", text: "First", x: 0, y: 0 }]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const surface = screen.getByRole("application", { name: "Room board" });
+    const removes = () =>
+      onChange.mock.calls.flatMap(([change]) =>
+        change.type === "note.remove" ? [change.noteId] : [],
+      );
+    const drawn = (id: string) => screen.container.querySelector(`[data-board-item="note:${id}"]`);
+    const field = () => screen.getByRole("textbox", { name: "Note", exact: true }).last();
+
+    // A note just added, never written in, goes on Escape.
+    await userEvent.dblClick(surface, { position: { x: 700, y: 600 } });
+    await vi.waitFor(() => expect(puts(onChange)).toHaveLength(1));
+    const added = puts(onChange)[0]!.noteId;
+    await expect.element(field()).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(removes()).toEqual([added]));
+    await vi.waitFor(() => expect(drawn(added)).toBeNull());
+
+    // Its text left any other way, it stays.
+    await userEvent.dblClick(surface, { position: { x: 700, y: 600 } });
+    await vi.waitFor(() => expect(puts(onChange)).toHaveLength(2));
+    const kept = puts(onChange)[1]!.noteId;
+    await expect.element(field()).toHaveFocus();
+    const at = middleOf(headerIn(screen.container, kept));
+    await commands.mouse([
+      { type: "down", x: at.x, y: at.y },
+      { type: "up", x: at.x, y: at.y },
+    ]);
+    await vi.waitFor(() => expect(drawn(kept)).not.toBeNull());
+    expect(removes()).toEqual([added]);
+
+    // Written in, then emptied, Escape still leaves it.
+    await userEvent.dblClick(surface, { position: { x: 500, y: 600 } });
+    await vi.waitFor(() => expect(puts(onChange)).toHaveLength(3));
+    const emptied = puts(onChange)[2]!.noteId;
+    await expect.element(field()).toHaveFocus();
+    await userEvent.keyboard("draft{Control>}a{/Control}{Backspace}{Escape}");
+    await vi.waitFor(() => expect(drawn(emptied)).not.toBeNull());
+    expect(removes()).toEqual([added]);
+  });
+
   it("shows a long note's first lines again once its text is left, by Escape or a click away", async () => {
     await using _viewport = await boardSizedViewport();
     const board = renderBoard(
