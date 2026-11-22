@@ -310,8 +310,8 @@ export function BoardsHome() {
               </Group>
             </div>
           </header>
-          <ConnectComputerNudge />
           <SignInNudge cloudBoards={joined.some(isCloudShare)} />
+          <ConnectComputerNudge />
           {workspace !== null &&
           !searching &&
           (workspace.members.length === 1 || shown.length === 0) ? (
