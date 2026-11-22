@@ -3254,26 +3254,29 @@ export function boardSectionAround(
   };
 }
 
-/** How far a duplicate sits from its original, right and down, in board pixels. */
-const BOARD_DUPLICATE_STEP = 24;
+/** How many spots the copies try before they land on the first anyway. */
+const DUPLICATE_TRIES = 8;
 
 /**
- * How far duplicates of cards at `copies` go: one small step right and down, and another for as
- * long as a copy would sit exactly where a card already is, as duplicating a duplicate does.
+ * Where copies of the cards bounded by `bounds` land together, each keeping its place next to the
+ * others: right of the bounds, tops level, else the same spot moved down the bounds' height and
+ * the next-note gap at a time until it sits on no card, for a few tries; the first spot else.
  */
-export function boardDuplicateOffset(
-  copies: ReadonlyArray<BoardPoint>,
-  taken: ReadonlyArray<BoardPoint>,
-): BoardPoint {
-  const corners = new Set(taken.map((at) => `${Math.round(at.x)},${Math.round(at.y)}`));
-  let step = BOARD_DUPLICATE_STEP;
-  while (
-    step < BOARD_DUPLICATE_STEP * 100 &&
-    copies.some((at) => corners.has(`${Math.round(at.x + step)},${Math.round(at.y + step)}`))
-  ) {
-    step += BOARD_DUPLICATE_STEP;
+export function boardDuplicateSpot(bounds: BoardRect, taken: ReadonlyArray<BoardRect>): BoardPoint {
+  const first = {
+    x: Math.round(bounds.x + bounds.width + NEXT_NOTE_GAP),
+    y: Math.round(bounds.y),
+  };
+  const stepY = Math.round(bounds.height + NEXT_NOTE_GAP);
+  for (let tries = 0; tries < DUPLICATE_TRIES; tries += 1) {
+    const at = { x: first.x, y: first.y + tries * stepY };
+    if (
+      !taken.some((rect) => rectsMeet({ ...at, width: bounds.width, height: bounds.height }, rect))
+    ) {
+      return at;
+    }
   }
-  return { x: step, y: step };
+  return first;
 }
 
 /**

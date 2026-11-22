@@ -244,7 +244,7 @@ import {
   boardSelectionRemoval,
   boardCommentsOn,
   boardDeletion,
-  boardDuplicateOffset,
+  boardDuplicateSpot,
   boardLineSlots,
   boardNoteRestorable,
   boardThreadBoxes,
@@ -499,7 +499,6 @@ const GRID = 22;
 const EDGE_MARGIN = 400;
 const FOLLOW_NOTICE_MS = 4_000;
 const VIEW_SAVE_DELAY_MS = 500;
-/** How far past the originals a duplicate is looked for, in board pixels. */
 // Below this zoom a card's header buttons are too small to miss, and fold into one menu.
 const COMPACT_CARD_ZOOM = 0.8;
 // Fitting keeps cards clear of the header pills and the toolbar floating over the board's edges.
@@ -3023,7 +3022,7 @@ export function RoomBoard({
       return element === null ? [] : [{ ...copy, rect: drawnRect(element) }];
     });
   // Copies land together and become the selection: pasted, clear of every card near `around`;
-  // duplicated, a small step right and down from the originals, as in FigJam.
+  // duplicated, right of the originals, stepping down past the cards already there.
   const landCopies = (
     made: ReadonlyArray<{ readonly note: RoomBoardNote; readonly rect: BoardRect }>,
     around?: BoardPoint,
@@ -3031,17 +3030,10 @@ export function RoomBoard({
     const copies = made.slice(0, Math.max(0, ROOM_BOARD_MAX_NOTES - shown.notes.length));
     const bounds = boardBounds(copies.map(({ rect }) => rect));
     if (!canEdit || bounds === null) return;
-    const offset =
-      around === undefined
-        ? boardDuplicateOffset(
-            copies.map(({ rect }) => rect),
-            takenRects(),
-          )
-        : null;
     const spot =
-      offset !== null
-        ? { x: bounds.x + offset.x, y: bounds.y + offset.y }
-        : placeBoardItem({ w: bounds.width, h: bounds.height }, around ?? bounds, takenRects());
+      around === undefined
+        ? boardDuplicateSpot(bounds, takenRects())
+        : placeBoardItem({ w: bounds.width, h: bounds.height }, around, takenRects());
     for (const { note } of copies) {
       const value = settleBoardValue({
         ...note,

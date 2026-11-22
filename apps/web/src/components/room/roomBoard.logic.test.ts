@@ -87,7 +87,7 @@ import {
   boardAgentTurnsSeen,
   boardCommentsOn,
   boardDeletion,
-  boardDuplicateOffset,
+  boardDuplicateSpot,
   boardHistoryChanges,
   boardHistoryQueues,
   boardLineSlots,
@@ -3144,17 +3144,30 @@ describe("selecting several cards", () => {
     expect(boardDuplicates(notes.slice(0, 1), sam, () => "mine")[0]?.note.guestId).toBe(sam);
   });
 
-  it("puts a duplicate a small step from its original, past any card already sitting there", () => {
-    const original = { x: 100, y: 100 };
-    expect(boardDuplicateOffset([original], [original, { x: 400, y: 0 }])).toEqual({
-      x: 24,
-      y: 24,
-    });
-    // Duplicating again cascades past the first copy, drawn at a fraction of a pixel.
-    expect(boardDuplicateOffset([original], [original, { x: 124.2, y: 123.8 }])).toEqual({
-      x: 48,
-      y: 48,
-    });
+  it.each([
+    {
+      name: "free to its right, tops level",
+      bounds: { x: 0, y: 0, width: 100, height: 100 },
+      taken: [{ x: 0, y: 0, width: 100, height: 100 }],
+      at: { x: 124, y: 0 },
+    },
+    {
+      name: "taken, one bounds-height and gap down",
+      bounds: { x: 0, y: 0, width: 100, height: 100 },
+      taken: [
+        { x: 0, y: 0, width: 100, height: 100 },
+        { x: 124, y: 0, width: 50, height: 50 },
+      ],
+      at: { x: 124, y: 124 },
+    },
+    {
+      name: "taken every try down, on the first spot anyway",
+      bounds: { x: 0, y: 0, width: 100, height: 100 },
+      taken: [{ x: 100, y: -10, width: 500, height: 2_000 }],
+      at: { x: 124, y: 0 },
+    },
+  ] as const)("puts a duplicate $name", ({ bounds, taken, at }) => {
+    expect(boardDuplicateSpot(bounds, taken)).toEqual(at);
   });
 
   it.each([

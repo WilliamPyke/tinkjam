@@ -349,10 +349,10 @@ describe("RoomBoard sections", () => {
 });
 
 describe("RoomBoard selection", () => {
-  it("duplicates the selection with Ctrl+D, a small step right and down from the originals", async () => {
+  it("duplicates the selection with Ctrl+D, right of the originals and level with them", async () => {
     const board = renderBoard([
-      { id: "a", text: "First", x: 0, y: 0 },
-      { id: "b", text: "Second", x: 300, y: 0 },
+      { id: "a", text: "First", x: 0, y: 400 },
+      { id: "b", text: "Second", x: 300, y: 400 },
     ]);
     const { onChange } = board;
     await using screen = await board.screen;
@@ -371,10 +371,20 @@ describe("RoomBoard selection", () => {
       );
       expect(added.map((change) => change.text).toSorted()).toEqual(["First", "Second"]);
       for (const change of added) expect(["a", "b"]).not.toContain(change.noteId);
-      // As in FigJam: each copy just off its original, the view left where it was.
+      // The copies keep their arrangement and land right of the group, level with its top.
+      const card = (id: string) => {
+        const element = screen.container.querySelector<HTMLElement>(
+          `[data-board-item="note:${id}"]`,
+        );
+        if (element === null) throw new Error(`The board did not draw note ${id}`);
+        return element;
+      };
+      const a = card("a");
+      const b = card("b");
+      const right = Math.max(a.offsetLeft + a.offsetWidth, b.offsetLeft + b.offsetWidth);
       expect(added.map(({ x, y }) => ({ x, y })).toSorted((p, q) => p.x - q.x)).toEqual([
-        { x: 24, y: 24 },
-        { x: 324, y: 24 },
+        { x: right + 24, y: a.offsetTop },
+        { x: right + 24 + (b.offsetLeft - a.offsetLeft), y: b.offsetTop },
       ]);
     });
     await expect.element(screen.getByRole("status")).toHaveTextContent("2 selected");
