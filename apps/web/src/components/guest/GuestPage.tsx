@@ -418,6 +418,9 @@ function NameForm({
             </>
           )}
         </p>
+        <p className="text-sm text-muted-foreground">
+          Tinkjam is a shared whiteboard. No account needed.
+        </p>
       </div>
       <label className="flex flex-col gap-2 text-sm font-semibold" htmlFor="guest-name">
         Your name
