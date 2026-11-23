@@ -114,7 +114,10 @@ function KindIcon({ kind }: { readonly kind: RoomBoardOutlineItem["kind"] }) {
 
 const QUIET_ROW = "px-2 py-1 text-xs text-muted-foreground";
 
-/** What is on one board, by name. `onOpen(null)` opens the board itself. */
+/**
+ * What is on one board, by name. `onOpen(null)` opens the board itself; `conversation` also opens
+ * an agent's conversation beside it, as a double-click on the agent asks.
+ */
 function OutlineList({
   board,
   state,
@@ -122,7 +125,7 @@ function OutlineList({
 }: {
   readonly board: ListedBoard;
   readonly state: OutlineState;
-  readonly onOpen: (item: RoomBoardOutlineItem | null) => void;
+  readonly onOpen: (item: RoomBoardOutlineItem | null, conversation?: boolean) => void;
 }) {
   const { shown, more } = boardOutlineShown(state.items);
   return (
@@ -137,6 +140,7 @@ function OutlineList({
               aria-label={`${KIND_NAME[item.kind]}: ${item.name}`}
               data-board-outline-item={item.kind}
               onClick={() => onOpen(item)}
+              onDoubleClick={item.kind === "thread" ? () => onOpen(item, true) : undefined}
             >
               <KindIcon kind={item.kind} />
               <span>{item.name}</span>
@@ -212,11 +216,17 @@ function OwnBoardOutline({
     <OutlineList
       board={board}
       state={state}
-      onOpen={(item) => {
+      onOpen={(item, conversation) => {
         if (item !== null) {
-          requestBoardFocus(roomBoardViewKey(threadRef), { noteId: item.id, plan: false });
+          requestBoardFocus(roomBoardViewKey(threadRef), {
+            noteId: item.id,
+            plan: false,
+            conversation,
+          });
         }
-        if (!open) void navigate(roomBoardLocation(threadRef));
+        if (!open) {
+          void navigate(roomBoardLocation(threadRef, conversation === true ? item?.id : undefined));
+        }
         if (isMobile) setOpenMobile(false);
       }}
     />
@@ -252,7 +262,7 @@ function JoinedBoardOutline({
           // Only a board on a computer has a room thread of its own.
           items: boardOutline(view.board, board.cloud ? null : view.title).items,
         };
-  const openBoard = async (item: RoomBoardOutlineItem | null) => {
+  const openBoard = async (item: RoomBoardOutlineItem | null, conversation?: boolean) => {
     let location: ReturnType<typeof guestShareLocation> = sharedThreadLocationOf(
       board,
       board.cloud,
@@ -266,11 +276,17 @@ function JoinedBoardOutline({
       }
       location = guestShareLocation(opened);
     }
-    if (item !== null) requestBoardFocus(shareId, { noteId: item.id, plan: false });
+    if (item !== null) requestBoardFocus(shareId, { noteId: item.id, plan: false, conversation });
     if (!open) void navigate(location);
     if (isMobile) setOpenMobile(false);
   };
-  return <OutlineList board={board} state={state} onOpen={(item) => void openBoard(item)} />;
+  return (
+    <OutlineList
+      board={board}
+      state={state}
+      onOpen={(item, conversation) => void openBoard(item, conversation)}
+    />
+  );
 }
 
 /** What is on a board, listed under its row: its artifacts, its agents, then its sections. */

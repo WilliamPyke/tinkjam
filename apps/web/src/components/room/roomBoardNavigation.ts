@@ -87,15 +87,15 @@ export function rememberRoomBoardView(key: string, view: BoardViewState): void {
 }
 
 /**
- * Where a thread's board opens: with the conversation the owner last left beside it, none if
- * they closed it, or the room thread's the first time.
+ * Where a thread's board opens: with `chat`'s conversation beside it when given, else the one the
+ * owner last left beside it, none if they closed it, or the room thread's the first time.
  */
-export function roomBoardLocation(ref: ScopedThreadRef) {
-  const remembered = readBoardChats()[threadKey(ref)];
-  const chat = remembered === undefined ? ROOM_BOARD_ROOM_BOX : remembered;
+export function roomBoardLocation(ref: ScopedThreadRef, chat?: string) {
+  const remembered = chat ?? readBoardChats()[threadKey(ref)];
+  const opened = remembered === undefined ? ROOM_BOARD_ROOM_BOX : remembered;
   return {
     to: "/board/$roomEnvironmentId/$roomThreadId" as const,
     params: { roomEnvironmentId: ref.environmentId, roomThreadId: ref.threadId },
-    search: chat === null ? {} : { chat },
+    search: opened === null ? {} : { chat: opened },
   };
 }

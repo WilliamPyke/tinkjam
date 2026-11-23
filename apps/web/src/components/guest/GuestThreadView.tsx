@@ -135,6 +135,7 @@ import {
   boardNewBoxModel,
 } from "../room/boardBoxModel.logic";
 import { markBoardGuideStep } from "../room/boardGuideState";
+import { BoardChatPanel } from "../room/BoardChatPanel";
 import { BoardMentionsProvider } from "../room/BoardMentions";
 import { BoardSplit } from "../room/BoardSplit";
 import { BoardThreadPicker } from "../room/BoardThreadPicker";
@@ -497,6 +498,8 @@ function GuestThreadSession({
   });
   // The room thread's conversation beside the board; closing it hides it without unmounting it.
   const [panelOpen, setPanelOpen] = useState(true);
+  // One of this person's own thread boxes, whose conversation shows beside the board instead.
+  const [sideBox, setSideBox] = useState<string | null>(null);
   const [live] = useState(createRoomLiveStore);
   // Here, not in the composer, so a note from the board can land in it.
   const [draft, setDraft] = useState("");
@@ -994,13 +997,34 @@ function GuestThreadSession({
         sharing={view.sharing}
       />
     );
+  const sideRef = sideBox === null ? undefined : boxThread(sideBox);
+  const sidePanel =
+    sideRef === undefined ? null : (
+      <BoardChatPanel
+        environmentId={sideRef.environmentId}
+        threadId={sideRef.threadId}
+        title={view.board?.notes.find((note) => note.id === sideBox)?.text.trim() || "Thread box"}
+        onClose={() => {
+          setSideBox(null);
+          setPanelOpen(false);
+        }}
+        onPopOut={() => void navigate({ to: "/$environmentId/$threadId", params: sideRef })}
+      />
+    );
+  const showRoomConversation = () => {
+    setSideBox(null);
+    setPanelOpen(true);
+  };
   return (
     <RoomLiveContext value={live}>
       <BoardLanded />
       <GuestBoardLive shareId={share.shareId} running={running} live={live} />
       <BoardSplit
-        open={!cloud && panelOpen}
-        panel={cloud ? null : <div className="flex h-full min-h-0 flex-col">{conversation}</div>}
+        open={sidePanel !== null || (!cloud && panelOpen)}
+        panel={
+          sidePanel ??
+          (cloud ? null : <div className="flex h-full min-h-0 flex-col">{conversation}</div>)
+        }
         board={
           <BoardMentionsProvider
             shareId={share.shareId}
@@ -1036,7 +1060,14 @@ function GuestThreadSession({
               }
               ownBoxHandle={ownBox}
               ownerAssignable={!cloud}
-              onToggleChat={cloud ? undefined : () => setPanelOpen((open) => !open)}
+              onToggleChat={
+                cloud
+                  ? undefined
+                  : () => {
+                      setPanelOpen((open) => sideBox === null && !open);
+                      setSideBox(null);
+                    }
+              }
               {...(cloud
                 ? {
                     onBack: () => void navigate({ to: "/" }),
@@ -1093,10 +1124,10 @@ function GuestThreadSession({
                   ownerName={view.ownerName}
                 />
               }
-              onOpenThread={() => setPanelOpen(true)}
+              onOpenThread={showRoomConversation}
               onOpenReply={(messageId) => {
                 revealRoomReply(messageId);
-                setPanelOpen(true);
+                showRoomConversation();
               }}
               onChange={viewOnly ? undefined : (change) => postBoardChange(endpoint, change)}
               onCursor={viewOnly ? undefined : (presence) => postBoardCursor(endpoint, presence)}
@@ -1160,12 +1191,7 @@ function GuestThreadSession({
                     : "Ask your agent"
               }
               conversationBoxIds={machines.flatMap((own) => Object.keys(own.boxes))}
-              onOpenConversation={(boxId) => {
-                const ref = boxThread(boxId);
-                if (ref !== undefined) {
-                  void navigate({ to: "/$environmentId/$threadId", params: ref });
-                }
-              }}
+              onOpenConversation={setSideBox}
               ownerWritingArtifactId={ownerWritingArtifactId(
                 projection.visibleTurnItems.map((row) => row.item),
                 deriveThreadStructureRuntime(projection)?.activeRunId,

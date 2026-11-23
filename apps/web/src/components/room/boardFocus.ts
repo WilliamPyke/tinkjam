@@ -12,6 +12,8 @@ export interface BoardFocus {
   /** A note's id, or the room box's for the room thread's own card. */
   readonly noteId: string;
   readonly plan: boolean;
+  /** Also opens a thread box's conversation beside the board, where the viewer can open it. */
+  readonly conversation?: boolean | undefined;
   /** Tells two asks for the same card apart. */
   readonly stamp: number;
 }

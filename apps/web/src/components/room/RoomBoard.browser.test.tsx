@@ -33,6 +33,7 @@ function renderBoard(
     onCursor,
     onUseNote,
     onTakeTask,
+    onOpenConversation,
     edges = [],
     takes = async () => true,
     withCommandMenu = false,
@@ -43,6 +44,7 @@ function renderBoard(
     readonly onCursor?: ComponentProps<typeof RoomBoard>["onCursor"];
     readonly onUseNote?: ComponentProps<typeof RoomBoard>["onUseNote"];
     readonly onTakeTask?: ComponentProps<typeof RoomBoard>["onTakeTask"];
+    readonly onOpenConversation?: ComponentProps<typeof RoomBoard>["onOpenConversation"];
     readonly edges?: ReadonlyArray<RoomBoardEdge>;
     /** What the room says to each change; it takes every one by default. */
     readonly takes?: (change: RoomBoardChange) => Promise<boolean>;
@@ -70,6 +72,7 @@ function renderBoard(
       onCursor={onCursor}
       onUseNote={onUseNote}
       onTakeTask={onTakeTask}
+      onOpenConversation={onOpenConversation}
     />
   );
   const screen = render(withCommandMenu ? <CommandPalette>{element}</CommandPalette> : element, {
@@ -291,6 +294,28 @@ describe("RoomBoard sections", () => {
         expect.objectContaining({ type: "note.put", noteId: "frame", text: "Plan B" }),
       ),
     );
+  });
+
+  it("opens a thread box's conversation on a double-click, but types in its title there", async () => {
+    const onOpenConversation = vi.fn();
+    const board = renderBoard(
+      [{ id: "box", text: "Review", x: 0, y: 0, kind: "thread" }],
+      undefined,
+      {
+        onOpenConversation,
+      },
+    );
+    await using screen = await board.screen;
+    const title = screen.getByRole("textbox", { name: "Thread name", exact: true });
+    await userEvent.dblClick(title);
+    await expect.element(title).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(onOpenConversation).not.toHaveBeenCalled();
+
+    const box = screen.container.querySelector<HTMLElement>('[data-board-item="note:box"]');
+    if (box === null) throw new Error("The board did not draw the box");
+    await userEvent.dblClick(box, { position: { x: box.offsetWidth / 2, y: 16 } });
+    expect(onOpenConversation).toHaveBeenCalledWith("box");
   });
 
   it("grows a section from its own size when its corner is dragged", async () => {

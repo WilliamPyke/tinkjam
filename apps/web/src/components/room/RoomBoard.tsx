@@ -5111,7 +5111,7 @@ export function RoomBoard({
         ) : null}
       </>
     );
-    return { body, prompt };
+    return { body, prompt, onOpen: actions.conversation };
   };
   const roomBox = threadBoxes.find((box) => box.id === ROOM_BOARD_ROOM_BOX);
   const roomParts =
@@ -5240,6 +5240,19 @@ export function RoomBoard({
     null,
   );
   const showFocus = (focus: BoardFocus) => {
+    const done = showFocusedCard(focus);
+    if (done && focus.conversation === true) openBoxConversation(focus.noteId);
+    return done;
+  };
+  const openBoxConversation = (boxId: string) => {
+    if (boxId === ROOM_BOARD_ROOM_BOX) {
+      onOpenThread();
+      return;
+    }
+    const box = threadBoxes.find((candidate) => candidate.id === boxId);
+    if (box !== undefined) boxActions(box).conversation?.();
+  };
+  const showFocusedCard = (focus: BoardFocus) => {
     const roomBox = focus.noteId === ROOM_BOARD_ROOM_BOX;
     if (!roomBox && !shown.notes.some((note) => note.id === focus.noteId)) return room !== null;
     if (roomBox) {
@@ -6654,6 +6667,7 @@ export function RoomBoard({
                   onMove={dragBy}
                   onDrop={dropItem}
                   footer={roomParts.prompt}
+                  onOpen={onOpenThread}
                   steadyFor={
                     roomBox === undefined
                       ? undefined
@@ -6941,6 +6955,7 @@ export function RoomBoard({
                             label: `${boardBoxAgentLabel(note, people, note.thread?.turns.at(-1))}${boxOffline(note) ? ` · ${boxOfflineNote(note)}` : ""}`,
                             body: box.body,
                             footer: box.prompt,
+                            onOpen: box.onOpen,
                           }
                     }
                     codeWindow={
@@ -7851,9 +7866,14 @@ function BoardNote({
   readonly onFramePage: ((note: RoomBoardNote, framed: boolean) => void) | undefined;
   /** Toggles the viewer's own reaction. Absent where they cannot react. */
   readonly onReact: ((note: RoomBoardNote, emoji: RoomBoardReactionEmoji) => void) | undefined;
-  /** A thread box's agent, conversation and prompt box. */
+  /** A thread box's agent, conversation and prompt box, and how a double-click opens it. */
   readonly box:
-    | { readonly label: string; readonly body: ReactNode; readonly footer: ReactNode }
+    | {
+        readonly label: string;
+        readonly body: ReactNode;
+        readonly footer: ReactNode;
+        readonly onOpen: (() => void) | undefined;
+      }
     | undefined;
   /** A code window's files and diffs, or a pull request window's pull request. */
   readonly codeWindow: ReactNode;
@@ -7963,6 +7983,8 @@ function BoardNote({
               ? event.currentTarget.querySelector('textarea[data-board-rest=""]')
               : null;
         typesAt(field, event.clientX, event.clientY);
+        if (!opensOnDoubleClick(under, event.currentTarget)) return;
+        box?.onOpen?.();
       }}
     >
       {changedLabel === undefined ? null : <CatchUpMark label={changedLabel} />}
@@ -8478,6 +8500,20 @@ const boardCardKindTone = (kind: string): BoardChipTone =>
       ? "warning"
       : "neutral";
 
+/**
+ * Whether a double-click on a card opens it: not one that types in its text or prompt box, or
+ * lands on one of its controls.
+ */
+function opensOnDoubleClick(under: Element | null, card: Element): boolean {
+  return (
+    under !== null &&
+    card.contains(under) &&
+    under.closest(
+      "textarea, input, button, a, select, [contenteditable], [data-board-grip], [data-board-link]",
+    ) === null
+  );
+}
+
 function BoardCard({
   at,
   title,
@@ -8495,6 +8531,7 @@ function BoardCard({
   footer,
   color,
   steadyFor,
+  onOpen,
   children,
 }: {
   readonly at: BoardPoint;
@@ -8522,6 +8559,8 @@ function BoardCard({
   readonly onDrop: (target: BoardTarget) => void;
   /** Kept in view below the card's content when that scrolls. */
   readonly footer?: ReactNode;
+  /** What a double-click on the card opens, where it opens anything. */
+  readonly onOpen?: (() => void) | undefined;
   readonly children: ReactNode;
 }) {
   const target = { kind: "card", id } as const;
@@ -8555,6 +8594,10 @@ function BoardCard({
         (dx, dy) => onMove(target, at, dx, dy),
         () => onDrop(target),
       )}
+      onDoubleClick={(event) => {
+        const under = document.elementFromPoint(event.clientX, event.clientY);
+        if (opensOnDoubleClick(under, event.currentTarget)) onOpen?.();
+      }}
     >
       {steadyFor === undefined ? null : <BoxStateEdge boxId={steadyFor.boxId} />}
       {dropLabel === undefined ? null : (
