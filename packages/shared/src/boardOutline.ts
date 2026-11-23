@@ -35,14 +35,14 @@ const kindOf = (note: RoomBoardNote): RoomBoardOutlineItem["kind"] | null =>
       : null;
 
 /**
- * What a board list names under a board: its artifacts, then its thread boxes, then its sections,
- * each in the order they were added, so a card moved on the board keeps its place in the list.
- * Notes, tasks and the rest are left out. `roomThread` is the title of the room thread's own box,
- * or null for a board that has none (a cloud board). A live view is named after what it shows.
+ * A board's artifacts, thread boxes, then sections, each in the order added; notes are left out.
+ * `roomThread` titles the room thread's own box, null on a board without one (a cloud board).
+ * A live view is named after what it shows. A summary sent over the wire keeps `perKind`'s default.
  */
 export function boardOutline(
   board: RoomBoard | undefined,
   roomThread: string | null,
+  perKind: number = ROOM_BOARD_OUTLINE_MAX_PER_KIND,
 ): RoomBoardOutline {
   const notes = board?.notes ?? [];
   const byId = new Map(notes.map((note) => [note.id, note]));
@@ -60,8 +60,6 @@ export function boardOutline(
     ...of("thread"),
   ];
   return {
-    items: [of("artifact"), threads, of("section")].flatMap((group) =>
-      group.slice(0, ROOM_BOARD_OUTLINE_MAX_PER_KIND),
-    ),
+    items: [of("artifact"), threads, of("section")].flatMap((group) => group.slice(0, perKind)),
   };
 }

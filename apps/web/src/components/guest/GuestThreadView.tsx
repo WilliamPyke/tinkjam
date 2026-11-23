@@ -135,7 +135,7 @@ import {
   boardNewBoxModel,
 } from "../room/boardBoxModel.logic";
 import { markBoardGuideStep } from "../room/boardGuideState";
-import { BoardChatPanel } from "../room/BoardChatPanel";
+import { BoardChatPanel, BoardChatPanelNote } from "../room/BoardChatPanel";
 import { BoardMentionsProvider } from "../room/BoardMentions";
 import { BoardSplit } from "../room/BoardSplit";
 import { BoardThreadPicker } from "../room/BoardThreadPicker";
@@ -998,16 +998,28 @@ function GuestThreadSession({
       />
     );
   const sideRef = sideBox === null ? undefined : boxThread(sideBox);
+  const sideTitle =
+    view.board?.notes.find((note) => note.id === sideBox)?.text.trim() || "Thread box";
+  const closeSide = () => {
+    setSideBox(null);
+    setPanelOpen(false);
+  };
+  // Their computers answer a moment after the board opens: until then the panel waits.
+  const stranded = sideBox === null ? null : boxOn(sideBox).stranded;
   const sidePanel =
-    sideRef === undefined ? null : (
+    sideBox === null || (sideRef === undefined && machine === undefined) ? null : sideRef ===
+      undefined ? (
+      <BoardChatPanelNote title={sideTitle} onClose={closeSide}>
+        {stranded === null
+          ? "This agent has no conversation yet. Ask it something from its box to start one."
+          : `This conversation is on ${stranded}, which is not connected. Open Tinkjam Sync there to see it.`}
+      </BoardChatPanelNote>
+    ) : (
       <BoardChatPanel
         environmentId={sideRef.environmentId}
         threadId={sideRef.threadId}
-        title={view.board?.notes.find((note) => note.id === sideBox)?.text.trim() || "Thread box"}
-        onClose={() => {
-          setSideBox(null);
-          setPanelOpen(false);
-        }}
+        title={sideTitle}
+        onClose={closeSide}
         onPopOut={() => void navigate({ to: "/$environmentId/$threadId", params: sideRef })}
       />
     );

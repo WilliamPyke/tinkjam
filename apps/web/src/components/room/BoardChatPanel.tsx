@@ -1,6 +1,7 @@
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
 import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { ExternalLinkIcon, MessagesSquareIcon, XIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { useDiffPanelStore } from "~/diffPanelStore";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
@@ -83,6 +84,30 @@ export function BoardChatPanel({
         routeKind="server"
         embedded={parentPanel}
       />
+    </div>
+  );
+}
+
+/** The panel beside the board when it has no conversation to show, saying why. */
+export function BoardChatPanelNote({
+  title,
+  onClose,
+  children,
+}: {
+  readonly title: string;
+  readonly onClose: () => void;
+  readonly children: ReactNode;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className={cn(BOARD_TITLE_BAR_CLASS, "gap-1 pe-1")}>
+        <MessagesSquareIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="ms-1 min-w-0 flex-1 truncate font-semibold">{title}</span>
+        <Button variant="ghost" size="icon-xs" aria-label="Close conversation" onClick={onClose}>
+          <XIcon />
+        </Button>
+      </div>
+      <p className="p-4 text-sm text-muted-foreground">{children}</p>
     </div>
   );
 }

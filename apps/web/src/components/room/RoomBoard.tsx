@@ -4974,6 +4974,31 @@ export function RoomBoard({
           },
         ];
   };
+  /**
+   * Opens a box's conversation beside the board, as a double-click asks. A guest's own box opens
+   * even before their computer answers, which the host waits for; anyone else's says whose it is.
+   */
+  const openBoxConversation = (box: BoardThreadBox) => {
+    if (onOpenConversation === undefined) return;
+    const open = boxActions(box).conversation;
+    if (open !== undefined) {
+      open();
+      return;
+    }
+    if (viewer !== null && box.guestId === viewer) {
+      onOpenConversation(box.id);
+      return;
+    }
+    const ranBy =
+      viewer === null
+        ? shown.notes.find((note) => note.id === box.id)?.thread?.turns.at(-1)?.guestId
+        : box.guestId;
+    toastManager.add({
+      type: "info",
+      title: `This conversation is on ${boardPersonName(people, ranBy)}'s computer`,
+      description: "Only they can open it.",
+    });
+  };
   /** A thread box's actions as entries of its right-click menu. */
   const boxMenuActions = (box: BoardThreadBox): ReadonlyArray<CardAction> => {
     const { from, artifact, code, pullRequest, conversation } = boxActions(box);
@@ -5111,7 +5136,11 @@ export function RoomBoard({
         ) : null}
       </>
     );
-    return { body, prompt, onOpen: actions.conversation };
+    return {
+      body,
+      prompt,
+      onOpen: onOpenConversation === undefined ? undefined : () => openBoxConversation(box),
+    };
   };
   const roomBox = threadBoxes.find((box) => box.id === ROOM_BOARD_ROOM_BOX);
   const roomParts =
@@ -5241,16 +5270,16 @@ export function RoomBoard({
   );
   const showFocus = (focus: BoardFocus) => {
     const done = showFocusedCard(focus);
-    if (done && focus.conversation === true) openBoxConversation(focus.noteId);
+    if (done && focus.conversation === true) openBoxConversationById(focus.noteId);
     return done;
   };
-  const openBoxConversation = (boxId: string) => {
+  const openBoxConversationById = (boxId: string) => {
     if (boxId === ROOM_BOARD_ROOM_BOX) {
       onOpenThread();
       return;
     }
     const box = threadBoxes.find((candidate) => candidate.id === boxId);
-    if (box !== undefined) boxActions(box).conversation?.();
+    if (box !== undefined) openBoxConversation(box);
   };
   const showFocusedCard = (focus: BoardFocus) => {
     const roomBox = focus.noteId === ROOM_BOARD_ROOM_BOX;

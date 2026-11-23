@@ -22,14 +22,13 @@ import {
 } from "@t3tools/contracts";
 import { roomArtifactSource } from "@t3tools/shared/roomBoard";
 import { useNavigate } from "@tanstack/react-router";
-import { MessagesSquareIcon, XIcon } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { useEnvironmentSettings } from "~/hooks/useSettings";
 import { useStableCallback } from "~/hooks/useStableCallback";
 import { useThreadActions } from "~/hooks/useThreadActions";
-import { cn, randomUUID } from "~/lib/utils";
+import { randomUUID } from "~/lib/utils";
 import { deriveThreadAgentWorking } from "~/session-logic";
 import { useGitStackedAction, useSourceControlActionRunning } from "~/state/sourceControlActions";
 import {
@@ -54,12 +53,10 @@ import {
 } from "../chat/roomBoardPrompt";
 import { takeRoomTaskToDraft } from "../chat/roomTaskDraft";
 import { resolveQuickAction } from "../GitActionsControl.logic";
-import { Button } from "../ui/button";
 import { SidebarInset } from "../ui/sidebar";
 import { toastManager } from "../ui/toast";
 import { BoardTitle } from "../boards/BoardTitle";
-import { BoardChatPanel } from "./BoardChatPanel";
-import { BOARD_TITLE_BAR_CLASS } from "./BoardChrome";
+import { BoardChatPanel, BoardChatPanelNote } from "./BoardChatPanel";
 import { BoardSharing } from "./BoardSharing";
 import { BoardThreadPicker } from "./BoardThreadPicker";
 import { BoardModelPicker, ThreadBoardModelPicker, composerDraftPick } from "./BoardModelPicker";
@@ -628,7 +625,10 @@ export function ThreadRoomBoard({
           }
           panel={
             panelChat === null ? null : panelRef === null ? (
-              <BoardPanelEmpty title={panelTitle} onClose={closePanel} />
+              <BoardChatPanelNote title={panelTitle} onClose={closePanel}>
+                This thread box has no conversation yet. Prompt it from its box on the board to
+                start one.
+              </BoardChatPanelNote>
             ) : (
               <BoardChatPanel
                 environmentId={panelRef.environmentId}
@@ -660,30 +660,6 @@ export function ThreadRoomBoard({
         )}
       </RoomLiveContext>
     </SidebarInset>
-  );
-}
-
-/** A box whose conversation has not started: its first prompt starts it. */
-function BoardPanelEmpty({
-  title,
-  onClose,
-}: {
-  readonly title: string;
-  readonly onClose: () => void;
-}) {
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className={cn(BOARD_TITLE_BAR_CLASS, "gap-1 pe-1")}>
-        <MessagesSquareIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="ms-1 min-w-0 flex-1 truncate font-semibold">{title}</span>
-        <Button variant="ghost" size="icon-xs" aria-label="Close conversation" onClick={onClose}>
-          <XIcon />
-        </Button>
-      </div>
-      <p className="p-4 text-sm text-muted-foreground">
-        This thread box has no conversation yet. Prompt it from its box on the board to start one.
-      </p>
-    </div>
   );
 }
 

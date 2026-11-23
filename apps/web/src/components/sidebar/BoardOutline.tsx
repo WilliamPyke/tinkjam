@@ -18,7 +18,7 @@ import { useQuietThreadProjection } from "~/state/entities";
 import { useEnvironmentQuery } from "~/state/query";
 import { serverEnvironment } from "~/state/server";
 
-import { type HomeBoard, boardOutlineShown } from "../boards/boardsHome.logic";
+import type { HomeBoard } from "../boards/boardsHome.logic";
 import { requestBoardFocus } from "../room/boardFocus";
 import { roomBoardLocation, roomBoardViewKey } from "../room/roomBoardNavigation";
 import { Button } from "../ui/button";
@@ -115,8 +115,8 @@ function KindIcon({ kind }: { readonly kind: RoomBoardOutlineItem["kind"] }) {
 const QUIET_ROW = "px-2 py-1 text-xs text-muted-foreground";
 
 /**
- * What is on one board, by name. `onOpen(null)` opens the board itself; `conversation` also opens
- * an agent's conversation beside it, as a double-click on the agent asks.
+ * What is on one board, by name. `conversation` also opens an agent's conversation beside the
+ * board, as a double-click on the agent asks.
  */
 function OutlineList({
   board,
@@ -125,12 +125,15 @@ function OutlineList({
 }: {
   readonly board: ListedBoard;
   readonly state: OutlineState;
-  readonly onOpen: (item: RoomBoardOutlineItem | null, conversation?: boolean) => void;
+  readonly onOpen: (item: RoomBoardOutlineItem, conversation?: boolean) => void;
 }) {
-  const { shown, more } = boardOutlineShown(state.items);
+  const shown = state.items;
   return (
     // Its own scroll: the boards sit above the thread list, in a part of the sidebar that has none.
-    <div className="max-h-[min(26rem,50vh)] overflow-y-auto" data-board-outline={state.status}>
+    <div
+      className="max-h-[min(26rem,50vh)] overflow-x-hidden overflow-y-auto"
+      data-board-outline={state.status}
+    >
       <SidebarMenuSub id={boardOutlineId(board)} aria-label={`On ${board.title}`}>
         {shown.map((item) => (
           <SidebarMenuSubItem key={`${item.kind}:${item.id}`}>
@@ -147,17 +150,6 @@ function OutlineList({
             </SidebarMenuSubButton>
           </SidebarMenuSubItem>
         ))}
-        {more > 0 ? (
-          <SidebarMenuSubItem>
-            <SidebarMenuSubButton
-              size="sm"
-              render={<button type="button" />}
-              onClick={() => onOpen(null)}
-            >
-              <span>Show all on the board</span>
-            </SidebarMenuSubButton>
-          </SidebarMenuSubItem>
-        ) : null}
         {shown.length > 0 ? null : (
           <li className={QUIET_ROW} role={state.status === "loading" ? "status" : undefined}>
             {state.status === "loading"
@@ -203,8 +195,11 @@ function OwnBoardOutline({
     thread !== null
       ? {
           status: "ready",
-          items: boardOutline(thread.guestShare?.board ?? thread.roomBoard?.board, thread.title)
-            .items,
+          items: boardOutline(
+            thread.guestShare?.board ?? thread.roomBoard?.board,
+            thread.title,
+            Number.POSITIVE_INFINITY,
+          ).items,
         }
       : read !== undefined
         ? { status: "ready", items: read.items }
@@ -217,15 +212,13 @@ function OwnBoardOutline({
       board={board}
       state={state}
       onOpen={(item, conversation) => {
-        if (item !== null) {
-          requestBoardFocus(roomBoardViewKey(threadRef), {
-            noteId: item.id,
-            plan: false,
-            conversation,
-          });
-        }
+        requestBoardFocus(roomBoardViewKey(threadRef), {
+          noteId: item.id,
+          plan: false,
+          conversation,
+        });
         if (!open) {
-          void navigate(roomBoardLocation(threadRef, conversation === true ? item?.id : undefined));
+          void navigate(roomBoardLocation(threadRef, conversation === true ? item.id : undefined));
         }
         if (isMobile) setOpenMobile(false);
       }}
@@ -260,9 +253,10 @@ function JoinedBoardOutline({
       : {
           status: "ready",
           // Only a board on a computer has a room thread of its own.
-          items: boardOutline(view.board, board.cloud ? null : view.title).items,
+          items: boardOutline(view.board, board.cloud ? null : view.title, Number.POSITIVE_INFINITY)
+            .items,
         };
-  const openBoard = async (item: RoomBoardOutlineItem | null, conversation?: boolean) => {
+  const openBoard = async (item: RoomBoardOutlineItem, conversation?: boolean) => {
     let location: ReturnType<typeof guestShareLocation> = sharedThreadLocationOf(
       board,
       board.cloud,
@@ -276,7 +270,7 @@ function JoinedBoardOutline({
       }
       location = guestShareLocation(opened);
     }
-    if (item !== null) requestBoardFocus(shareId, { noteId: item.id, plan: false, conversation });
+    requestBoardFocus(shareId, { noteId: item.id, plan: false, conversation });
     if (!open) void navigate(location);
     if (isMobile) setOpenMobile(false);
   };
