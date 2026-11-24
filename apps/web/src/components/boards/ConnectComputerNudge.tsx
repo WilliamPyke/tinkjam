@@ -38,11 +38,11 @@ export function ConnectComputerNudge() {
         </span>
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 className="text-ui-md font-semibold text-foreground">
-            Bring your AI agents onto your boards
+            Use your AI assistant on your boards
           </h2>
           <p className="text-body">
-            Get Tinkjam Sync for your computer and press Connect. Your boards can then use Claude
-            Code or Codex on it.
+            Tinkjam Sync is a small app for your computer. It lets Claude Code, Codex or another
+            assistant you already use work on your boards.
           </p>
         </div>
       </div>
