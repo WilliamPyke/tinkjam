@@ -144,9 +144,31 @@ const arrow = "M2 2l5.5 13 2-5.5 5.5-2z";
             Landing page<span class="chip chip--live" data-live>Live</span>
           </div>
           <div class="landing__body">
-            <div class="landing__art"></div>
-            <div class="landing__title">Spring collection</div>
-            <div class="landing__tiles"><span></span><span></span><span></span></div>
+            <div class="site site--before">
+              <div class="site__nav"><i class="site__logo"></i><i></i><i></i><i></i></div>
+              <div class="site__photo">
+                <svg class="site__scene" viewBox="0 0 100 50" preserveAspectRatio="xMidYMax meet"><circle cx="74" cy="14" r="7"></circle><path d="M0 50L30 20l16 15 12-9 26 24z"></path></svg><span class="site__arrow">&lsaquo;</span><span class="site__arrow">&rsaquo;</span>
+              </div>
+              <div class="site__dots"><i></i><i></i><i></i></div>
+              <div class="site__title">Spring collection</div>
+              <div class="site__tiles">
+                <span><i></i></span><span><i></i></span><span><i></i></span>
+              </div>
+            </div>
+            <div class="site site--loading">
+              <div class="site__nav"><i class="site__logo"></i><i></i><i></i><i></i></div>
+              <div class="site__photo site__photo--big"></div>
+              <i class="site__bar site__bar--title"></i>
+              <i class="site__bar"></i><i class="site__bar site__bar--short"></i>
+              <i class="site__bar site__bar--button"></i>
+            </div>
+            <div class="site site--after">
+              <div class="site__nav"><i class="site__logo"></i><i></i><i></i><i></i></div>
+              <div class="site__photo site__photo--big"><svg class="site__scene" viewBox="0 0 100 50" preserveAspectRatio="xMidYMax meet"><circle cx="74" cy="14" r="7"></circle><path d="M0 50L30 20l16 15 12-9 26 24z"></path></svg></div>
+              <div class="site__title">Spring collection</div>
+              <i class="site__bar"></i><i class="site__bar site__bar--short"></i>
+              <span class="site__button">Shop now</span>
+            </div>
           </div>
         </div>
         <div class="bcard comment" aria-hidden="true">
@@ -259,7 +281,7 @@ const arrow = "M2 2l5.5 13 2-5.5 5.5-2z";
         void box.offsetWidth;
         box.classList.remove("is-arriving");
       }, 650);
-    }, 3200);
+    }, 6500);
     setInterval(() => {
       mates.classList.add("is-fading");
       setTimeout(() => {
