@@ -6855,7 +6855,10 @@ export function RoomBoard({
                           ? {
                               live: true,
                               active: embedInUse === note.id,
-                              onUse: () => setEmbedInUse(note.id),
+                              onUse: () => {
+                                if (view.zoom < BOARD_EMBED_MIN_ZOOM) zoomToCard(noteRef(note.id));
+                                setEmbedInUse(note.id);
+                              },
                               onRelease: () => setEmbedInUse(null),
                             }
                           : undefined

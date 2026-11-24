@@ -1538,6 +1538,42 @@ describe("RoomBoard link cards", () => {
     expect(drawn.top).toBeGreaterThanOrEqual(area.top);
     expect(drawn.bottom).toBeLessThanOrEqual(area.bottom);
   });
+
+  it("zooms in to an artifact when its cover is clicked from far out", async () => {
+    await using _viewport = await boardSizedViewport();
+    rememberRoomBoardView("artifact-test:far", { x: 0, y: 0, zoom: 0.3 });
+    const board = renderBoard(
+      [
+        {
+          id: "deck",
+          text: "",
+          x: 900,
+          y: 600,
+          kind: "artifact",
+          artifact: {
+            body: "<!doctype html><html><body><h1>Seed deck</h1></body></html>",
+            turnId: "turn-1",
+            updatedAt: "2026-11-12T10:00:00.000Z",
+          },
+        },
+      ],
+      "artifact-test:far",
+    );
+    await using screen = await board.screen;
+    const cover = screen.getByText("Click to interact");
+    await expect.element(cover).toBeVisible();
+    await userEvent.click(cover);
+    await expect.element(screen.getByText("40%")).toBeVisible();
+    const card = screen.container.querySelector('[data-board-item="note:deck"]');
+    const surface = screen.getByRole("application", { name: "Room board" }).element();
+    if (card === null) throw new Error("The board did not draw the artifact");
+    const drawn = card.getBoundingClientRect();
+    const area = surface.getBoundingClientRect();
+    expect(drawn.left).toBeGreaterThanOrEqual(area.left);
+    expect(drawn.right).toBeLessThanOrEqual(area.right);
+    expect(drawn.top).toBeGreaterThanOrEqual(area.top);
+    expect(drawn.bottom).toBeLessThanOrEqual(area.bottom);
+  });
 });
 
 describe("RoomBoard live drags", () => {
