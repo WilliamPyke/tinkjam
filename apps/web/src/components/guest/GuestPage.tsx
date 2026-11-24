@@ -41,7 +41,7 @@ import { useT3ConnectAuthPrompt } from "../clerk/useT3ConnectAuthPrompt";
 import { BoardBackdrop } from "../room/BoardChrome";
 import { TinkjamLoading } from "../TinkjamLoading";
 import { TinkjamWordmark } from "../TinkjamLogo";
-import { Button } from "../ui/button";
+import { Button, InlineButton } from "../ui/button";
 import { Input } from "../ui/input";
 import { useAccountBoardOpen } from "./useAccountBoardOpen";
 import { GoToTinkjam, GuestNotice, noteGuestSignInFailure } from "./GuestThreadView";
@@ -478,9 +478,14 @@ function SignInInstead() {
   if (account.status !== "signed-out") return null;
   return (
     <p className="flex flex-wrap items-center justify-center text-center text-sm text-muted-foreground">
-      <Button variant="link" size="sm" onClick={() => openAuthPrompt()} data-guest-sign-in>
+      <InlineButton
+        tone="accent"
+        touchTarget="padded"
+        onClick={() => openAuthPrompt()}
+        data-guest-sign-in
+      >
         Sign in or create an account
-      </Button>
+      </InlineButton>
       to find this board on every device.
     </p>
   );
