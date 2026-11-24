@@ -1065,6 +1065,7 @@ export function RoomBoard({
   cards,
   summary,
   sharing,
+  sharingBanner,
   sharingFolds = false,
   titleEditor,
   backLabel = "Thread",
@@ -1151,6 +1152,8 @@ export function RoomBoard({
   readonly summary?: string;
   /** Who is in the room and the way to share it, shown after the title in place of the summary. */
   readonly sharing?: ReactNode;
+  /** A sharing state the board keeps visible under its header at every width. */
+  readonly sharingBanner?: ReactNode;
   /** `sharing` narrows itself on a narrow board; the narrowest still folds it behind a menu. */
   readonly sharingFolds?: boolean;
   /** Shown in place of the title in the header, to rename the board there. */
@@ -5661,6 +5664,7 @@ export function RoomBoard({
             )}
           </div>
         </header>
+        {sharingBanner}
         {/* Someone who can only look gets no tools at all, not hidden ones. */}
         {viewOnly ? null : (
           <div

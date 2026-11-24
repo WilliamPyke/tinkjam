@@ -64,47 +64,48 @@ export function ViewOnlyBar({
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- a seat that can edit again leaves this bar; its request is answered
   useEffect(() => () => forgetAskedAccess(shareId), [shareId]);
   return (
-    <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground" data-view-only>
+    <div
+      className="flex min-h-9 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-board-hairline bg-muted/50 px-3 py-1 text-xs text-muted-foreground"
+      data-view-only
+    >
       <span className="flex shrink-0 items-center gap-1 font-medium text-foreground">
         <EyeIcon className="size-3.5" aria-hidden />
         View only
       </span>
-      {viewing > 1 ? <span className="shrink-0">· {viewingLabel(viewing)}</span> : null}
+      {viewing > 1 ? <span className="shrink-0">{viewingLabel(viewing)}</span> : null}
+      <span className="min-w-0 flex-1" />
       {copy !== undefined ? (
         <MakeACopy copy={copy} />
       ) : account.status === "signed-out" ? (
         <SignInToAsk signIn={openAuthPrompt} />
       ) : account.status !== "signed-in" ? (
-        <span className="truncate">· Ask whoever shared it for edit access</span>
+        <span className="truncate">Ask whoever shared it for edit access</span>
       ) : asked !== null ? (
         <span className="truncate" data-view-only-asked>
-          · Asked. The answer comes to your inbox.
+          Asked. The answer comes to your inbox.
         </span>
       ) : (
         <AskForAccess shareId={shareId} viewCredential={viewCredential} />
       )}
-    </span>
+    </div>
   );
 }
 
 function MakeACopy({ copy }: { readonly copy: () => Promise<void> }) {
   const [copying, setCopying] = useState(false);
   return (
-    <>
-      <span className="truncate">· Make a copy to try it yourself</span>
-      <Button
-        size="xs"
-        disabled={copying}
-        onClick={() => {
-          setCopying(true);
-          void copy().finally(() => setCopying(false));
-        }}
-        data-make-copy
-      >
-        <CopyIcon />
-        Make a copy
-      </Button>
-    </>
+    <Button
+      size="xs"
+      disabled={copying}
+      onClick={() => {
+        setCopying(true);
+        void copy().finally(() => setCopying(false));
+      }}
+      data-make-copy
+    >
+      <CopyIcon />
+      Make a copy
+    </Button>
   );
 }
 

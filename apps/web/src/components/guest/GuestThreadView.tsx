@@ -997,6 +997,31 @@ function GuestThreadSession({
         sharing={view.sharing}
       />
     );
+  const viewOnlyBar =
+    cloud && viewOnly ? (
+      <ViewOnlyBar
+        viewing={viewing ?? 0}
+        shareId={share.shareId}
+        viewCredential={share.viewOnly === true ? share.token : undefined}
+        granted={view.granted}
+        copy={
+          view.copies === true
+            ? async () => {
+                const made = await copyCloudBoard(share, view.title);
+                if (typeof made === "string") {
+                  toastManager.add({
+                    type: "error",
+                    title: "Could not make a copy",
+                    description: made,
+                  });
+                  return;
+                }
+                void navigate(guestShareLocation(made));
+              }
+            : undefined
+        }
+      />
+    ) : null;
   const sideRef = sideBox === null ? undefined : boxThread(sideBox);
   const sideTitle =
     view.board?.notes.find((note) => note.id === sideBox)?.text.trim() || "Thread box";
@@ -1093,36 +1118,12 @@ function GuestThreadSession({
                     ),
                     sharing: (
                       <>
-                        {viewOnly ? (
-                          <ViewOnlyBar
-                            viewing={viewing ?? 0}
-                            shareId={share.shareId}
-                            viewCredential={share.viewOnly === true ? share.token : undefined}
-                            granted={view.granted}
-                            copy={
-                              view.copies === true
-                                ? async () => {
-                                    const made = await copyCloudBoard(share, view.title);
-                                    if (typeof made === "string") {
-                                      toastManager.add({
-                                        type: "error",
-                                        title: "Could not make a copy",
-                                        description: made,
-                                      });
-                                      return;
-                                    }
-                                    void navigate(guestShareLocation(made));
-                                  }
-                                : undefined
-                            }
-                          />
-                        ) : null}
                         <InboxBell nudge={view.inboxAt} />
                         {sharing}
                       </>
                     ),
-                    // The view-only bar is a sentence, which a narrow board keeps behind its menu.
-                    sharingFolds: !viewOnly,
+                    sharingBanner: viewOnlyBar,
+                    sharingFolds: true,
                   }
                 : {})}
               viewOnly={viewOnly}
