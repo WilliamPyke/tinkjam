@@ -6,6 +6,41 @@ export const SIGN_IN_URL = `${APP_URL}sign-in`;
 export const SAMPLE_BOARD_URL: string =
   "https://app.tinkjam.com/guest?host=boards.tinkjam.com#1ecbf7b4-8fc3-46f8-8a5c-8a683e311029.v.usrcvSaVH6bFGp3ACk5tGWNPWwFWYCZ5eXYLRB7usFE";
 
+// The sample boards "See a sample board" offers, each built from infra/boards/sample/<id>.json by
+// infra/boards/scripts/sample-board.mjs, which prints its view link.
+export const SAMPLE_BOARDS: ReadonlyArray<{
+  id: "onboarding-v2" | "kitebox-deck" | "next-phone-2006";
+  title: string;
+  about: string;
+  who: string;
+  url: string;
+}> = [
+  {
+    id: "onboarding-v2",
+    title: "Onboarding v2",
+    about:
+      "A product team plans a new welcome flow. Three agents write the copy, the screens and the weekly update.",
+    who: "4 people, 3 agents",
+    url: SAMPLE_BOARD_URL,
+  },
+  {
+    id: "kitebox-deck",
+    title: "Kitebox seed deck",
+    about:
+      "A startup's pitch deck. One agent writes the slides from the team's notes, another designs them.",
+    who: "4 people, 2 agents",
+    url: "https://app.tinkjam.com/guest?host=boards.tinkjam.com#7d494c55-6ded-4b55-bbc3-af0987fc7825.v.y62Lnvzs2R4HBz17Fj86dXiVVBbzMKxhGPiXg6PBxAs",
+  },
+  {
+    id: "next-phone-2006",
+    title: "The next phone, 2006",
+    about:
+      "Three researchers pick the next feature for a phone. Each agent builds on what the others found.",
+    who: "3 people, 3 agents",
+    url: "https://app.tinkjam.com/guest?host=boards.tinkjam.com#377ba172-9516-4bf2-8c6c-1534d09bfbbe.v.eNHL9MtnAan-xqLDGsmGBLDAnk32LgO9-pOzuTYikhY",
+  },
+];
+
 // Tinkjam Sync downloads, copied into dist/downloads/ at deploy. Release files are named
 // tinkjam-sync-v<version>-<os>-<arch>.<ext>; point each constant at the real file at release.
 const SYNC_VERSION = "1.0.5";

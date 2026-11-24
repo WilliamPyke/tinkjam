@@ -3,6 +3,8 @@ import { ROOM_AGENT_REPLY_ID_PREFIX, roomTaskStatus } from "@t3tools/shared/room
 import * as Result from "effect/Result";
 import { describe, expect, it } from "vite-plus/test";
 
+import kitebox from "../sample/kitebox-deck.json" with { type: "json" };
+import nextPhone from "../sample/next-phone-2006.json" with { type: "json" };
 import sample from "../sample/onboarding-v2.json" with { type: "json" };
 import { postTurn } from "./machines.ts";
 import { changeBoard, createRoom, joinRoom, viewFor, type CloudRoom } from "./room.ts";
@@ -12,8 +14,10 @@ const NOW = "2026-11-17T10:00:00.000Z";
 const description = sample as SampleBoard;
 const guestOf = (person: string) => `guest-${person}`;
 
+const placeholderBody = (file: string) => `# ${file}`;
+
 /** The board as the script leaves it, built by the same rules the host applies. */
-function built(): CloudRoom {
+function built(description: SampleBoard = sample as SampleBoard): CloudRoom {
   let room = createRoom({
     shareId: GuestShareId.make("sample-0000"),
     threadId: ThreadId.make("board-sample-0000"),
@@ -39,14 +43,14 @@ function built(): CloudRoom {
       }),
     );
   }
-  return apply(room);
+  return apply(room, description);
 }
 
-function apply(room: CloudRoom): CloudRoom {
+function apply(room: CloudRoom, description: SampleBoard = sample as SampleBoard): CloudRoom {
   const changes = sampleChanges({
     sample: description,
     guestOf,
-    bodyOf: (file) => `# ${file}`,
+    bodyOf: placeholderBody,
     notes: room.board?.notes ?? [],
     start: room.board?.start,
     now: Date.parse(NOW),
@@ -59,7 +63,7 @@ function apply(room: CloudRoom): CloudRoom {
     return next.success;
   }, room);
   // As the script posts them: each by its person's own machine token, through the turn route.
-  return sampleTurns({ sample: description, bodyOf: (file) => `# ${file}` }).reduce(
+  return sampleTurns({ sample: description, bodyOf: placeholderBody }).reduce(
     (current, { by, turn }) =>
       Result.getOrThrow(postTurn(current, GuestId.make(guestOf(by)), turn, NOW)),
     changed,
@@ -143,5 +147,27 @@ describe("the public sample board", () => {
     expect(twice.board?.notes.map((note) => note.reactions)).toEqual(
       once.board?.notes.map((note) => note.reactions),
     );
+  });
+});
+
+describe.each([
+  ["Kitebox seed deck", kitebox],
+  ["The next phone: research, 2006", nextPhone],
+])("the %s sample board", (_title, json) => {
+  const other = json as SampleBoard;
+
+  it("is taken whole by the board's rules, with every agent turn on its box", () => {
+    const board = viewFor(built(other), null).board!;
+    expect(board.notes).toHaveLength(other.cards.length);
+    expect(board.edges).toHaveLength(other.lines.length);
+    const note = (id: string) => board.notes.find((one) => one.id === id)!;
+    const lastWrite = new Map<string, string>();
+    for (const turn of other.agentTurns ?? []) {
+      expect(note(turn.box!).thread?.turns.some((one) => one.id === turn.id)).toBe(true);
+      if (turn.artifact !== undefined) lastWrite.set(turn.artifact.card, turn.artifact.body);
+    }
+    for (const [card, file] of lastWrite) {
+      expect(note(card).artifact?.body).toBe(placeholderBody(file));
+    }
   });
 });

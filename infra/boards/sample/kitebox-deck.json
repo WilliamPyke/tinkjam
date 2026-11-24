@@ -1,0 +1,422 @@
+{
+  "title": "Kitebox seed deck",
+  "maker": "ada",
+  "people": {
+    "ada": "Ada Mensah",
+    "leo": "Leo Park",
+    "rina": "Rina Sato",
+    "tom": "Tom Hughes"
+  },
+  "cards": [
+    {
+      "id": "notes",
+      "by": "ada",
+      "section": true,
+      "text": "Notes from the team",
+      "x": 0,
+      "y": 0,
+      "size": {
+        "w": 960,
+        "h": 400
+      },
+      "color": "yellow"
+    },
+    {
+      "id": "n1",
+      "by": "ada",
+      "text": "Ten slides at most. Partners read decks on their phones between meetings.",
+      "x": 24,
+      "y": 64
+    },
+    {
+      "id": "n2",
+      "by": "rina",
+      "text": "Traction is our best slide: 212 cafés, up 9% a month. Put it third, not seventh.",
+      "x": 240,
+      "y": 64,
+      "color": "green"
+    },
+    {
+      "id": "n3",
+      "by": "tom",
+      "text": "Don't say \"AI-powered\". Say what it does: it counts a shelf from one photo.",
+      "x": 456,
+      "y": 64,
+      "color": "pink"
+    },
+    {
+      "id": "n4",
+      "by": "rina",
+      "text": "Bean There in Leeds said \"We stopped running out of oat milk.\" Use it.",
+      "x": 24,
+      "y": 232,
+      "color": "green"
+    },
+    {
+      "id": "n5",
+      "by": "tom",
+      "text": "Show the count happening. A six-second clip beats any diagram.",
+      "x": 240,
+      "y": 232,
+      "color": "pink"
+    },
+    {
+      "id": "n6",
+      "by": "ada",
+      "text": "The ask: £1.5M seed, 18 months of runway, four hires.",
+      "x": 456,
+      "y": 232
+    },
+    {
+      "id": "type",
+      "by": "leo",
+      "section": true,
+      "text": "Design: style",
+      "x": 504,
+      "y": 440,
+      "size": {
+        "w": 456,
+        "h": 232
+      },
+      "color": "purple"
+    },
+    {
+      "id": "layout",
+      "by": "leo",
+      "section": true,
+      "text": "Design: layout",
+      "x": 504,
+      "y": 712,
+      "size": {
+        "w": 456,
+        "h": 232
+      },
+      "color": "pink"
+    },
+    {
+      "id": "charts",
+      "by": "leo",
+      "section": true,
+      "text": "Design: charts",
+      "x": 504,
+      "y": 984,
+      "size": {
+        "w": 456,
+        "h": 232
+      },
+      "color": "blue"
+    },
+    {
+      "id": "d1",
+      "by": "leo",
+      "text": "Headings in one bold sans at 56pt. Body text never under 20pt.",
+      "x": 528,
+      "y": 504,
+      "color": "purple"
+    },
+    {
+      "id": "d2",
+      "by": "leo",
+      "text": "Kite blue on warm white. One accent colour per slide, nothing else.",
+      "x": 744,
+      "y": 504,
+      "color": "purple"
+    },
+    {
+      "id": "d3",
+      "by": "leo",
+      "text": "One idea per slide. Title top left, one picture or number on the right.",
+      "x": 528,
+      "y": 776,
+      "color": "pink"
+    },
+    {
+      "id": "d4",
+      "by": "leo",
+      "text": "The number that matters goes huge: one stat per slide, with a one-line caption.",
+      "x": 744,
+      "y": 776,
+      "color": "pink"
+    },
+    {
+      "id": "d5",
+      "by": "leo",
+      "text": "Bars, not pies. Label the bars directly, no legend.",
+      "x": 528,
+      "y": 1048,
+      "color": "blue"
+    },
+    {
+      "id": "d6",
+      "by": "tom",
+      "text": "Grey for the market, blue for us, so the eye lands on Kitebox.",
+      "x": 744,
+      "y": 1048,
+      "color": "blue"
+    },
+    {
+      "id": "tasks",
+      "by": "ada",
+      "section": true,
+      "text": "Tasks",
+      "x": 0,
+      "y": 440,
+      "size": {
+        "w": 464,
+        "h": 776
+      },
+      "color": "green"
+    },
+    {
+      "id": "t1",
+      "by": "ada",
+      "text": "Book three practice pitches before Demo Day",
+      "x": 24,
+      "y": 504,
+      "kind": "task",
+      "status": "doing",
+      "priority": "high",
+      "dueInDays": 5,
+      "assignee": "ada",
+      "order": 1
+    },
+    {
+      "id": "t2",
+      "by": "rina",
+      "text": "Put March's numbers in the traction slide",
+      "x": 240,
+      "y": 504,
+      "kind": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "rina",
+      "order": 1
+    },
+    {
+      "id": "t3",
+      "by": "leo",
+      "text": "Record the six-second shelf clip",
+      "x": 24,
+      "y": 712,
+      "kind": "task",
+      "status": "doing",
+      "priority": "high",
+      "dueInDays": 3,
+      "assignee": "leo",
+      "order": 2
+    },
+    {
+      "id": "t4",
+      "by": "tom",
+      "text": "Write our answer to \"what if a wholesaler builds this?\"",
+      "x": 240,
+      "y": 712,
+      "kind": "task",
+      "status": "todo",
+      "priority": "medium",
+      "dueInDays": 8,
+      "assignee": "tom",
+      "order": 1
+    },
+    {
+      "id": "t5",
+      "by": "ada",
+      "text": "Send the deck to the first five investors",
+      "x": 24,
+      "y": 920,
+      "kind": "task",
+      "status": "todo",
+      "priority": "urgent",
+      "dueInDays": 10,
+      "assignee": "ada",
+      "order": 2
+    },
+    {
+      "id": "t6",
+      "by": "rina",
+      "text": "Ask Bean There if we can quote them",
+      "x": 240,
+      "y": 920,
+      "kind": "task",
+      "status": "done",
+      "priority": "medium",
+      "assignee": "rina",
+      "order": 2
+    },
+    {
+      "id": "ada-agent",
+      "by": "ada",
+      "text": "Deck story",
+      "x": 1040,
+      "y": 30,
+      "kind": "thread",
+      "size": {
+        "w": 400,
+        "h": 340
+      }
+    },
+    {
+      "id": "leo-agent",
+      "by": "leo",
+      "text": "Slide design",
+      "x": 1040,
+      "y": 660,
+      "kind": "thread",
+      "size": {
+        "w": 400,
+        "h": 340
+      }
+    },
+    {
+      "id": "yc",
+      "by": "ada",
+      "text": "YC: How to build your seed round pitch deck",
+      "x": 672,
+      "y": 64,
+      "kind": "link",
+      "url": "https://www.ycombinator.com/library/2u-how-to-build-your-seed-round-pitch-deck",
+      "size": {
+        "w": 264,
+        "h": 200
+      }
+    },
+    {
+      "id": "deck",
+      "by": "ada",
+      "text": "Kitebox seed deck",
+      "x": 1520,
+      "y": 130,
+      "kind": "artifact",
+      "size": {
+        "w": 760,
+        "h": 840
+      }
+    },
+    {
+      "id": "c1",
+      "by": "rina",
+      "text": "Should the ask come before the team slide? Investors skim straight to the number.",
+      "x": 2320,
+      "y": 170,
+      "kind": "comment",
+      "replies": [
+        {
+          "id": "c1-r1",
+          "by": "tom",
+          "text": "Team first, I think. At seed they're backing us before the number."
+        }
+      ]
+    }
+  ],
+  "lines": [
+    {
+      "id": "l-notes-ada",
+      "by": "ada",
+      "from": "notes",
+      "to": "ada-agent"
+    },
+    {
+      "id": "l-type-leo",
+      "by": "leo",
+      "from": "type",
+      "to": "leo-agent"
+    },
+    {
+      "id": "l-layout-leo",
+      "by": "leo",
+      "from": "layout",
+      "to": "leo-agent"
+    },
+    {
+      "id": "l-charts-leo",
+      "by": "leo",
+      "from": "charts",
+      "to": "leo-agent"
+    },
+    {
+      "id": "l-ada-deck",
+      "by": "ada",
+      "from": "ada-agent",
+      "to": "deck"
+    },
+    {
+      "id": "l-leo-deck",
+      "by": "leo",
+      "from": "leo-agent",
+      "to": "deck"
+    }
+  ],
+  "reactions": [
+    {
+      "card": "n2",
+      "by": "ada",
+      "emoji": "👍"
+    },
+    {
+      "card": "n4",
+      "by": "leo",
+      "emoji": "🎉"
+    },
+    {
+      "card": "d4",
+      "by": "rina",
+      "emoji": "👍"
+    },
+    {
+      "card": "deck",
+      "by": "tom",
+      "emoji": "🎉"
+    },
+    {
+      "card": "deck",
+      "by": "rina",
+      "emoji": "👍"
+    },
+    {
+      "card": "t2",
+      "by": "ada",
+      "emoji": "✅"
+    }
+  ],
+  "start": "ada-agent",
+  "agentTurns": [
+    {
+      "id": "sample-ada-deck-1",
+      "by": "ada",
+      "box": "ada-agent",
+      "model": "Claude Sonnet 5.5",
+      "prompt": "Draft our seed deck from the team's notes. Ten slides at most, one idea on each, traction third.",
+      "context": ["n1", "n2", "n3", "n4", "n5", "n6", "yc"],
+      "reply": "Drafted nine slides in the deck on the right. Traction is slide 3 with Rina's numbers, the shelf count is slide 4 as Tom asked, and the ask closes it: £1.5M for 18 months and four hires. I kept the words plain so Leo can design over them.",
+      "artifact": {
+        "card": "deck",
+        "body": "kitebox-deck/deck-v1.html"
+      }
+    },
+    {
+      "id": "sample-leo-design-1",
+      "by": "leo",
+      "box": "leo-agent",
+      "model": "GPT-5.5",
+      "prompt": "Apply our design breakdown to Ada's draft. Keep her words exactly; change only how the slides look.",
+      "context": ["d1", "d2", "d3", "d4", "d5", "d6"],
+      "reply": "Restyled all nine slides: kite blue on warm white, one heading size, and the traction numbers as labelled bars with no legend. Ada's words are unchanged. The 212 on slide 3 is now the biggest thing in the deck.",
+      "artifact": {
+        "card": "deck",
+        "body": "kitebox-deck/deck-v2.html"
+      }
+    },
+    {
+      "id": "sample-ada-comment-1",
+      "by": "ada",
+      "box": "ada-agent",
+      "model": "Claude Sonnet 5.5",
+      "prompt": "Answer Rina's question in the comment thread: should the ask come before the team slide?",
+      "reply": "Answered in the thread.",
+      "comment": {
+        "card": "c1",
+        "text": "Keep the team before the ask, as Tom says: at seed, the number lands better once they've met the people spending it. Rina's worry is fair, so the first slide already says \"Raising £1.5M\". Anyone skimming sees the number in the first five seconds."
+      }
+    }
+  ]
+}

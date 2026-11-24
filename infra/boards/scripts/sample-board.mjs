@@ -7,18 +7,22 @@ import * as NodeURL from "node:url";
 // Node (23.6 or newer) runs this TypeScript file as it is: it imports only types.
 import { sampleChanges, sampleTurns } from "../src/sampleBoard.ts";
 
-const USAGE = `Builds Tinkjam's public sample board from infra/boards/sample/onboarding-v2.json,
+const USAGE = `Builds one of Tinkjam's public sample boards from infra/boards/sample/<name>.json,
 through the board host's own routes, and prints its view link.
 
   node infra/boards/scripts/sample-board.mjs --host https://boards.trellium.org
+  node infra/boards/scripts/sample-board.mjs --host https://boards.tinkjam.com --sample kitebox-deck
 
-The public sample board was made through boards.trellium.org, and its state file is named after
-that host: keep passing it (the same service answers at boards.tinkjam.com).
+The first sample board (onboarding-v2) was made through boards.trellium.org, and its state file is
+named after that host: keep passing it for that board (the same service answers at
+boards.tinkjam.com).
 
   --host <url>    the board host (required); http://localhost:8799 for \`wrangler dev\`
+  --sample <name> which description in infra/boards/sample to build (default onboarding-v2)
   --app <url>     the web app the link opens in (default https://app.tinkjam.com)
   --state <file>  where the board's sessions are kept, outside the repository
-                  (default ~/.tinkjam/sample-board.<host>.json)
+                  (default ~/.tinkjam/sample-board.<host>.json for onboarding-v2,
+                  ~/.tinkjam/sample-board.<name>.<host>.json for the others)
   --fresh         deletes the board in the state file and makes a new one, with a new view link
 
 No account or secret is needed: an anonymous maker makes the board and the state file keeps its
@@ -28,14 +32,13 @@ off at the end, so nobody else can change the board; viewers may make their own 
 const { mkdirSync, readFileSync, writeFileSync, existsSync, chmodSync } = NodeFS;
 const { dirname, join } = NodePath;
 const here = dirname(NodeURL.fileURLToPath(import.meta.url));
-const SAMPLE = join(here, "..", "sample", "onboarding-v2.json");
 
 function argsOf(argv) {
-  const args = { app: "https://app.tinkjam.com", fresh: false };
+  const args = { app: "https://app.tinkjam.com", sample: "onboarding-v2", fresh: false };
   for (let at = 0; at < argv.length; at++) {
     const flag = argv[at];
     if (flag === "--fresh") args.fresh = true;
-    else if (flag === "--host" || flag === "--app" || flag === "--state") {
+    else if (flag === "--host" || flag === "--app" || flag === "--state" || flag === "--sample") {
       args[flag.slice(2)] = argv[++at];
     } else {
       console.log(USAGE);
@@ -47,15 +50,23 @@ function argsOf(argv) {
     process.exit(1);
   }
   args.host = args.host.replace(/\/+$/, "");
+  if (!/^[a-z0-9-]+$/.test(args.sample)) {
+    console.log(USAGE);
+    process.exit(1);
+  }
+  const host = new URL(args.host).host.replace(/[^a-z0-9.-]/gi, "_");
   args.state ??= join(
     NodeOS.homedir(),
     ".tinkjam",
-    `sample-board.${new URL(args.host).host.replace(/[^a-z0-9.-]/gi, "_")}.json`,
+    args.sample === "onboarding-v2"
+      ? `sample-board.${host}.json`
+      : `sample-board.${args.sample}.${host}.json`,
   );
   return args;
 }
 
 const args = argsOf(process.argv.slice(2));
+const SAMPLE = join(here, "..", "sample", `${args.sample}.json`);
 const sample = JSON.parse(readFileSync(SAMPLE, "utf8"));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

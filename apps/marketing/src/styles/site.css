@@ -1356,6 +1356,142 @@ a {
   font-size: 15px;
 }
 
+/* The sample board picker */
+
+.samples {
+  width: min(980px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100% - 32px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: 24px;
+  background: var(--page);
+  color: var(--body);
+  box-shadow: var(--shadow);
+}
+.samples::backdrop {
+  background: rgb(23 20 28 / 0.5);
+}
+.samples__body {
+  padding: 28px;
+}
+.samples__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.samples h2 {
+  color: var(--text);
+  font: 600 28px/1.1 var(--font-head);
+  letter-spacing: -0.02em;
+}
+.samples__close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+.samples__close:hover {
+  background: var(--rule);
+}
+.samples__lede {
+  margin-top: 6px;
+  color: var(--quiet);
+  font-size: 15px;
+}
+.samples__list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 22px;
+  padding: 0;
+  list-style: none;
+}
+.sample {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 10px 10px 18px;
+  border: 1px solid var(--rule);
+  border-radius: 18px;
+  background: var(--card);
+  text-decoration: none;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+.sample:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.sample__map {
+  display: block;
+  height: 150px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  background: radial-gradient(var(--rule) 1px, transparent 1.5px) 0 0 / 10px 10px var(--hero);
+}
+.map {
+  width: 100%;
+  height: 100%;
+}
+.map--yellow {
+  --map: #ffc83d;
+}
+.map--green {
+  --map: #3fbf8f;
+}
+.map--blue {
+  --map: #5b7dff;
+}
+.map--pink {
+  --map: #f06a8f;
+}
+.map--purple {
+  --map: #9b7bea;
+}
+.map--grey {
+  --map: #9a95a3;
+}
+.map__section {
+  fill: color-mix(in srgb, var(--map) 22%, var(--card));
+}
+.map__note {
+  fill: color-mix(in srgb, var(--map) 60%, var(--card));
+}
+.map__card {
+  fill: var(--card);
+  stroke: color-mix(in srgb, var(--text) 22%, transparent);
+  stroke-width: 6;
+}
+.sample__title {
+  padding: 0 8px;
+  color: var(--text);
+  font: 600 19px/1.2 var(--font-head);
+}
+.sample__about {
+  margin-top: 6px;
+  padding: 0 8px;
+  color: var(--body);
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+.sample__who {
+  margin-top: auto;
+  padding: 12px 8px 0;
+  color: var(--quiet);
+  font-size: 13px;
+}
+
 /* Smaller windows */
 
 @media (max-width: 959px) {
@@ -1419,7 +1555,8 @@ a {
     flex-direction: column;
     align-items: flex-start;
     gap: 18px;
-    width: auto;
+    /* A fixed width, so Codex's changing text never moves the cards under the drawn line. */
+    width: 100%;
     height: auto;
     max-width: 380px;
     margin-top: 48px;
@@ -1429,11 +1566,23 @@ a {
     position: relative;
     inset: auto;
   }
-  .board__lines,
   .board .cursor,
   .figma,
-  .comment {
+  .comment,
+  .board__lines > path {
     display: none;
+  }
+  /* Only the line a visitor draws shows here, so it is drawn in the stacked board's own space. */
+  .board > .board__lines {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .board > .packet {
+    position: absolute;
   }
   .note {
     width: 236px;
@@ -1452,7 +1601,33 @@ a {
     align-items: center;
     gap: 10px;
     align-self: center;
-    cursor: pointer;
+    margin-bottom: 40px;
+  }
+  /* The way to drag: a dashed guide from the dot down to Codex. */
+  .linker::before,
+  .linker::after {
+    content: "";
+    position: absolute;
+    left: 13px;
+    transition: opacity 0.2s ease;
+  }
+  .linker::before {
+    top: calc(100% - 4px);
+    height: 52px;
+    border-left: 2px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+  .linker::after {
+    top: calc(100% + 38px);
+    left: 9px;
+    width: 10px;
+    height: 10px;
+    border: solid color-mix(in srgb, var(--accent) 60%, transparent);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .board.is-drawing .linker::before,
+  .board.is-drawing .linker::after {
+    opacity: 0;
   }
   .linker__label {
     position: static;
@@ -1462,9 +1637,6 @@ a {
   }
   .linker__tap {
     display: inline;
-  }
-  .board[data-demo] .linker {
-    display: none;
   }
   .replay {
     align-self: center;
@@ -1510,11 +1682,56 @@ a {
     grid-row: 1 / span 2;
     margin-top: 40px;
   }
+  /* Just above Codex, so the guide reaches it however tall the landing page makes the row. */
+  .linker {
+    align-self: end;
+    justify-self: center;
+  }
 }
 
 @media (max-width: 720px) {
   .nav__links .navlink--wide {
     display: none;
+  }
+  .samples__body {
+    padding: 22px 16px 16px;
+  }
+  .samples h2 {
+    font-size: 24px;
+  }
+  .samples__list {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .sample {
+    display: grid;
+    grid-template-columns: 104px 1fr;
+    grid-template-rows: auto auto 1fr;
+    column-gap: 12px;
+    padding: 8px 12px 12px 8px;
+  }
+  .sample__map {
+    grid-row: 1 / span 3;
+    align-self: start;
+    height: 92px;
+    margin: 0;
+    padding: 8px;
+  }
+  .sample__title,
+  .sample__about,
+  .sample__who {
+    padding: 0;
+  }
+  .sample__title {
+    margin-top: 4px;
+    font-size: 17px;
+  }
+  .sample__about {
+    font-size: 13.5px;
+  }
+  .sample__who {
+    padding-top: 6px;
   }
 }
 
@@ -1579,7 +1796,8 @@ a {
   }
   .landing,
   .site,
-  .comment {
+  .comment,
+  .sample {
     transition: none;
   }
   .agent-box,

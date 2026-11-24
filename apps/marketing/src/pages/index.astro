@@ -1,6 +1,10 @@
 ---
+import kitebox from "../../../../infra/boards/sample/kitebox-deck.json";
+import nextPhone from "../../../../infra/boards/sample/next-phone-2006.json";
+import onboarding from "../../../../infra/boards/sample/onboarding-v2.json";
 import Layout from "../layouts/Layout.astro";
-import { APP_URL, SAMPLE_BOARD_URL } from "../lib/site";
+import { boardMap } from "../lib/boardMap";
+import { APP_URL, SAMPLE_BOARDS } from "../lib/site";
 
 // The only place these four names appear regardless of what a person has installed.
 const agents = [
@@ -16,6 +20,15 @@ const faces = [
   { initial: "+4", color: "var(--sun)", ink: "#17141C" },
 ];
 const arrow = "M2 2l5.5 13 2-5.5 5.5-2z";
+const descriptions = {
+  "onboarding-v2": onboarding,
+  "kitebox-deck": kitebox,
+  "next-phone-2006": nextPhone,
+};
+const samples = SAMPLE_BOARDS.map((board) => ({
+  ...board,
+  map: boardMap(descriptions[board.id].cards),
+}));
 ---
 
 <Layout navOver>
@@ -105,7 +118,7 @@ const arrow = "M2 2l5.5 13 2-5.5 5.5-2z";
           <span class="linker__dot" data-linker-dot></span>
           <span class="linker__label">
             <span class="linker__drag">Draw a line to Codex</span>
-            <span class="linker__tap">Connect Priya's note to Codex</span>
+            <span class="linker__tap">Drag the dot down to Codex</span>
           </span>
         </button>
 
@@ -193,8 +206,8 @@ const arrow = "M2 2l5.5 13 2-5.5 5.5-2z";
         <div class="intro__ctas">
           <a class="btn btn--lg" href={APP_URL}>Start a board</a>
           {
-            SAMPLE_BOARD_URL === "" ? null : (
-              <a class="navlink intro__sample" href={SAMPLE_BOARD_URL}>
+            samples.length === 0 ? null : (
+              <a class="navlink intro__sample" href={samples[0]?.url} data-samples-open>
                 See a sample board
               </a>
             )
@@ -204,6 +217,48 @@ const arrow = "M2 2l5.5 13 2-5.5 5.5-2z";
       </div>
     </div>
   </section>
+
+  <dialog class="samples" aria-labelledby="samples-title" data-samples>
+    <div class="samples__body">
+    <div class="samples__head">
+      <h2 id="samples-title">Pick a sample board</h2>
+      <button class="samples__close" type="button" aria-label="Close" data-samples-close>
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"
+          ><path d="M3.5 3.5l9 9m0-9l-9 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+          ></path></svg
+        >
+      </button>
+    </div>
+    <p class="samples__lede">They're view only. Make your own copy of one to try it.</p>
+    <ul class="samples__list">
+      {
+        samples.map((board) => (
+          <li>
+            <a class="sample" href={board.url}>
+              <span class="sample__map" aria-hidden="true">
+                <svg class="map" viewBox={board.map.viewBox} preserveAspectRatio="xMidYMid meet">
+                  {board.map.boxes.map((box) => (
+                    <rect
+                      class={`map__${box.kind} map--${box.color}`}
+                      x={box.x}
+                      y={box.y}
+                      width={box.w}
+                      height={box.h}
+                      rx={box.kind === "note" ? 10 : 22}
+                    />
+                  ))}
+                </svg>
+              </span>
+              <span class="sample__title">{board.title}</span>
+              <span class="sample__about">{board.about}</span>
+              <span class="sample__who">{board.who}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    </div>
+  </dialog>
 
   <section class="panels">
     <div class="panel panel--blue">
@@ -291,6 +346,24 @@ const arrow = "M2 2l5.5 13 2-5.5 5.5-2z";
         mates.classList.remove("is-fading");
       }, 250);
     }, 5200);
+  }
+</script>
+
+<script>
+  // "See a sample board" opens the picker; without scripts it opens the first board.
+  const samples = document.querySelector<HTMLDialogElement>("[data-samples]");
+  if (samples) {
+    for (const open of document.querySelectorAll("[data-samples-open]")) {
+      open.addEventListener("click", (event) => {
+        event.preventDefault();
+        samples.showModal();
+      });
+    }
+    samples.querySelector("[data-samples-close]")?.addEventListener("click", () => samples.close());
+    // A click on the dimmed page around the dialog closes it.
+    samples.addEventListener("click", (event) => {
+      if (event.target === samples) samples.close();
+    });
   }
 </script>
 

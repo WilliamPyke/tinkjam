@@ -18,7 +18,6 @@ export function startHeroDemo(board: HTMLElement): void {
   const says = find<HTMLElement>("[data-says]");
   const live = find<HTMLElement>("[data-live]");
   const announce = find<HTMLElement>("[data-announce]");
-  const lines = find<SVGSVGElement>(".board__lines");
   const link = find<SVGPathElement>("[data-link]");
   const linkHead = find<SVGPathElement>("[data-link-head]");
   const lineFigma = find<SVGPathElement>("[data-line-figma]");
@@ -35,7 +34,6 @@ export function startHeroDemo(board: HTMLElement): void {
     !says ||
     !live ||
     !announce ||
-    !lines ||
     !link ||
     !linkHead ||
     !lineFigma ||
@@ -97,8 +95,7 @@ export function startHeroDemo(board: HTMLElement): void {
     link.removeAttribute("d");
     linkHead.removeAttribute("d");
   };
-  // Phones stack the cards and hide the lines, so nothing travels there.
-  const moving = () => !reduced.matches && getComputedStyle(lines).display !== "none";
+  const moving = () => !reduced.matches;
 
   const step = (token: number, ms: number) =>
     new Promise<void>((resolve, reject) =>
@@ -110,7 +107,8 @@ export function startHeroDemo(board: HTMLElement): void {
 
   // A card's content riding a line into or out of the agent.
   const travel = (path: SVGPathElement, label: string, kind: string) => {
-    if (!moving() || !canTravel) return;
+    // Stacked boards on phones hide the lines between cards that are no longer side by side.
+    if (!moving() || !canTravel || getComputedStyle(path).display === "none") return;
     const packet = document.createElement("span");
     packet.className = `packet packet--${kind}`;
     packet.textContent = label;
