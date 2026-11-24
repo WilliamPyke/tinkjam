@@ -439,8 +439,8 @@ export function useStartNewBoard() {
     place: NewBoardPlace = readPlace(),
     /** What it is called from the start; without, the board opens with its name to type. */
     title: string | null = null,
-  ) => {
-    if (appAtomRegistry.get(newBoardWaitingAtom)) return;
+  ): Promise<boolean> => {
+    if (appAtomRegistry.get(newBoardWaitingAtom)) return false;
     const decide = (now: typeof machines, waited: boolean) =>
       newBoardStart({
         // After the wait, read again: the machine that finished connecting brought its projects.
@@ -463,28 +463,20 @@ export function useStartNewBoard() {
       if (failed !== null) throw failed.error;
       decision = decide(appAtomRegistry.get(newBoardMachinesAtom), true);
     }
-    if (decision.kind === "cloud") {
-      await createCloudBoard(template, knownBoardName(), title);
-      return;
-    }
-    if (decision.kind === "use") {
-      await createBoard(decision.project, template, title);
-      return;
-    }
+    if (decision.kind === "cloud") return createCloudBoard(template, knownBoardName(), title);
+    if (decision.kind === "use") return createBoard(decision.project, template, title);
     if (decision.kind === "ask") {
       appAtomRegistry.set(pickerOpenAtom, template);
-      return;
+      return false;
     }
     const environmentId = scratchEnvironmentId(primaryEnvironmentId);
     const scratch =
       environmentId === null
         ? null
         : await openScratchProject(environmentId, "Could not start a board");
-    if (scratch !== null) {
-      await createBoard(scratch, template, title);
-      return;
-    }
+    if (scratch !== null) return createBoard(scratch, template, title);
     openCommandPalette({ open: "add-project" });
+    return false;
   };
 }
 

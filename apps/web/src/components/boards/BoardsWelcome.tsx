@@ -140,9 +140,11 @@ export function StartBoardForm({
       rememberBoardName(name);
     }
     setStarting(true);
-    await startNewBoard(template, undefined, draft.title.trim() || null);
-    clearWelcomeDraft();
-    setStarting(false);
+    try {
+      if (await startNewBoard(template, undefined, draft.title.trim() || null)) clearWelcomeDraft();
+    } finally {
+      setStarting(false);
+    }
   };
   return (
     <form className={className} onSubmit={start}>
