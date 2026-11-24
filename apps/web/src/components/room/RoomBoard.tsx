@@ -5628,13 +5628,15 @@ export function RoomBoard({
                 <div
                   className={cn(
                     "flex min-w-0 items-center gap-2 @max-xl/board:gap-1",
-                    sharingFolds ? "@max-lg/board:hidden" : "@max-xl/board:hidden",
+                    sharingFolds ? "@max-[66rem]/board:hidden" : "@max-xl/board:hidden",
                   )}
                 >
                   {sharing}
                 </div>
                 <div
-                  className={sharingFolds ? "hidden @max-lg/board:flex" : "flex @xl/board:hidden"}
+                  className={
+                    sharingFolds ? "hidden @max-[66rem]/board:flex" : "flex @xl/board:hidden"
+                  }
                 >
                   <Popover>
                     <PopoverTrigger
