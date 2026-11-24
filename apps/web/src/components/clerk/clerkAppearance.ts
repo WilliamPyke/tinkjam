@@ -160,6 +160,11 @@ export const clerkLocalization = {
     emailCode: { subtitle: TO_CONTINUE },
     emailLink: { subtitle: TO_CONTINUE },
     phoneCode: { subtitle: TO_CONTINUE },
+    emailCodeMfa: { subtitle: TO_CONTINUE },
+    emailLinkMfa: { subtitle: TO_CONTINUE },
+    phoneCodeMfa: { subtitle: TO_CONTINUE },
+    backupCodeMfa: { subtitle: TO_CONTINUE },
+    passkeyMfa: { subtitle: TO_CONTINUE },
   },
   signUp: {
     start: {
