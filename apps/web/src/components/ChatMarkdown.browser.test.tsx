@@ -542,14 +542,15 @@ describe("ChatMarkdown Windows file links", () => {
 
   it("still rejects unsafe schemes", async () => {
     setup();
+    // A one-letter "scheme" is a Windows drive on Chromium, so the unknown scheme needs two letters.
     for (const parseRawHtml of [true, false]) {
       await using screen = await renderWindows(
-        "[unsafe](javascript:alert(1)) and [unknown](d:alert(1))",
+        "[unsafe](javascript:alert(1)) and [unknown](xyz:alert(1))",
         parseRawHtml,
       );
       const { container } = screen;
       expect(container.innerHTML).not.toContain("javascript:");
-      expect(container.innerHTML).not.toContain("d:alert");
+      expect(container.innerHTML).not.toContain("xyz:alert");
       expect(fileHrefs(container)).toEqual([]);
     }
   });
