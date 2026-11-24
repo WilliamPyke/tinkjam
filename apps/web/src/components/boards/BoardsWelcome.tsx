@@ -176,7 +176,7 @@ export function StartBoardForm({
                       <CheckIcon className="size-3" />
                     </span>
                   ) : null}
-                  <span className="truncate px-2 py-1.5 text-xs font-semibold text-foreground">
+                  <span className="px-2 py-1.5 text-xs leading-4.5 font-semibold text-foreground">
                     {choice.name}
                   </span>
                 </button>
