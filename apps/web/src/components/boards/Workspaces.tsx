@@ -48,6 +48,7 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
+import { SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
@@ -93,6 +94,20 @@ export function CreateWorkspaceButton() {
       </Button>
       {creating ? <NewWorkspaceDialog onClose={() => setCreating(false)} /> : null}
     </>
+  );
+}
+
+/** The sidebar's way to a first workspace, as a row of its own until there is one. */
+export function NewWorkspaceRow() {
+  const [creating, setCreating] = useState(false);
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton size="nav" onClick={() => setCreating(true)} data-sidebar-first-workspace>
+        <PlusIcon />
+        <span className="min-w-0 truncate">New workspace</span>
+      </SidebarMenuButton>
+      {creating ? <NewWorkspaceDialog onClose={() => setCreating(false)} /> : null}
+    </SidebarMenuItem>
   );
 }
 

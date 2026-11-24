@@ -25,7 +25,7 @@ import { InboxBell } from "../boards/InboxBell";
 import { MyTasks } from "../boards/MyTasks";
 import { useNewBoardWaiting, useStartNewBoard } from "../boards/newBoard";
 import { JoinedBoardMenu } from "../boards/removeJoinedBoard";
-import { NewWorkspaceButton, WorkspaceMark } from "../boards/Workspaces";
+import { NewWorkspaceButton, NewWorkspaceRow, WorkspaceMark } from "../boards/Workspaces";
 import { roomBoardLocation } from "../room/roomBoardNavigation";
 import { paintSwatchClassName } from "../room/RoomNoteColor";
 import { Button } from "../ui/button";
@@ -152,6 +152,7 @@ export function BoardsSection({ canStart }: { readonly canStart: boolean }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
+            {workspaces.length === 0 ? <NewWorkspaceRow /> : null}
           </SidebarMenu>
         </>
       )}
