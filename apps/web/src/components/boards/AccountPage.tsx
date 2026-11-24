@@ -157,9 +157,9 @@ function SignedInAccount({ name }: { readonly name: string | null }) {
           sign in again on any device to get back to them.
         </p>
         <p className="text-sm text-muted-foreground">
-          Deleting all your Tinkjam data in one step is not here yet. Until it is, delete each board
-          you made from its menu on the home (it goes for everyone on it), and leave the boards
-          others made (your cards there stay, with your name).
+          There is no one-step way to delete all your Tinkjam data yet. To remove it now, delete
+          each board you made from its menu on the boards home. That deletes it for everyone. Then
+          leave the boards other people made; your cards there keep your name.
         </p>
       </Section>
     </div>
