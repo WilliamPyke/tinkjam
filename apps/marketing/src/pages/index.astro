@@ -73,9 +73,10 @@ const arrow = "M2 2l5.5 13 2-5.5 5.5-2z";
         </span>
       </h1>
 
-      <div class="board" aria-hidden="true">
+      <div class="board" data-board>
         <svg
           class="board__lines"
+          aria-hidden="true"
           width="1440"
           height="900"
           fill="none"
@@ -84,65 +85,82 @@ const arrow = "M2 2l5.5 13 2-5.5 5.5-2z";
           stroke-linecap="round"
           stroke-linejoin="round"
         >
-          <path d="M1236 286v196"></path><path d="M1229 474l7 8 7-8"></path>
-          <path d="M930 640h112"></path><path d="M1034 633l8 7-8 7"></path>
-          <path d="M730 772v-62"></path><path d="M723 718l7-8 7 8"></path>
+          <path d="M1150 598v100q0 14-14 14H984" data-line-out></path><path d="M992 705l-8 7 8 7"
+          ></path>
+          <path d="M1280 790V602" data-line-figma></path><path d="M1273 610l7-8 7 8"></path>
+          <g class="board__link"><path data-link></path><path data-link-head></path></g>
         </svg>
 
-        <div class="bcard note">
+        <div class="bcard note" aria-hidden="true">
           Bigger photos on the landing page, and lose the carousel.
           <div class="note__by">Priya</div>
         </div>
-        <div class="cursor drift cursor--priya">
+        <div class="cursor drift cursor--priya" aria-hidden="true">
           <svg viewBox="0 0 18 18"
             ><path d={arrow} fill="var(--forest)" stroke="var(--page)" stroke-width="1.2"></path></svg
           >
           <span style="background:var(--forest)">Priya</span>
         </div>
+        <button class="linker" type="button" data-linker>
+          <span class="linker__dot" data-linker-dot></span>
+          <span class="linker__label">
+            <span class="linker__drag">Draw a line to Codex</span>
+            <span class="linker__tap">Connect Priya's note to Codex</span>
+          </span>
+        </button>
 
-        <div class="bcard codex">
+        <div class="bcard codex" aria-hidden="true" data-codex data-state="ready">
           <div class="bcard__head">
             <img class="mono-icon" src="/agents/openai-icon.svg" width="16" height="16" alt="" />Codex<span
               class="bcard__sub">Sam's agent</span
-            ><span class="chip chip--working">Working</span>
+            ><span class="chip chip--status" data-status>Ready</span>
           </div>
           <div class="codex__body">
             <div class="codex__chips">
-              <span class="chip chip--quiet">1 note</span><span class="chip chip--quiet">1 link</span>
+              <span class="chip chip--quiet codex__note">1 note</span><span class="chip chip--quiet"
+                >1 link</span
+              >
             </div>
-            <p>Rebuilding the landing page with bigger photos from the Figma file.</p>
+            <div class="codex__ask">
+              <span>Update the landing page to match</span><span class="codex__send" data-send>Send</span>
+            </div>
+            <p class="codex__says" data-says></p>
           </div>
         </div>
-        <div class="bcard figma">
+        <div class="bcard figma" aria-hidden="true">
           <div class="bcard__head">
             <img src="/agents/figma.svg" width="11" height="16" alt="" />Spring photos
           </div>
         </div>
-        <div class="cursor drift cursor--maya">
+        <div class="cursor drift cursor--maya" aria-hidden="true">
           <svg viewBox="0 0 18 18"
             ><path d={arrow} fill="var(--claude)" stroke="var(--page)" stroke-width="1.2"></path></svg
           >
           <span style="background:var(--claude)">Maya</span>
         </div>
 
-        <div class="bcard landing">
-          <div class="bcard__head">Landing page<span class="chip chip--live">Live</span></div>
+        <div class="bcard landing" aria-hidden="true" data-landing>
+          <div class="bcard__head">
+            Landing page<span class="chip chip--live" data-live>Live</span>
+          </div>
           <div class="landing__body">
             <div class="landing__art"></div>
             <div class="landing__title">Spring collection</div>
             <div class="landing__tiles"><span></span><span></span><span></span></div>
           </div>
         </div>
-        <div class="bcard comment">
+        <div class="bcard comment" aria-hidden="true">
           <span class="comment__face">M</span>Much better. Can we try it in blue?
         </div>
-        <div class="cursor drift cursor--sam">
+        <div class="cursor drift cursor--sam" aria-hidden="true" data-sam>
           <svg viewBox="0 0 18 18"
             ><path d={arrow} fill="var(--raspberry)" stroke="var(--page)" stroke-width="1.2"
             ></path></svg
           >
           <span style="background:var(--raspberry)">Sam</span>
         </div>
+        <button class="replay" type="button" data-replay hidden>Draw it again</button>
+        <p class="sr-only" aria-live="polite" data-announce></p>
       </div>
 
       <div class="intro">
@@ -187,7 +205,7 @@ const arrow = "M2 2l5.5 13 2-5.5 5.5-2z";
           <span style="background:var(--claude)">Maya's Claude</span>
         </div>
       </div>
-      <h2>one board, everyone on it</h2>
+      <h2>a shared workspace for modern teams</h2>
       <p>
         Notes, links, pages and prototypes in one place. You see your teammates and their agents
         work as it happens.
@@ -223,12 +241,15 @@ const arrow = "M2 2l5.5 13 2-5.5 5.5-2z";
   const headline = document.querySelector<HTMLElement>("[data-headline]");
   const box = headline?.querySelector<HTMLElement>("[data-agent-box]");
   const mates = headline?.querySelector<HTMLElement>("[data-mates]");
+  // The box is dragged toward Codex, so it waits while the board below is playing.
+  const board = document.querySelector<HTMLElement>("[data-board]");
   if (headline && box && mates && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
     const agents = [...box.querySelectorAll<HTMLElement>("[data-agent]")];
     const mateStates = [...mates.children] as HTMLElement[];
     let agent = 0;
     let mate = 0;
     setInterval(() => {
+      if (board?.dataset.demo === "linked") return;
       box.classList.add("is-leaving");
       setTimeout(() => {
         agents[agent]?.classList.remove("is-on");
@@ -249,4 +270,11 @@ const arrow = "M2 2l5.5 13 2-5.5 5.5-2z";
       }, 250);
     }, 5200);
   }
+</script>
+
+<script>
+  import { startHeroDemo } from "../lib/heroDemo";
+
+  const board = document.querySelector<HTMLElement>("[data-board]");
+  if (board) startHeroDemo(board);
 </script>

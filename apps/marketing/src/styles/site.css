@@ -526,8 +526,8 @@ a {
   font-weight: 600;
 }
 .codex {
-  left: 620px;
-  top: 566px;
+  left: 1080px;
+  top: 458px;
   width: 310px;
 }
 .codex__body {
@@ -542,16 +542,16 @@ a {
   color: var(--body);
 }
 .figma {
-  left: 620px;
-  top: 772px;
+  left: 1170px;
+  top: 790px;
   width: 220px;
 }
 .figma .bcard__head {
   border: 0;
 }
 .landing {
-  left: 1050px;
-  top: 492px;
+  left: 640px;
+  top: 574px;
   width: 330px;
   transform: rotate(-2deg);
 }
@@ -588,8 +588,8 @@ a {
   background: var(--accent-tint);
 }
 .comment {
-  right: 36px;
-  top: 742px;
+  left: 880px;
+  top: 806px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -610,17 +610,270 @@ a {
   font-weight: 600;
 }
 .cursor--priya {
-  right: 60px;
-  top: 236px;
+  left: 1030px;
+  top: 196px;
+}
+
+/* The line a visitor draws from Priya's note to Codex, and what it sets off. */
+.board__link {
+  color: var(--accent);
+  stroke-width: 2.2;
+}
+.linker {
+  position: absolute;
+  left: 1217px;
+  top: 239px;
+  z-index: 1;
+  padding: 6px;
+  border: 0;
+  background: none;
+  cursor: crosshair;
+  pointer-events: auto;
+  touch-action: none;
+  transition: opacity 0.2s ease;
+}
+.linker__dot {
+  position: relative;
+  display: block;
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid var(--accent);
+  border-radius: 50%;
+  background: var(--page);
+}
+.linker__dot::after {
+  content: "";
+  position: absolute;
+  inset: -2.5px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0;
+  animation: linker-pulse 1.8s ease-out 0.6s 6;
+}
+@keyframes linker-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+.linker:hover .linker__dot,
+.board.is-drawing .linker__dot {
+  background: var(--accent);
+}
+.linker__label {
+  position: absolute;
+  left: 26px;
+  top: 22px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--btn);
+  color: #ffffff;
+  font: 600 13px/1.3 var(--font-ui);
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+}
+.linker__tap {
+  display: none;
+}
+.board.is-drawing .linker__label,
+.board[data-demo] .linker {
+  opacity: 0;
+  pointer-events: none;
+}
+.board.is-drawing .codex {
+  outline: 2px dashed var(--accent);
+  outline-offset: 5px;
+}
+.board.is-drawing .codex.is-target {
+  outline-style: solid;
+}
+.replay {
+  position: absolute;
+  left: 1232px;
+  top: 272px;
+  padding: 6px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  font: 600 13px/1.3 var(--font-ui);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.replay:hover {
+  border-color: var(--accent);
+}
+
+.chip--status {
+  margin-left: auto;
+  background: var(--panel);
+  color: var(--body);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+.codex[data-state="working"] .chip--status {
+  gap: 6px;
+  align-items: center;
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+}
+.codex[data-state="working"] .chip--status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+.codex[data-state="done"] .chip--status {
+  background: var(--success);
+  color: var(--on-success);
+}
+.codex__note {
+  display: none;
+}
+.board[data-demo] .codex__note {
+  display: inline-flex;
+  background: var(--sun-tint);
+  color: #17141c;
+  animation: pop 0.35s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+@keyframes pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+.codex__ask {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 5px 5px 5px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  color: var(--body);
+}
+.codex__ask > span:first-child {
+  flex: 1;
+}
+.codex__send {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--btn);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  transition: transform 0.12s ease;
+}
+.codex__send.is-pressed {
+  transform: scale(0.9);
+  background: var(--btn-hover);
+}
+.codex[data-state="working"] .codex__ask,
+.codex[data-state="done"] .codex__ask {
+  display: none;
+}
+.codex .codex__says {
+  display: none;
+  min-height: 2.8em;
+}
+.codex[data-state="working"] .codex__says,
+.codex[data-state="done"] .codex__says {
+  display: block;
+}
+
+.landing[data-state="updating"] .chip--live {
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+}
+.landing__art,
+.landing__tiles,
+.landing__tiles span {
+  transition:
+    height 0.7s cubic-bezier(0.5, 0, 0.2, 1),
+    margin 0.7s cubic-bezier(0.5, 0, 0.2, 1),
+    opacity 0.4s ease;
+}
+.landing {
+  transition: box-shadow 0.4s ease;
+}
+.landing[data-state="updating"] {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    var(--shadow);
+}
+.landing[data-state="updated"] .landing__art {
+  height: 174px;
+}
+.landing[data-state="updated"] .landing__tiles {
+  margin-top: 0;
+  opacity: 0;
+}
+.landing[data-state="updated"] .landing__tiles span {
+  height: 0;
+}
+.comment {
+  opacity: 0;
+  transform: translateY(8px) scale(0.96);
+  transition:
+    opacity 0.3s ease,
+    transform 0.35s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.board[data-demo="done"] .comment {
+  opacity: 1;
+  transform: none;
+}
+
+.packet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  offset-rotate: 0deg;
+  padding: 3px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  font: 600 12px/1.3 var(--font-ui);
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+}
+.packet--note {
+  border-color: var(--sun);
+  background: var(--sun-tint);
+  color: #17141c;
+}
+.packet--dot {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 0;
+  background: var(--accent);
 }
 .cursor--maya {
-  left: 880px;
-  top: 740px;
+  left: 1040px;
+  top: 760px;
   animation-delay: -2s;
 }
 .cursor--sam {
-  right: 20px;
-  top: 640px;
+  right: 24px;
+  top: 680px;
   animation-delay: -3.5s;
 }
 
@@ -1035,6 +1288,28 @@ a {
   .landing {
     transform: rotate(-1deg);
   }
+  .linker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    align-self: center;
+    cursor: pointer;
+  }
+  .linker__label {
+    position: static;
+  }
+  .linker__drag {
+    display: none;
+  }
+  .linker__tap {
+    display: inline;
+  }
+  .board[data-demo] .linker {
+    display: none;
+  }
+  .replay {
+    align-self: center;
+  }
   .panels {
     grid-template-columns: 1fr;
     gap: 18px;
@@ -1135,8 +1410,18 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .drift {
+  .drift,
+  .linker__dot::after,
+  .board[data-demo] .codex__note,
+  .codex[data-state="working"] .chip--status::before {
     animation: none;
+  }
+  .landing,
+  .landing__art,
+  .landing__tiles,
+  .landing__tiles span,
+  .comment {
+    transition: none;
   }
   .agent-box,
   .mates > * {
