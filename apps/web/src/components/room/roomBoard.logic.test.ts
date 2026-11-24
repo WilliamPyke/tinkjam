@@ -2928,8 +2928,8 @@ describe("comment pins", () => {
   it("stay a readable size on screen at any zoom", () => {
     const rows: ReadonlyArray<readonly [number, number]> = [
       [1, 32],
-      [BOARD_MIN_ZOOM, 24],
-      [0.5, 24],
+      [BOARD_MIN_ZOOM, 32],
+      [0.5, 32],
       [1.2, 38.4],
       [BOARD_MAX_ZOOM, 40],
     ];
@@ -2938,7 +2938,7 @@ describe("comment pins", () => {
     }
     // A line meets a pin at the middle of its side, at the size it is drawn.
     const pin = { x: 10, y: 20, kind: "comment" as const };
-    expect(boardNoteBox(pin, BOARD_MIN_ZOOM)).toEqual({ x: 10, y: 20, width: 120, height: 120 });
+    expect(boardNoteBox(pin, BOARD_MIN_ZOOM)).toEqual({ x: 10, y: 20, width: 160, height: 160 });
   });
 
   it("opens a thread beside its pin, inside the board and never over the pin", () => {

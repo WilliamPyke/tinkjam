@@ -924,10 +924,10 @@ export const boardCardBox = (
 });
 /** A comment thread's pin, in board pixels before `boardPinScale`. */
 export const BOARD_PIN_SIZE = 32;
-const PIN_MIN_ON_SCREEN = 24;
+const PIN_MIN_ON_SCREEN = 32;
 const PIN_MAX_ON_SCREEN = 40;
 
-/** How much a pin is scaled so it stays 24 to 40 screen pixels across at any zoom. */
+/** How much a pin is scaled so it stays 32 to 40 screen pixels across at any zoom. */
 export const boardPinScale = (zoom: number): number =>
   Math.min(PIN_MAX_ON_SCREEN, Math.max(PIN_MIN_ON_SCREEN, BOARD_PIN_SIZE * zoom)) /
   (BOARD_PIN_SIZE * zoom);
