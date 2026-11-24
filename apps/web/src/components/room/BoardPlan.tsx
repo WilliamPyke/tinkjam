@@ -133,7 +133,7 @@ const VIEWS: ReadonlyArray<{
   { view: "list", title: "List", icon: <ListIcon /> },
 ];
 
-/** Board | Plan | List, in the board's header; only icons where the board is narrow. */
+/** Board | Plan | List, in the board's header. */
 export function BoardViewSwitch({
   view,
   onView,
@@ -153,7 +153,7 @@ export function BoardViewSwitch({
       {VIEWS.map((one) => (
         <GroupToggle key={one.view} value={one.view} aria-label={one.title}>
           {one.icon}
-          <span className="sr-only @3xl/board:not-sr-only">{one.title}</span>
+          <span>{one.title}</span>
         </GroupToggle>
       ))}
     </ToggleGroup>
