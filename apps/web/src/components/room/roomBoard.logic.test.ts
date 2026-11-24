@@ -3904,6 +3904,17 @@ describe("boardKeyEditsNote", () => {
   it.each([
     { key: "a", modifiers: plain, edits: true },
     { key: "Enter", modifiers: plain, edits: true },
+    {
+      key: "!",
+      modifiers: { ...plain, shiftKey: true, code: "Digit1" },
+      edits: false,
+    },
+    {
+      key: ")",
+      modifiers: { ...plain, shiftKey: true, code: "Digit0" },
+      edits: false,
+    },
+    { key: "?", modifiers: { ...plain, shiftKey: true, code: "Slash" }, edits: false },
     { key: "a", modifiers: { ...plain, ctrlKey: true }, edits: false },
     { key: "a", modifiers: { ...plain, metaKey: true }, edits: false },
     { key: " ", modifiers: plain, edits: false },

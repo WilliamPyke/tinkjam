@@ -4185,13 +4185,17 @@ export function boardMenuEntries(
 /** Whether a key pressed on the board, with one note selected and not being edited, edits it. */
 export const boardKeyEditsNote = (event: {
   readonly key: string;
+  readonly code?: string;
   readonly ctrlKey: boolean;
   readonly metaKey: boolean;
   readonly altKey: boolean;
+  readonly shiftKey?: boolean;
 }): boolean =>
   !event.ctrlKey &&
   !event.metaKey &&
   !event.altKey &&
+  event.key !== "?" &&
+  !(event.shiftKey === true && (event.code === "Digit1" || event.code === "Digit0")) &&
   (event.key === "Enter" || (event.key.length === 1 && event.key !== " "));
 
 const NEXT_NOTE_GAP = 24;
