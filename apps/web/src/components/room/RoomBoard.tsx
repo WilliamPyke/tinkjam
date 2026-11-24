@@ -246,6 +246,7 @@ import {
   boardDeletion,
   boardDuplicateSpot,
   boardLineSlots,
+  boardLineControlSpot,
   boardNoteRestorable,
   boardThreadBoxes,
   BOARD_COMMENT_ASK_TEXT,
@@ -7033,12 +7034,19 @@ export function RoomBoard({
                   { slots: lineSlots.get(edge.id) },
                   lineObstacles.filter((box) => box.ref !== edge.from && box.ref !== edge.to),
                 );
+                const spot = boardLineControlSpot(
+                  from,
+                  to,
+                  middle,
+                  view,
+                  surfaceSize ?? { width: 600, height: 400 },
+                );
                 return (
                   <div
                     key={edge.id}
                     // Kept at least its own size as the board zooms out, so it stays readable and pressable.
                     className="absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border border-border bg-popover p-1 shadow-sm [scale:var(--board-line-scale,1)]"
-                    style={{ left: middle.x, top: middle.y }}
+                    style={{ left: spot.x, top: spot.y }}
                     onPointerDown={stopPointer}
                     // On the group, so the keys work from the shape buttons too.
                     onKeyDown={(event) => {

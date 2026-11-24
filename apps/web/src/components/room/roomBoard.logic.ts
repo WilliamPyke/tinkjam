@@ -1258,6 +1258,59 @@ export function boardConnector(
 /** Lines stay thick enough to follow when zoomed out: drawn this much thicker, up to 4 times. */
 export const boardLineScale = (zoom: number): number => Math.min(4, Math.max(1, 1 / zoom));
 
+const LINE_CONTROL_WIDTH = 240;
+const LINE_CONTROL_HEIGHT = 32;
+const LINE_CONTROL_GAP = 12;
+const LINE_CONTROL_MARGIN = 8;
+
+/**
+ * Where the selected line's controls go, in board pixels: across the line from it, never over
+ * the line itself, beside a vertical line and above or below a horizontal one. The controls are
+ * scaled as lines are, so their size here scales too; the spot stays inside the visible board.
+ */
+export function boardLineControlSpot(
+  from: BoardRect,
+  to: BoardRect,
+  middle: BoardPoint,
+  view: BoardView,
+  area: { readonly width: number; readonly height: number },
+): BoardPoint {
+  const scale = boardLineScale(view.zoom);
+  const width = LINE_CONTROL_WIDTH * scale;
+  const height = LINE_CONTROL_HEIGHT * scale;
+  const gap = LINE_CONTROL_GAP * scale;
+  const margin = LINE_CONTROL_MARGIN * scale;
+  const visible = {
+    left: (0 - view.x) / view.zoom,
+    top: (0 - view.y) / view.zoom,
+    right: (area.width - view.x) / view.zoom,
+    bottom: (area.height - view.y) / view.zoom,
+  };
+  const acrossX =
+    Math.abs(to.x + to.width / 2 - (from.x + from.width / 2)) >=
+    Math.abs(to.y + to.height / 2 - (from.y + from.height / 2));
+  const spot = { ...middle };
+  if (acrossX) {
+    const above = middle.y - visible.top;
+    const below = visible.bottom - middle.y;
+    const room = height + gap + margin;
+    const over = above >= room || above >= below;
+    spot.y = middle.y + (over ? -1 : 1) * (height / 2 + gap);
+  } else {
+    const left = middle.x - visible.left;
+    const right = visible.right - middle.x;
+    const room = width + gap + margin;
+    const after = right >= room || right >= left;
+    spot.x = middle.x + (after ? 1 : -1) * (width / 2 + gap);
+  }
+  const clamp = (value: number, low: number, high: number) => Math.max(low, Math.min(value, high));
+  const lowX = visible.left + width / 2 + margin;
+  const highX = Math.max(lowX, visible.right - width / 2 - margin);
+  const lowY = visible.top + height / 2 + margin;
+  const highY = Math.max(lowY, visible.bottom - height / 2 - margin);
+  return { x: clamp(spot.x, lowX, highX), y: clamp(spot.y, lowY, highY) };
+}
+
 /** A card, a note or an arrow on the board, or how big a card is (`size`, by card id). */
 export interface BoardTarget {
   readonly kind: "card" | "note" | "edge" | "size";

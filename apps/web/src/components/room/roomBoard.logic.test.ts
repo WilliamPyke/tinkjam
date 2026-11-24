@@ -91,6 +91,7 @@ import {
   boardHistoryChanges,
   boardHistoryQueues,
   boardLineSlots,
+  boardLineControlSpot,
   boardHistoryRemember,
   boardStepBefore,
   boardHistoryWith,
@@ -1205,6 +1206,43 @@ describe("boardConnector", () => {
       "bottom",
       "top",
     ]);
+  });
+});
+
+describe("boardLineControlSpot", () => {
+  const area = { width: 600, height: 400 };
+  const view = { x: 0, y: 0, zoom: 1 };
+  const horizontalFrom = { x: 100, y: 150, width: 100, height: 80 };
+  const horizontalTo = { x: 300, y: 150, width: 100, height: 80 };
+
+  it("sits above a horizontal line, clear of the line itself", () => {
+    const middle = { x: 250, y: 190 };
+    expect(boardLineControlSpot(horizontalFrom, horizontalTo, middle, view, area)).toEqual({
+      x: 250,
+      y: 162,
+    });
+  });
+
+  it("goes below a horizontal line without room above", () => {
+    const middle = { x: 250, y: 30 };
+    expect(boardLineControlSpot(horizontalFrom, horizontalTo, middle, view, area).y).toBe(58);
+  });
+
+  it("sits beside a vertical line, clear of its whole width", () => {
+    const spot = boardLineControlSpot(
+      { x: 250, y: 50, width: 100, height: 100 },
+      { x: 250, y: 250, width: 100, height: 100 },
+      { x: 300, y: 200 },
+      view,
+      area,
+    );
+    expect(spot).toEqual({ x: 432, y: 200 });
+  });
+
+  it("stays inside the visible board", () => {
+    const spot = boardLineControlSpot(horizontalFrom, horizontalTo, { x: 590, y: 390 }, view, area);
+    expect(spot.x).toBeLessThanOrEqual(600 - 128);
+    expect(spot.y).toBeLessThanOrEqual(400 - 24);
   });
 });
 
