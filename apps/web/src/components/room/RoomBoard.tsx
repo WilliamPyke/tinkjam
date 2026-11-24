@@ -5517,38 +5517,126 @@ export function RoomBoard({
         )}
       >
         {power.overlay}
-        {/* One bar above the canvas and the Plan alike: the board's name, its views, its people. */}
-        <header
-          data-board-chrome="top"
-          className={cn(
-            // One row where it fits; a narrow board puts the views on a row of their own.
-            "relative z-30 flex h-14 shrink-0 items-center gap-3 border-b border-board-hairline bg-background pr-3 pl-4 @3xl/board:pr-4 @3xl/board:pl-5",
-            "@max-xl/board:h-auto @max-xl/board:flex-wrap @max-xl/board:gap-x-2 @max-xl/board:gap-y-2 @max-xl/board:py-2 @max-xl/board:pl-2",
-            COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
-          )}
-        >
-          <div className="flex min-w-0 flex-1 basis-0 items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={onBack ?? onOpenThread}>
-              <ArrowLeftIcon />
-              <ToolLabel>{backLabel}</ToolLabel>
-            </Button>
-            <span aria-hidden className="me-1.5 h-4 w-px shrink-0 bg-board-hairline" />
-            <h1 className="min-w-0 @max-xl/board:min-w-20 truncate text-ui-md font-semibold text-foreground">
-              {titleEditor ?? title}
-              {sharing === undefined ? (
-                <span className="ms-2 text-ui-sm font-normal text-muted-foreground">
-                  {room === null ? "Not shared" : (summary ?? roomSummary(room, online.length))}
-                </span>
-              ) : null}
-            </h1>
-            {power.menu}
-          </div>
-          {plannable ? (
-            <div className="flex shrink-0 justify-center @max-xl/board:order-last @max-xl/board:basis-full">
-              <BoardViewSwitch view={planShown ? pickedView : "board"} onView={switchView} />
+        <div className="relative z-30 shrink-0">
+          {/* One bar above the canvas and the Plan alike: the board's name, its views, its people. */}
+          <header
+            data-board-chrome="top"
+            className={cn(
+              // One row where it fits; a narrow board puts the views on a row of their own.
+              "relative z-30 flex h-14 shrink-0 items-center gap-3 border-b border-board-hairline bg-background pr-3 pl-4 @3xl/board:pr-4 @3xl/board:pl-5",
+              "@max-xl/board:h-auto @max-xl/board:flex-wrap @max-xl/board:gap-x-2 @max-xl/board:gap-y-2 @max-xl/board:py-2 @max-xl/board:pl-2",
+              COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
+            )}
+          >
+            <div className="flex min-w-0 flex-1 basis-0 items-center gap-1">
+              <Button size="sm" variant="ghost" onClick={onBack ?? onOpenThread}>
+                <ArrowLeftIcon />
+                <ToolLabel>{backLabel}</ToolLabel>
+              </Button>
+              <span aria-hidden className="me-1.5 h-4 w-px shrink-0 bg-board-hairline" />
+              <h1 className="min-w-0 @max-xl/board:min-w-20 truncate text-ui-md font-semibold text-foreground">
+                {titleEditor ?? title}
+                {sharing === undefined ? (
+                  <span className="ms-2 text-ui-sm font-normal text-muted-foreground">
+                    {room === null ? "Not shared" : (summary ?? roomSummary(room, online.length))}
+                  </span>
+                ) : null}
+              </h1>
+              {power.menu}
             </div>
-          ) : null}
-          {/* Passing states sit under the header's right end, never squeezing the title. */}
+            {plannable ? (
+              <div className="flex shrink-0 justify-center @max-xl/board:order-last @max-xl/board:basis-full">
+                <BoardViewSwitch view={planShown ? pickedView : "board"} onView={switchView} />
+              </div>
+            ) : null}
+            <div
+              className="flex min-w-0 flex-1 basis-0 items-center justify-end gap-2 @max-xl/board:flex-none"
+              // Copying the invite link, from here or from the guide, is the guide's invite step.
+              onClickCapture={(event) => {
+                if (
+                  event.target instanceof Element &&
+                  event.target.closest("[data-cloud-board-invite]") !== null
+                ) {
+                  markBoardGuideStep("invite");
+                }
+              }}
+            >
+              {cards !== undefined || room === null ? null : (
+                <BoardAgents
+                  entries={agentEntries}
+                  viewer={viewer}
+                  open={agentsOpen}
+                  onOpenChange={setAgentsOpen}
+                  onShow={(boxId) => {
+                    if (planShown) pickView("board");
+                    showBox(boxId);
+                  }}
+                  onShowTask={(noteId) => {
+                    if (planShown) pickView("board");
+                    showCards([noteId]);
+                  }}
+                  isOnScreen={boxOnScreen}
+                  hasThreadBoxes={threadBoxes.some((box) => box.id !== ROOM_BOARD_ROOM_BOX)}
+                  cloud={!holds.agents}
+                  viewing={viewOnly}
+                  bringAgent={bringAgent}
+                  takeAgentAway={takeAgentAway}
+                  recent={agentRecent}
+                  renderNeeds={(entry, need) =>
+                    need === "approval" ? (
+                      (renderBoxApproval?.(entry.id) ?? null)
+                    ) : (
+                      <BoxRequests
+                        requests={entry.requests}
+                        board={shown}
+                        people={people}
+                        onResolve={onResolveRequest}
+                        resolving={resolvingRequests}
+                        model={renderRequestModel?.(entry.id)}
+                      />
+                    )
+                  }
+                />
+              )}
+              {sharing === undefined ? null : (
+                <>
+                  <div
+                    className={cn(
+                      "flex min-w-0 items-center gap-2 @max-xl/board:gap-1",
+                      sharingFolds ? "@max-[66rem]/board:hidden" : "@max-xl/board:hidden",
+                    )}
+                  >
+                    {sharing}
+                  </div>
+                  <div
+                    className={
+                      sharingFolds ? "hidden @max-[66rem]/board:flex" : "flex @xl/board:hidden"
+                    }
+                  >
+                    <Popover>
+                      <PopoverTrigger
+                        render={
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            aria-label="Share and people"
+                            data-board-share-more
+                          />
+                        }
+                      >
+                        <EllipsisIcon />
+                      </PopoverTrigger>
+                      <PopoverPopup side="bottom" align="end" sideOffset={8}>
+                        <div className="flex flex-wrap items-center gap-1.5">{sharing}</div>
+                      </PopoverPopup>
+                    </Popover>
+                  </div>
+                </>
+              )}
+            </div>
+          </header>
+          {sharingBanner}
+          {/* Passing states sit under the header's right end (and any banner), never squeezing the title. */}
           <div className="absolute end-3 top-full mt-3 flex flex-col items-end gap-2">
             {firstView === null || view !== firstView || planShown ? null : (
               <BoardFloat className="gap-2 py-1 ps-3 pe-1 text-xs" data-board-first-view>
@@ -5578,93 +5666,7 @@ export function RoomBoard({
               </BoardFloat>
             )}
           </div>
-          <div
-            className="flex min-w-0 flex-1 basis-0 items-center justify-end gap-2 @max-xl/board:flex-none"
-            // Copying the invite link, from here or from the guide, is the guide's invite step.
-            onClickCapture={(event) => {
-              if (
-                event.target instanceof Element &&
-                event.target.closest("[data-cloud-board-invite]") !== null
-              ) {
-                markBoardGuideStep("invite");
-              }
-            }}
-          >
-            {cards !== undefined || room === null ? null : (
-              <BoardAgents
-                entries={agentEntries}
-                viewer={viewer}
-                open={agentsOpen}
-                onOpenChange={setAgentsOpen}
-                onShow={(boxId) => {
-                  if (planShown) pickView("board");
-                  showBox(boxId);
-                }}
-                onShowTask={(noteId) => {
-                  if (planShown) pickView("board");
-                  showCards([noteId]);
-                }}
-                isOnScreen={boxOnScreen}
-                hasThreadBoxes={threadBoxes.some((box) => box.id !== ROOM_BOARD_ROOM_BOX)}
-                cloud={!holds.agents}
-                viewing={viewOnly}
-                bringAgent={bringAgent}
-                takeAgentAway={takeAgentAway}
-                recent={agentRecent}
-                renderNeeds={(entry, need) =>
-                  need === "approval" ? (
-                    (renderBoxApproval?.(entry.id) ?? null)
-                  ) : (
-                    <BoxRequests
-                      requests={entry.requests}
-                      board={shown}
-                      people={people}
-                      onResolve={onResolveRequest}
-                      resolving={resolvingRequests}
-                      model={renderRequestModel?.(entry.id)}
-                    />
-                  )
-                }
-              />
-            )}
-            {sharing === undefined ? null : (
-              <>
-                <div
-                  className={cn(
-                    "flex min-w-0 items-center gap-2 @max-xl/board:gap-1",
-                    sharingFolds ? "@max-[66rem]/board:hidden" : "@max-xl/board:hidden",
-                  )}
-                >
-                  {sharing}
-                </div>
-                <div
-                  className={
-                    sharingFolds ? "hidden @max-[66rem]/board:flex" : "flex @xl/board:hidden"
-                  }
-                >
-                  <Popover>
-                    <PopoverTrigger
-                      render={
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          aria-label="Share and people"
-                          data-board-share-more
-                        />
-                      }
-                    >
-                      <EllipsisIcon />
-                    </PopoverTrigger>
-                    <PopoverPopup side="bottom" align="end" sideOffset={8}>
-                      <div className="flex flex-wrap items-center gap-1.5">{sharing}</div>
-                    </PopoverPopup>
-                  </Popover>
-                </div>
-              </>
-            )}
-          </div>
-        </header>
-        {sharingBanner}
+        </div>
         {/* Someone who can only look gets no tools at all, not hidden ones. */}
         {viewOnly ? null : (
           <div
