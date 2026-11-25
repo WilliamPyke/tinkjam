@@ -7124,8 +7124,8 @@ export function RoomBoard({
               count={selected.size}
               removable={canEdit ? removal.noteIds.length : 0}
               kept={canEdit ? removal.left : 0}
-              onDelete={deleteSelection}
-              onClear={() => setSelection(NO_SELECTION)}
+              onDelete={() => thenBoard(deleteSelection)}
+              onClear={() => thenBoard(() => setSelection(NO_SELECTION))}
               actions={[
                 ...(canAsk ? [{ label: "Ask an agent", icon: <BotIcon />, run: openAsk }] : []),
                 ...(selectionRun.tasks.length > 0

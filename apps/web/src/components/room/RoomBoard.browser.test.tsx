@@ -845,6 +845,36 @@ describe("RoomBoard selection bar", () => {
     await commands.mouse([{ type: "up", x: from.x - 100, y: from.y - 100 }]);
     await expect.element(bar).toBeVisible();
   });
+
+  it("keeps focus on the board after clearing or deleting the selection", async () => {
+    const board = renderBoard([{ id: "a", text: "First", x: 0, y: 400 }]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const surface = screen.getByRole("application", { name: "Room board" });
+    const header = () => {
+      const element = screen.container.querySelector('[data-board-item="note:a"] > div');
+      if (element === null) throw new Error("The board did not draw note a");
+      return element;
+    };
+
+    await userEvent.click(header());
+    const clear = screen.getByRole("button", { name: "Clear", exact: true });
+    clear.element().focus();
+    await expect.element(clear).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(screen.getByRole("status")).not.toBeInTheDocument();
+    await expect.element(surface).toHaveFocus();
+
+    await userEvent.click(header());
+    const remove = screen.getByRole("button", { name: "Delete 1", exact: true });
+    remove.element().focus();
+    await expect.element(remove).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await vi.waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith({ type: "note.remove", noteId: "a" }),
+    );
+    await expect.element(surface).toHaveFocus();
+  });
 });
 
 describe("RoomBoard keys and pointer", () => {
