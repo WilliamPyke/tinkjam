@@ -32,6 +32,10 @@ const samples = SAMPLE_BOARDS.map((board) => ({
 ---
 
 <Layout navOver>
+  <script is:inline>
+    // Without scripts the whole page shows at once.
+    document.documentElement.classList.add("gate");
+  </script>
   <section class="hero">
     <div class="hero__stage">
       <h1 class="headline" data-headline>
@@ -118,7 +122,7 @@ const samples = SAMPLE_BOARDS.map((board) => ({
           <span class="linker__dot" data-linker-dot></span>
           <span class="linker__label">
             <span class="linker__drag">Draw a line to Codex</span>
-            <span class="linker__tap">Drag the dot down to Codex</span>
+            <span class="linker__tap">Drag to Codex</span>
           </span>
         </button>
 
@@ -216,6 +220,7 @@ const samples = SAMPLE_BOARDS.map((board) => ({
         <p class="intro__fine">Free while in beta. No account needed.</p>
       </div>
     </div>
+    <button class="hero__skip" type="button" data-skip>Skip</button>
   </section>
 
   <dialog class="samples" aria-labelledby="samples-title" data-samples>
@@ -369,7 +374,28 @@ const samples = SAMPLE_BOARDS.map((board) => ({
 <script>
   import { startHeroDemo } from "../lib/heroDemo";
 
+  const root = document.documentElement;
+  const reveal = (scroll: boolean) => {
+    if (!root.classList.replace("gate", "revealed") || !scroll) return;
+    // On a phone the rest arrives under the board, so it is brought up into view.
+    if (matchMedia("(max-width: 959px)").matches) {
+      const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+      document
+        .querySelector("[data-headline]")
+        ?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+    }
+  };
   const board = document.querySelector<HTMLElement>("[data-board]");
-  if (board) startHeroDemo(board);
+  if (!board || !startHeroDemo(board, () => reveal(true))) reveal(false);
+  document.querySelector("[data-skip]")?.addEventListener("click", () => reveal(false));
+  // Scrolling past the end of the board is asking for the rest of the page.
+  const atEnd = () => scrollY + innerHeight >= root.scrollHeight - 2;
+  addEventListener("wheel", (event) => event.deltaY > 0 && atEnd() && reveal(false), {
+    passive: true,
+  });
+  addEventListener("keydown", (event) => {
+    const typing = event.target instanceof HTMLElement && event.target.closest("button, a");
+    if (!typing && ["ArrowDown", "PageDown", " "].includes(event.key) && atEnd()) reveal(false);
+  });
 </script>
 </Layout>

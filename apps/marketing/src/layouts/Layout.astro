@@ -74,6 +74,7 @@ const year = new Date().getFullYear();
     <header class:list={["nav", { "nav--over": navOver }]}>
       <a class="nav__brand" href="/" aria-label="Tinkjam home"><Logo class="nav__logo" /></a>
       <nav class="nav__links" aria-label="Main">
+        <a class="navlink navlink--wide" href="/pricing">Pricing</a>
         <a class="navlink navlink--wide" href="/changelog">What's new</a>
         <a class="navlink navlink--wide" href="/download">Download</a>
         <a class="navlink" href={SIGN_IN_URL}>Sign in</a>
@@ -89,6 +90,7 @@ const year = new Date().getFullYear();
         <span>&copy; {year} Tinkjam</span>
       </div>
       <nav class="footer__links" aria-label="Footer">
+        <a class="navlink" href="/pricing">Pricing</a>
         <a class="navlink" href="/changelog">What's new</a>
         <a class="navlink" href="/download">Download</a>
         <a class="navlink" href="/legal">Privacy and terms</a>
