@@ -20,7 +20,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 import { SESSION_ROUTE, SESSION_ROUTES, STREAM_ROUTE, checkAccess } from "./access.ts";
 import { askAccess } from "./accessRequests.ts";
 import { accountLockedOut, withAccountSession } from "./account.ts";
-import { machineGuestOf } from "./machines.ts";
+import { EMPTY_AGENTS, machineGuestOf } from "./machines.ts";
 import {
   CLOUD_BOARD_MAX_GUESTS,
   CLOUD_BOARD_MAX_VIEWERS,
@@ -58,7 +58,7 @@ import {
   withoutPerson,
   type CloudRoom,
 } from "./room.ts";
-import { makeSecret, makeViewSecret, shareOfSecret } from "./secrets.ts";
+import { hashSecret, makeSecret, makeViewSecret, shareOfSecret } from "./secrets.ts";
 import { BoardRoom } from "./worker.ts";
 
 vi.mock("cloudflare:workers", () => ({
@@ -418,6 +418,65 @@ describe("cloud room", () => {
     });
     object.keepTaskIndex = async () => undefined;
     await object.askAccess("user_sam", { name: "Sam" });
+    expect(object.room?.title).toBe("Newer title");
+  });
+
+  it("keeps a newer board change made while a role change goes out", async () => {
+    const token = makeSecret("share-one-0000");
+    const sessionHash = await hashSecret(token);
+    const made = newRoom();
+    const owned = {
+      ...made,
+      guests: made.guests.map((guest) => ({ ...guest, sessionHash, accountId: "user_ada" })),
+    };
+    const joined = Result.getOrThrow(join(owned, "guest-sam", "Sam"));
+    const before = {
+      ...joined,
+      guests: joined.guests.map((guest) =>
+        guest.id === maker ? guest : { ...guest, accountId: "user_sam" },
+      ),
+    };
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      live: typeof EMPTY_LIVE;
+      agents: typeof EMPTY_AGENTS;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      handle(request: Request): Promise<Response>;
+      indexOf(account: string): { deliver(items: ReadonlyArray<unknown>): Promise<void> };
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+      setAgents(agents: never, now: number): void;
+    };
+    object.room = before;
+    object.deleted = false;
+    object.streams = new Set();
+    object.live = EMPTY_LIVE;
+    object.agents = EMPTY_AGENTS;
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => undefined,
+        delete: async () => undefined,
+      },
+    };
+    object.indexOf = () => ({
+      deliver: async () => {
+        if (object.room !== null) object.room = renameRoom(object.room, "Newer title", NOW);
+      },
+    });
+    object.keepTaskIndex = async () => undefined;
+    object.setAgents = () => undefined;
+    const response = await object.handle(
+      new Request(`https://boards${CLOUD_BOARD_PEOPLE_ROLE_ROUTE}`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+        body: JSON.stringify({ guestId: "guest-sam", role: "view" }),
+      }),
+    );
+    expect(response.status).toBe(204);
     expect(object.room?.title).toBe("Newer title");
   });
 

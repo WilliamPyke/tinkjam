@@ -837,11 +837,18 @@ export class BoardRoom extends DurableObject<Env> {
           this.setAgents(agentsWithoutPerson(this.agents, body.value.guestId), Date.now());
           this.sendCursors(Date.now());
         }
-        const told =
-          next.success === current
-            ? next.success
-            : await this.tellRoleChanged(next.success, guest, body.value.guestId, body.value.role);
-        await this.save(told);
+        await this.save(next.success);
+        if (next.success !== current) {
+          const at = await this.tellRoleChanged(
+            next.success,
+            guest,
+            body.value.guestId,
+            body.value.role,
+          );
+          if (at !== null) {
+            await this.save(withInboxAt(this.room ?? next.success, [body.value.guestId], at));
+          }
+        }
         return noContent();
       }
       case CLOUD_BOARD_LINK_ROUTE: {
@@ -1449,15 +1456,15 @@ export class BoardRoom extends DurableObject<Env> {
     return told;
   }
 
-  /** Tells someone the board's manager changed what they can do; the board with them told. */
+  /** Tells someone the board's manager changed what they can do; when, or null with no account. */
   private async tellRoleChanged(
     room: CloudRoom,
     by: CloudGuest,
     guestId: GuestId,
     role: "edit" | "view",
-  ): Promise<CloudRoom> {
+  ): Promise<string | null> {
     const account = accountOfGuest(room, guestId);
-    if (account === undefined) return room;
+    if (account === undefined) return null;
     const at = nowIso();
     const item: CloudInboxItem = {
       id: crypto.randomUUID(),
@@ -1473,7 +1480,7 @@ export class BoardRoom extends DurableObject<Env> {
     await this.indexOf(account)
       .deliver([item])
       .catch(() => undefined);
-    return withInboxAt(room, [guestId], at);
+    return at;
   }
 
   /** The accounts that answer access requests: the maker's, and the workspace's owners'. */
