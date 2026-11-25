@@ -236,17 +236,19 @@ export function useRemoveComputer() {
         if (result._tag === "Failure") {
           return `Could not remove ${computer.name} from your account. Check your internet connection, then try again.`;
         }
-        toastManager.add({
-          type: "success",
-          title: `${computer.name} was removed`,
-          description: `${REMOVED}. ${BRING_BACK}`,
-        });
       }
       if (environments.some((entry) => entry.environmentId === computer.environmentId)) {
         const result = await forget(computer.environmentId);
         if (result._tag === "Failure") {
           return `Could not remove ${computer.name} from this browser. Try again.`;
         }
+      }
+      if (accountId !== null && !goneFromAccount) {
+        toastManager.add({
+          type: "success",
+          title: `${computer.name} was removed`,
+          description: `${REMOVED}. ${BRING_BACK}`,
+        });
       }
       refreshManagedTunnelUsage();
       void refreshDiscovery();
