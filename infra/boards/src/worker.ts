@@ -1503,30 +1503,33 @@ export class BoardRoom extends DurableObject<Env> {
    * access. The request's id, which the asking page watches for.
    */
   async askAccess(account: string, ask: CloudBoardAccessRequest): Promise<Answer<string>> {
-    const room = this.room;
-    const viewing =
-      room !== null &&
-      ask.credential !== undefined &&
-      isViewLink(room, await hashSecret(ask.credential));
-    const asked = askAccess(this.room, {
-      id: crypto.randomUUID(),
+    const credentialHash =
+      ask.credential === undefined ? undefined : await hashSecret(ask.credential);
+    const now = nowIso();
+    const id = crypto.randomUUID();
+    const inputFor = (room: CloudRoom | null) => ({
+      id,
       account,
       name: ask.name,
       message: ask.message,
-      viewing,
-      now: nowIso(),
+      viewing: credentialHash !== undefined && isViewLink(room, credentialHash),
+      now,
     });
-    if (Result.isFailure(asked)) return { failure: asked.failure };
-    const { request } = asked.success;
-    const managers = (await this.managerAccounts(asked.success.room)).filter(
+    const first = askAccess(this.room, inputFor(this.room));
+    if (Result.isFailure(first)) return { failure: first.failure };
+    const managers = (await this.managerAccounts(first.success.room)).filter(
       (manager) => manager !== account,
     );
-    const item = accessRequestItem(asked.success.room, request);
-    await Promise.allSettled(managers.map((manager) => this.indexOf(manager).deliver([item])));
+    // Read again: the wait may have let another change to the board in.
+    const asked = askAccess(this.room, inputFor(this.room));
+    if (Result.isFailure(asked)) return { failure: asked.failure };
+    const { request } = asked.success;
     const told = managers.flatMap(
       (manager) => accountGuestOf(asked.success.room, manager)?.id ?? [],
     );
     await this.save(withInboxAt(asked.success.room, told, request.at));
+    const item = accessRequestItem(asked.success.room, request);
+    await Promise.allSettled(managers.map((manager) => this.indexOf(manager).deliver([item])));
     return { value: request.id };
   }
 

@@ -379,6 +379,48 @@ describe("cloud room", () => {
     expect(object.room?.title).toBe("Newer title");
   });
 
+  it("keeps a newer board change made while an access request goes out", async () => {
+    const made = newRoom();
+    const joined = Result.getOrThrow(join(made, "guest-sam", "Sam"));
+    const before = {
+      ...joined,
+      guests: joined.guests.map((guest) =>
+        guest.id === maker
+          ? { ...guest, accountId: "user_ada" }
+          : { ...guest, accountId: "user_sam", role: "viewer" as const },
+      ),
+    };
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      askAccess(account: string, ask: { readonly name: string }): Promise<unknown>;
+      indexOf(account: string): { deliver(items: ReadonlyArray<unknown>): Promise<void> };
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+    };
+    object.room = before;
+    object.deleted = false;
+    object.streams = new Set();
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => undefined,
+        delete: async () => undefined,
+      },
+    };
+    object.indexOf = () => ({
+      deliver: async () => {
+        if (object.room !== null) object.room = renameRoom(object.room, "Newer title", NOW);
+      },
+    });
+    object.keepTaskIndex = async () => undefined;
+    await object.askAccess("user_sam", { name: "Sam" });
+    expect(object.room?.title).toBe("Newer title");
+  });
+
   it("deletes a board a day after it was made if nobody changed it, else after 90 idle days", () => {
     const made = Date.parse(NOW);
     const day = 24 * 60 * 60_000;
