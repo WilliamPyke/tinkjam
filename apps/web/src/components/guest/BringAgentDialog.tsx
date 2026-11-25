@@ -35,6 +35,7 @@ import {
 } from "../ui/dialog";
 import { Popover, PopoverPopup, PopoverTitle, PopoverTrigger } from "../ui/popover";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
+import { toastManager } from "../ui/toast";
 import { type BringAgentComputer, agentsChecked } from "./bringAgent.logic";
 import { ComputerRow, ComputersLoading, ComputersNotLoaded } from "./ComputerRow";
 import { useRemoveComputer, useYourComputers } from "./yourComputers";
@@ -604,7 +605,17 @@ function CopyLabel({ copied, children }: { readonly copied: boolean; readonly ch
  * agent, so it is copied whole and only shown to whoever asks to read it.
  */
 function AgentRoute() {
-  const { copyToClipboard, isCopied } = useCopyToClipboard({ timeout: 2000, target: "command" });
+  const { copyToClipboard, isCopied } = useCopyToClipboard({
+    timeout: 2000,
+    target: "command",
+    onError: () =>
+      toastManager.add({
+        type: "error",
+        title: "Could not copy the request",
+        description:
+          "Your browser did not allow it. Press Read it, then select the request and copy it yourself.",
+      }),
+  });
   return (
     <div
       className="flex flex-wrap items-center gap-x-2 gap-y-2 border-t border-border pt-3"
@@ -648,7 +659,16 @@ function AgentRoute() {
  * or invite link, which would hand on a way in.
  */
 export function CopyAppLink() {
-  const { copyToClipboard, isCopied } = useCopyToClipboard({ timeout: 2000, target: "link" });
+  const { copyToClipboard, isCopied } = useCopyToClipboard({
+    timeout: 2000,
+    target: "link",
+    onError: () =>
+      toastManager.add({
+        type: "error",
+        title: "Could not copy the link",
+        description: "Your browser did not allow it. Copy the address below yourself.",
+      }),
+  });
   const address = typeof window === "undefined" ? "" : window.location.origin;
   return (
     <div className="flex flex-col gap-1.5" data-sync-app-link>

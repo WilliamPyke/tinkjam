@@ -171,7 +171,12 @@ export function CloudBoardSharing({
       markBoardGuideStep("invite");
       toastManager.add({ type: "success", title: "Edit link copied" });
     },
-    onError: () => toastManager.add({ type: "error", title: "Could not copy the link" }),
+    onError: () =>
+      toastManager.add({
+        type: "error",
+        title: "Could not copy the link",
+        description: "Your browser did not allow it. Open Share and copy the link yourself.",
+      }),
   });
   const forget = useForgetJoinedBoard();
   const deleteBoard = useDeleteCloudBoard();
