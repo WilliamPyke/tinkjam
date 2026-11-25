@@ -15,7 +15,7 @@ import {
 } from "@t3tools/contracts";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 import { SESSION_ROUTE, SESSION_ROUTES, STREAM_ROUTE, checkAccess } from "./access.ts";
 import { accountLockedOut, withAccountSession } from "./account.ts";
@@ -58,6 +58,18 @@ import {
   type CloudRoom,
 } from "./room.ts";
 import { makeSecret, makeViewSecret, shareOfSecret } from "./secrets.ts";
+import { BoardRoom } from "./worker.ts";
+
+vi.mock("cloudflare:workers", () => ({
+  DurableObject: class {
+    readonly ctx: unknown;
+    readonly env: unknown;
+    constructor(ctx: unknown, env: unknown) {
+      this.ctx = ctx;
+      this.env = env;
+    }
+  },
+}));
 
 const NOW = "2026-11-16T10:00:00.000Z";
 const maker = GuestId.make("guest-maker");
@@ -227,6 +239,34 @@ describe("cloud room", () => {
     const left = Result.getOrThrow(removePerson(everyone, maker, maker, NOW));
     expect([left.maker, left.guests.map((guest) => guest.id)]).toEqual([undefined, [grace]]);
     expect(viewFor(left, left.guests[0]!)).not.toHaveProperty("maker");
+  });
+
+  it("keeps the board it last stored when storing a change fails", async () => {
+    const before = newRoom();
+    const after = renameRoom(before, "Launch plan", NOW);
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      save(room: CloudRoom): Promise<void>;
+    };
+    object.room = before;
+    object.deleted = false;
+    object.streams = new Set();
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => undefined,
+        put: async () => {
+          throw new Error("storage failed");
+        },
+        delete: async () => undefined,
+      },
+    };
+    await expect(object.save(after)).rejects.toThrow("storage failed");
+    expect(object.room).toBe(before);
   });
 
   it("deletes a board a day after it was made if nobody changed it, else after 90 idle days", () => {

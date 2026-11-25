@@ -1591,12 +1591,12 @@ export class BoardRoom extends DurableObject<Env> {
     const before = (await this.ctx.storage.get<number>(CHUNK_COUNT_KEY)) ?? 0;
     const boardChanged = room.board !== this.room?.board;
     const previous = this.room;
-    this.room = room;
-    if (boardChanged) this.previewLater();
     await this.ctx.storage.put({
       [CHUNK_COUNT_KEY]: chunks.length,
       ...Object.fromEntries(chunks.map((chunk, index) => [chunkKey(index), chunk])),
     });
+    this.room = room;
+    if (boardChanged) this.previewLater();
     const stale = Array.from({ length: Math.max(0, before - chunks.length) }, (_, index) =>
       chunkKey(chunks.length + index),
     );
