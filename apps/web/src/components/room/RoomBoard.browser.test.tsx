@@ -1435,6 +1435,51 @@ describe("RoomBoard lines", () => {
     await expect.element(screen.getByRole("button", { name: "Delete line" })).toBeVisible();
   });
 
+  it("keeps focus on the board after closing or deleting a line from its menu", async () => {
+    const board = renderBoard(
+      [
+        { id: "a", text: "First", x: 0, y: -200 },
+        { id: "b", text: "Second", x: 212, y: -200 },
+      ],
+      undefined,
+      { edges: [{ id: "line", from: "note:a", to: "note:b" }] },
+    );
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const surface = screen.getByRole("application", { name: "Room board" });
+    const clickLine = async () => {
+      const rectOf = (id: string) => {
+        const element = screen.container.querySelector(`[data-board-item="note:${id}"]`);
+        if (element === null) throw new Error(`The board did not draw note ${id}`);
+        return element.getBoundingClientRect();
+      };
+      const under = surface.element().getBoundingClientRect();
+      const a = rectOf("a");
+      await userEvent.click(surface, {
+        position: {
+          x: (a.right + rectOf("b").left) / 2 - under.left,
+          y: (a.top + a.bottom) / 2 - under.top,
+        },
+      });
+    };
+
+    await clickLine();
+    await expect.element(screen.getByRole("button", { name: "Delete line" })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    await expect
+      .element(screen.getByRole("button", { name: "Delete line" }))
+      .not.toBeInTheDocument();
+    await expect.element(surface).toHaveFocus();
+
+    await clickLine();
+    await expect.element(screen.getByRole("button", { name: "Delete line" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await vi.waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith({ type: "edge.remove", edgeId: "line" }),
+    );
+    await expect.element(surface).toHaveFocus();
+  });
+
   it("focuses the link field when it opens, and Escape closes it back to the board", async () => {
     const board = renderBoard([{ id: "a", text: "First", x: 0, y: 0 }]);
     await using screen = await board.screen;

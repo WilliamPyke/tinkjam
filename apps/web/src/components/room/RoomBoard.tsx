@@ -7065,9 +7065,9 @@ export function RoomBoard({
                     onKeyDown={(event) => {
                       if (event.key === "Delete" || event.key === "Backspace") {
                         event.stopPropagation();
-                        removeEdge(edge.id);
+                        thenBoard(() => removeEdge(edge.id));
                       }
-                      if (event.key === "Escape") setSelectedEdge(null);
+                      if (event.key === "Escape") thenBoard(() => setSelectedEdge(null));
                     }}
                   >
                     <ToggleGroup
@@ -7092,7 +7092,7 @@ export function RoomBoard({
                             // would scroll the board's box to bring it into view.
                             ref={focusInPlace}
                             onPointerDown={stopPointer}
-                            onClick={() => removeEdge(edge.id)}
+                            onClick={() => thenBoard(() => removeEdge(edge.id))}
                           />
                         }
                       >
