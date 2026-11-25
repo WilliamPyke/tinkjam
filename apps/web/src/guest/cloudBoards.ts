@@ -123,6 +123,9 @@ export async function createCloudBoard(input: {
       }),
       credentials: "omit",
     });
+    if (account !== null && readBoardAccountProfile()?.userId !== account.userId) {
+      return SIGN_IN_UNCONFIRMED;
+    }
     if (response.status === 401) return "Sign in again to make a board.";
     if (response.status === 429) {
       return "A lot of boards were made from here in the last hour. Try again in a little while, or sign in.";
@@ -187,6 +190,9 @@ export async function copyCloudBoard(
       }),
       credentials: "omit",
     });
+    if (account !== null && readBoardAccountProfile()?.userId !== account.userId) {
+      return SIGN_IN_UNCONFIRMED;
+    }
     if (response.status === 429) return "You made many boards in the last hour. Try again later.";
     if (response.status === 403) return "Whoever made this board has not allowed copies.";
     const created = response.ok

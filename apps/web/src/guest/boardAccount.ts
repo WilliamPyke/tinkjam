@@ -158,7 +158,8 @@ async function boardAccountAuth(): Promise<{
   const account = readBoardAccount();
   if (account === null) return null;
   const token = await account.readToken().catch(() => null);
-  return token === null ? null : { userId: account.userId, authorization: `Bearer ${token}` };
+  if (token === null || readBoardAccount()?.userId !== account.userId) return null;
+  return { userId: account.userId, authorization: `Bearer ${token}` };
 }
 
 // How long making or joining a board waits to learn who is signed in. Past it (sign-in blocked
@@ -228,11 +229,12 @@ export async function accountRequest(
   const auth = await boardAccountAuth();
   if (origin === null || auth === null) return null;
   try {
-    return await fetch(`${origin}${path}`, {
+    const response = await fetch(`${origin}${path}`, {
       ...init,
       headers: { ...init.headers, authorization: auth.authorization },
       credentials: "omit",
     });
+    return readBoardAccount()?.userId === auth.userId ? response : null;
   } catch {
     return null;
   }

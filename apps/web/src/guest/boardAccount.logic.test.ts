@@ -1,5 +1,7 @@
-import { CLOUD_BOARD_ACCOUNT_CLAIM_MAX, GUEST_NAME_MAX_LENGTH } from "@t3tools/contracts";
-import { describe, expect, it } from "vite-plus/test";
+import { CLOUD_BOARD_ACCOUNT_CLAIM_MAX, GUEST_NAME_MAX_LENGTH, ThreadId } from "@t3tools/contracts";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+
+vi.mock("../components/ui/toast", () => ({ toastManager: { add: vi.fn() } }));
 
 import {
   accountDisplayName,
@@ -196,4 +198,163 @@ describe("the name a person joins a board under", () => {
       expect(name).toMatch(/^[A-Z][a-z]+ [A-Z][a-z]+$/);
     }
   });
+});
+
+type TestStorage = Storage;
+
+function storageStub(): TestStorage {
+  const store = new Map<string, string>();
+  return {
+    getItem: (key) => store.get(key) ?? null,
+    setItem: (key, value) => {
+      store.set(key, value);
+    },
+    removeItem: (key) => {
+      store.delete(key);
+    },
+    clear: () => store.clear(),
+    key: (index) => [...store.keys()][index] ?? null,
+    get length() {
+      return store.size;
+    },
+  };
+}
+
+function browserWindow(): Window & typeof globalThis {
+  return {
+    localStorage: storageStub(),
+    sessionStorage: storageStub(),
+    location: new URL("https://app.tinkjam.com/"),
+    matchMedia: () => ({
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }),
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => true,
+  } as unknown as Window & typeof globalThis;
+}
+
+interface PendingResponse {
+  readonly promise: Promise<Response>;
+  readonly resolve: (response: Response) => void;
+}
+
+function pendingFetch() {
+  const pending: Array<PendingResponse> = [];
+  const fetchMock = vi.fn(() => {
+    let resolve!: (response: Response) => void;
+    const promise = new Promise<Response>((done) => {
+      resolve = done;
+    });
+    pending.push({ promise, resolve });
+    return promise;
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return { fetchMock, pending };
+}
+
+async function flushMicrotasks() {
+  for (let index = 0; index < 8; index += 1) await Promise.resolve();
+}
+
+const ACCOUNT = {
+  userId: "user_ada",
+  name: "Ada",
+  realName: true,
+  email: null,
+  readToken: () => Promise.resolve("token-a"),
+  saveName: () => Promise.resolve(true),
+};
+
+async function accountHarness() {
+  vi.resetModules();
+  vi.stubGlobal("window", browserWindow());
+  // Signing in here must not ask the host for boards yet: each test chooses when reads start.
+  vi.stubEnv("VITE_CLOUD_BOARDS_URL", "not a url");
+  const account = await import("./boardAccount");
+  const shares = await import("./guestShares");
+  const { appAtomRegistry } = await import("../rpc/atomRegistry");
+  account.syncBoardAccount(ACCOUNT);
+  return {
+    account,
+    shares,
+    accountBoards: () => appAtomRegistry.get(shares.accountBoardsAtom) ?? [],
+  };
+}
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.resetModules();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+describe("board account requests around sign-out", () => {
+  const shareId = "1ecbf7b4-8fc3-46f8-8a5c-8a683e311029";
+  const copyId = "0d7b78bb-dc2f-4d47-b34f-d9278cf8d872";
+
+  it("does not keep a board opened for an account that signed out meanwhile", async () => {
+    const { account, shares } = await accountHarness();
+    vi.stubEnv("VITE_CLOUD_BOARDS_URL", "https://boards.example.test");
+    const { fetchMock, pending } = pendingFetch();
+    const opening = account.openAccountBoard(shareId);
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    account.syncBoardAccount(null);
+    pending[0]!.resolve(
+      Response.json({
+        token: "opened-token",
+        board: {
+          shareId,
+          threadId: `board-${shareId}`,
+          title: "Account board",
+          guestId: "guest-1",
+          maker: false,
+          addedAt: new Date(0).toISOString(),
+        },
+      }),
+    );
+    await opening;
+
+    expect(shares.readGuestShares()).toEqual([]);
+  });
+
+  it("does not keep a copy made for an account that signed out meanwhile", async () => {
+    const { account, shares } = await accountHarness();
+    vi.stubEnv("VITE_CLOUD_BOARDS_URL", "https://boards.example.test");
+    const { copyCloudBoard } = await import("./cloudBoards");
+    const { fetchMock, pending } = pendingFetch();
+    const copying = copyCloudBoard(
+      {
+        host: "boards.example.test",
+        shareId,
+        threadId: ThreadId.make(`board-${shareId}`),
+        token: "source-token",
+        title: "Source board",
+        joinedAt: new Date(0).toISOString(),
+        viewOnly: true,
+      },
+      "Source board",
+    );
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    account.syncBoardAccount(null);
+    pending[0]!.resolve(
+      Response.json({
+        token: "copy-token",
+        shareId: copyId,
+        threadId: `board-${copyId}`,
+        credential: "copy-credential",
+      }),
+    );
+    await copying;
+
+    expect(shares.readGuestShares()).toEqual([]);
+  });
+
 });

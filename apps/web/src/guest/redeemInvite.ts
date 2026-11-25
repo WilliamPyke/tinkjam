@@ -2,7 +2,12 @@ import { GUEST_ROUTE_PREFIX, GuestRedeemResult } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import { SIGN_IN_UNCONFIRMED, boardJoinAuth, refreshAccountBoards } from "./boardAccount";
+import {
+  SIGN_IN_UNCONFIRMED,
+  boardJoinAuth,
+  readBoardAccountProfile,
+  refreshAccountBoards,
+} from "./boardAccount";
 import { isCloudBoardsHost } from "./cloudBoardsHost";
 import { guestShareOrigin, type JoinedGuestShare } from "./guestShares";
 import { decodeRefusalBody, linkRefusalMessage } from "./linkRefusal.logic";
@@ -41,6 +46,9 @@ export async function redeemInvite(input: {
       // The host's own page also gets the share's cookie; any other origin keeps only the token.
       credentials: origin === window.location.origin ? "same-origin" : "omit",
     });
+    if (account !== null && readBoardAccountProfile()?.userId !== account.userId) {
+      return SIGN_IN_UNCONFIRMED;
+    }
     const json: unknown = await response.json().catch(() => null);
     if (!response.ok) {
       return Option.match(decodeRefusalBody(json), {
