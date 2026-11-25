@@ -109,10 +109,11 @@ describe("Tinkjam Sync's login items", () => {
   it("quotes systemd and autostart arguments so spaces, % and $ stay literal", () => {
     const unit = systemdUnit({
       programArguments: ["/opt/n o/node", "50%$HOME"],
-      environment: { A: "x y" },
+      environment: { A: "x y", LITERAL: "50%$HOME" },
     });
     expect(unit).toContain('ExecStart="/opt/n o/node" "50%%$$HOME"');
     expect(unit).toContain('Environment="A=x y"');
+    expect(unit).toContain('Environment="LITERAL=50%%$HOME"');
     expect(unit).toContain("StartLimitBurst=6");
     expect(
       autostartEntry({

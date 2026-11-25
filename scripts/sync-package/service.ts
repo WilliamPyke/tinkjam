@@ -185,9 +185,12 @@ export function launchAgentPlist(input: {
   ].join("\n");
 }
 
-// systemd unquotes C-style escapes, expands % specifiers and $ variables.
-const systemdQuote = (value: string) =>
-  `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/%/g, "%%").replace(/\$/g, "$$$$")}"`;
+// systemd unquotes C-style escapes and expands % specifiers. It expands $ variables in command
+// lines, but not in Environment assignments.
+const systemdEscape = (value: string) =>
+  value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/%/g, "%%");
+const systemdQuote = (value: string) => `"${systemdEscape(value).replace(/\$/g, () => "$$")}"`;
+const systemdEnvironmentQuote = (value: string) => `"${systemdEscape(value)}"`;
 
 /** Restarts after a failure every 10 seconds, at most 6 times in 10 minutes. */
 export function systemdUnit(command: LoginCommand): string {
@@ -199,7 +202,7 @@ export function systemdUnit(command: LoginCommand): string {
     "",
     "[Service]",
     ...Object.entries(command.environment).map(
-      ([key, value]) => `Environment=${systemdQuote(`${key}=${value}`)}`,
+      ([key, value]) => `Environment=${systemdEnvironmentQuote(`${key}=${value}`)}`,
     ),
     `ExecStart=${command.programArguments.map(systemdQuote).join(" ")}`,
     "Restart=on-failure",
