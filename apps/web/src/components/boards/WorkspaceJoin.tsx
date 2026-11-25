@@ -160,11 +160,15 @@ function WorkspaceJoin({ code }: { readonly code: string }) {
         <EmptyMedia>
           <WorkspaceMark name={result.name} color={result.color} size="md" />
         </EmptyMedia>
-        <EmptyTitle>Join {result.name} on Tinkjam</EmptyTitle>
+        <EmptyTitle>
+          <span className="wrap-anywhere">Join {result.name} on Tinkjam</span>
+        </EmptyTitle>
         <EmptyDescription>
-          {result.owner === undefined ? null : `${result.owner} runs this workspace. `}
-          {result.members === 1 ? "1 person is" : `${result.members} people are`} in it. Once you
-          join, you see its boards and open them as yourself.
+          <span className="wrap-anywhere">
+            {result.owner === undefined ? null : `${result.owner} runs this workspace. `}
+            {result.members === 1 ? "1 person is" : `${result.members} people are`} in it. Once you
+            join, you see its boards and open them as yourself.
+          </span>
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
@@ -196,7 +200,7 @@ function WorkspaceJoin({ code }: { readonly code: string }) {
               data-workspace-join-submit
             >
               {joining ? <Spinner aria-hidden /> : null}
-              Join {result.name}
+              Join workspace
             </Button>
           </form>
         ) : (
