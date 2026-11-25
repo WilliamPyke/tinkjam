@@ -1402,8 +1402,10 @@ export class BoardRoom extends DurableObject<Env> {
     if (next === before) return;
     const at = nowIso();
     const deliveries = inboxDeliveries(before, next, { at, newId: () => crypto.randomUUID() });
+    await this.save(next);
     const told = await this.deliver(next, deliveries);
-    await this.save(withNotified(withInboxAt(next, told, at), deliveries, at));
+    const current = this.room ?? next;
+    await this.save(withNotified(withInboxAt(current, told, at), deliveries, at));
   }
 
   /**

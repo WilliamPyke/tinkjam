@@ -269,6 +269,63 @@ describe("cloud room", () => {
     expect(object.room).toBe(before);
   });
 
+  it("keeps a newer board change made while inbox items go out", async () => {
+    const samId = GuestId.make("guest-sam");
+    const joined = Result.getOrThrow(join(newRoom(), "guest-sam", "Sam"));
+    const before = {
+      ...joined,
+      guests: joined.guests.map((guest) => ({
+        ...guest,
+        accountId: guest.id === maker ? "user_ada" : "user_sam",
+      })),
+    };
+    const after = Result.getOrThrow(
+      changeBoard(
+        before,
+        samId,
+        notePut("task", {
+          text: "Ship it @Ada",
+          kind: "task",
+          assignee: { guestId: maker },
+          mentions: [{ guestId: maker, name: "Ada" }],
+        } as Partial<RoomBoardChange>),
+        NOW,
+      ),
+    );
+    const newer = renameRoom(after, "Newer title", NOW);
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      saveChange(before: CloudRoom, next: CloudRoom): Promise<void>;
+      deliver(room: CloudRoom, deliveries: ReadonlyArray<unknown>): Promise<ReadonlyArray<GuestId>>;
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+      previewLater(): void;
+    };
+    object.room = before;
+    object.deleted = false;
+    object.streams = new Set();
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => undefined,
+        delete: async () => undefined,
+      },
+    };
+    object.deliver = async (_room, deliveries) => {
+      expect(deliveries).not.toEqual([]);
+      object.room = newer;
+      return [];
+    };
+    object.keepTaskIndex = async () => undefined;
+    object.previewLater = () => undefined;
+    await object.saveChange(before, after);
+    expect(object.room?.title).toBe("Newer title");
+  });
+
   it("deletes a board a day after it was made if nobody changed it, else after 90 idle days", () => {
     const made = Date.parse(NOW);
     const day = 24 * 60 * 60_000;
