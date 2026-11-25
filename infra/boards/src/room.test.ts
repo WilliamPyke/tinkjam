@@ -551,6 +551,48 @@ describe("cloud room", () => {
     }
   });
 
+  it("keeps a newer board change made while a workspace member opens it", async () => {
+    const before = { ...newRoom(), workspaceId: "workspace-one" };
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      preview: string;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      openAsMember(account: string, workspaceId: string, name: string): Promise<unknown>;
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+    };
+    object.room = before;
+    object.deleted = false;
+    object.streams = new Set();
+    object.preview = "";
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => undefined,
+        delete: async () => undefined,
+      },
+    };
+    object.keepTaskIndex = async () => undefined;
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("session"));
+    let release!: (value: ArrayBuffer) => void;
+    const gate = new Promise<ArrayBuffer>((resolve) => {
+      release = resolve;
+    });
+    const read = vi.spyOn(crypto.subtle, "digest").mockImplementation(() => gate);
+    try {
+      const opened = object.openAsMember("user_sam", "workspace-one", "Sam");
+      object.room = renameRoom(before, "Newer title", NOW);
+      release(digest);
+      await opened;
+      expect(object.room?.title).toBe("Newer title");
+    } finally {
+      read.mockRestore();
+    }
+  });
+
   it("checks copies are still allowed after the token is read", async () => {
     const token = makeSecret("share-one-0000");
     const sessionHash = await hashSecret(token);

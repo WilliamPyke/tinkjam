@@ -1355,10 +1355,11 @@ export class BoardRoom extends DurableObject<Env> {
     const shareId = this.room?.shareId;
     if (shareId === undefined) return { failure: roomFailure("ended") };
     const token = makeSecret(shareId);
+    const sessionHash = await hashSecret(token);
     const seated = seatMember(this.room, {
       account,
       workspaceId,
-      sessionHash: await hashSecret(token),
+      sessionHash,
       guestId: GuestId.make(crypto.randomUUID()),
       name,
       now: nowIso(),
