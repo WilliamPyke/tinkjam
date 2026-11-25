@@ -40,8 +40,8 @@ function linkedAtLabel(value: string): string {
 
 function endpointLabel(environment: RelayClientEnvironmentRecord): string {
   return environment.endpoint.providerKind === "cloudflare_tunnel"
-    ? "Managed tunnel"
-    : "Activity publishing only";
+    ? "Available to your other devices"
+    : "Shares activity only";
 }
 
 function T3ConnectEnvironmentRow(props: {
@@ -87,8 +87,8 @@ function T3ConnectEnvironmentRow(props: {
                 “{environment.label}” will be removed from this account.
               </p>
               <p className="mt-4 max-w-xl text-xs leading-4.5 text-muted-foreground">
-                Tinkjam Connect access will be removed. Any tunnel it uses will close. Connections
-                saved on your devices are not changed.
+                It will no longer use Tinkjam Connect. Connections saved on your devices are not
+                changed.
               </p>
               <div className="mt-4 flex justify-end gap-2">
                 <Button

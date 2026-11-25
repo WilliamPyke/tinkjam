@@ -64,7 +64,7 @@ export function RemoveT3ConnectEnvironmentDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {shown.label} from this device?</AlertDialogTitle>
             <AlertDialogDescription>
-              This forgets its pairing, credentials, and cached threads here.
+              This forgets the connection and removes its saved information from this device.
             </AlertDialogDescription>
             <AlertDialogDescription>
               {shown.registration === "registered" ? (
