@@ -703,6 +703,7 @@ export function syncService(baseDir: string, platform: NodeJS.Platform) {
      */
     start: (urls: { readonly hostedAppUrl: string; readonly syncUrl: string }) => {
       if (items === undefined) throw new Error("this system has no supported login items");
+      NodeFS.mkdirSync(NodePath.dirname(paths.log), { recursive: true });
       for (const path of [paths.starts, paths.status]) remove(path);
       return items.register({
         programArguments: [

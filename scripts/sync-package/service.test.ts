@@ -285,4 +285,36 @@ fs.writeFileSync(${JSON.stringify(calls)}, JSON.stringify([...seen, process.argv
     write({ status: "reachable" });
     expect(readConnectionState(paths, 0)).toEqual({ kind: "connected" });
   });
+
+  it("creates the log folder before trying to start the login item", () => {
+    const parent = tempDir();
+    const home = NodePath.join(parent, "home");
+    NodeFS.mkdirSync(home, { recursive: true });
+    const previous = {
+      home: process.env.HOME,
+      userProfile: process.env.USERPROFILE,
+      path: process.env.PATH,
+    };
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+    // launchctl must not be found: even on a Mac this test only writes into `parent`.
+    process.env.PATH = NodePath.join(parent, "empty-path");
+    try {
+      const service = syncService(NodePath.join(parent, "base"), "darwin");
+      expect(() =>
+        service.start({
+          hostedAppUrl: "https://app.tinkjam.com",
+          syncUrl: "https://trellium.org/sync.tgz",
+        }),
+      ).toThrow("launchctl could not start it");
+      expect(NodeFS.existsSync(NodePath.dirname(service.paths.log))).toBe(true);
+    } finally {
+      if (previous.home === undefined) delete process.env.HOME;
+      else process.env.HOME = previous.home;
+      if (previous.userProfile === undefined) delete process.env.USERPROFILE;
+      else process.env.USERPROFILE = previous.userProfile;
+      if (previous.path === undefined) delete process.env.PATH;
+      else process.env.PATH = previous.path;
+    }
+  });
 });
