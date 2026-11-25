@@ -5,7 +5,12 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeftIcon, LogInIcon, LogOutIcon, ShieldCheckIcon } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 
-import { boardAccountsEnabled, saveBoardAccountName, useBoardAccount } from "~/guest/boardAccount";
+import {
+  boardAccountsEnabled,
+  refreshAccountBoards,
+  saveBoardAccountName,
+  useBoardAccount,
+} from "~/guest/boardAccount";
 import { accountBoardsAtom } from "~/guest/guestShares";
 
 import { useT3ConnectAuthPrompt } from "../clerk/useT3ConnectAuthPrompt";
@@ -81,14 +86,30 @@ function ConfiguredAccountPage() {
       </Empty>
     );
   }
-  return <SignedInAccount name={account.name} />;
+  return <SignedInAccount name={account.name} listed={account.listed} />;
 }
 
-function SignedInAccount({ name }: { readonly name: string | null }) {
+function SignedInAccount({
+  name,
+  listed,
+}: {
+  readonly name: string | null;
+  readonly listed: boolean;
+}) {
   const { user } = useUser();
   const clerk = useClerk();
   const navigate = useNavigate();
   const boards = useAtomValue(accountBoardsAtom);
+  const [readingBoards, setReadingBoards] = useState(false);
+  const readBoardsAgain = async () => {
+    if (readingBoards) return;
+    setReadingBoards(true);
+    try {
+      await refreshAccountBoards();
+    } finally {
+      setReadingBoards(false);
+    }
+  };
   if (user == null) return null;
   const made = boards?.filter((board) => board.maker).length ?? null;
   const joined = boards === null ? null : boards.length - (made ?? 0);
@@ -147,11 +168,29 @@ function SignedInAccount({ name }: { readonly name: string | null }) {
       </Section>
 
       <Section title="Your boards">
-        <p className="text-sm">
-          {made === null || joined === null
-            ? "Counting your boards…"
-            : `You made ${made} ${made === 1 ? "board" : "boards"} and joined ${joined}.`}
-        </p>
+        {made === null || joined === null ? (
+          listed ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm">Your boards could not be read.</p>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={readingBoards}
+                aria-busy={readingBoards || undefined}
+                onClick={() => void readBoardsAgain()}
+              >
+                {readingBoards ? <Spinner aria-hidden /> : null}
+                Try again
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm">Counting your boards…</p>
+          )
+        ) : (
+          <p className="text-sm">
+            {`You made ${made} ${made === 1 ? "board" : "boards"} and joined ${joined}.`}
+          </p>
+        )}
         <p className="text-sm text-muted-foreground">
           Boards you made stay for everyone on them until you delete them. Signing out keeps them;
           sign in again on any device to get back to them.
