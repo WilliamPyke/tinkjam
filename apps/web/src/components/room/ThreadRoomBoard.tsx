@@ -414,7 +414,7 @@ export function ThreadRoomBoard({
     return ref === null
       ? undefined
       : () =>
-          void interruptTurn({
+          interruptTurn({
             environmentId: ref.environmentId,
             input: { threadId: ref.threadId },
           });

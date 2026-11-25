@@ -344,9 +344,23 @@ export function syncBoardAccount(session: BoardAccountSession | null): void {
 
 /**
  * Opens a board of the account's on this browser, as the same person on it. Resolves to what the
- * browser keeps of it, or to a message for the person.
+ * browser keeps of it, or to a message for the person. With `temporary: "tagged"`, a failure that
+ * can be retried is the tag instead.
  */
-export async function openAccountBoard(shareId: string): Promise<JoinedGuestShare | string> {
+export function openAccountBoard(shareId: string): Promise<JoinedGuestShare | string>;
+export function openAccountBoard(
+  shareId: string,
+  options: { readonly temporary: "tagged" },
+): Promise<JoinedGuestShare | string | { readonly temporary: true }>;
+export async function openAccountBoard(
+  shareId: string,
+  options?: { readonly temporary?: "tagged" },
+): Promise<JoinedGuestShare | string | { readonly temporary: true }> {
+  const tagged = options?.temporary === "tagged";
+  const unreachable = () =>
+    tagged ? { temporary: true as const } : "Could not reach the board service.";
+  const unreadable = () =>
+    tagged ? { temporary: true as const } : "Could not open this board. Try again.";
   const host = cloudBoardsHost();
   const account = readBoardAccount();
   if (host === null || account === null) return "Sign in to open this board.";
@@ -354,18 +368,31 @@ export async function openAccountBoard(shareId: string): Promise<JoinedGuestShar
     `${CLOUD_BOARD_ACCOUNT_OPEN_ROUTE}?${GUEST_SHARE_PARAM}=${encodeURIComponent(shareId)}`,
     { method: "POST" },
   );
-  if (response === null) return "Could not reach the board service.";
+  if (response === null) return unreachable();
+  if (
+    tagged &&
+    !response.ok &&
+    (response.status < 400 || response.status === 429 || response.status >= 500)
+  ) {
+    return { temporary: true };
+  }
   const json: unknown = await response.json().catch(() => null);
   if (readBoardAccount()?.userId !== account.userId) return SIGN_IN_UNCONFIRMED;
   if (!response.ok) {
-    if (response.status === 410) forgetGuestShare(shareId);
+    if (response.status === 410) {
+      forgetGuestShare(shareId);
+      return Option.match(decodeMessage(json), {
+        onNone: () => "Could not open this board. Try again.",
+        onSome: ({ message }) => message,
+      });
+    }
     return Option.match(decodeMessage(json), {
-      onNone: () => "Could not open this board. Try again.",
+      onNone: unreadable,
       onSome: ({ message }) => message,
     });
   }
   const opened = Option.getOrNull(decodeOpened(json));
-  if (opened === null) return "Could not open this board. Try again.";
+  if (opened === null) return unreadable();
   const { board } = opened;
   const share: JoinedGuestShare = {
     host,

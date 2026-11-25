@@ -362,12 +362,13 @@ export function cloudBoardLink(share: JoinedGuestShare, credential: string): str
 
 /**
  * Opens a cloud board from its view link: no name and no seat, the link itself is the session.
- * Resolves to what the browser keeps of it, or to a message.
+ * Resolves to what the browser keeps of it, to a message, or to the tag for a failure that can be retried.
  */
 export async function openViewLink(input: {
   readonly credential: string;
   readonly host: string;
-}): Promise<JoinedGuestShare | string> {
+}): Promise<JoinedGuestShare | string | { readonly temporary: true }> {
+  const temporary = { temporary: true as const };
   try {
     const response = await fetch(`${guestShareOrigin(input.host)}${CLOUD_BOARD_VIEW_ROUTE}`, {
       method: "POST",
@@ -375,17 +376,26 @@ export async function openViewLink(input: {
       body: JSON.stringify({ credential: input.credential }),
       credentials: "omit",
     });
-    const json: unknown = await response.json().catch(() => null);
-    const opened = response.ok ? Option.getOrNull(decodeRedeemed(json)) : null;
-    if (opened === null || opened.threadId === undefined) {
-      if (!(response.status === 403 || response.status === 410 || response.ok)) {
-        return "Could not reach the board service.";
-      }
-      const refused = Option.getOrNull(decodeRefusalBody(json));
-      return refused === null
-        ? refusalSentence(linkRefusalNotice("replaced"))
-        : linkRefusalMessage(refused);
+    if (
+      response.status === 429 ||
+      response.status >= 500 ||
+      (!response.ok && response.status < 400)
+    ) {
+      return temporary;
     }
+    const json: unknown = await response.json().catch(() => null);
+    if (!response.ok) {
+      const refused = Option.getOrNull(decodeRefusalBody(json));
+      if (refused !== null && (refused.detail !== undefined || refused.message !== undefined)) {
+        return linkRefusalMessage(refused);
+      }
+      // A host that refuses without saying why turned the link off or replaced it.
+      return response.status === 403 || response.status === 410
+        ? refusalSentence(linkRefusalNotice("replaced"))
+        : temporary;
+    }
+    const opened = Option.getOrNull(decodeRedeemed(json));
+    if (opened === null || opened.threadId === undefined) return temporary;
     return {
       host: input.host,
       shareId: opened.shareId,
@@ -396,7 +406,7 @@ export async function openViewLink(input: {
       viewOnly: true,
     };
   } catch {
-    return "Could not reach the board service.";
+    return temporary;
   }
 }
 

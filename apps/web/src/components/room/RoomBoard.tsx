@@ -1,3 +1,4 @@
+import type { AtomCommandResult } from "@t3tools/client-runtime/state/runtime";
 import {
   type GuestId,
   ROOM_BOARD_MAX_ARTIFACTS,
@@ -1212,7 +1213,9 @@ export function RoomBoard({
    */
   readonly boxPullRequestUrl?: ((boxId: string) => string | undefined) | undefined;
   /** Stops the run of a box's agent, where this viewer may: absent for a box they may not. */
-  readonly stopBox?: ((boxId: string) => (() => void) | undefined) | undefined;
+  readonly stopBox?:
+    | ((boxId: string) => (() => Promise<AtomCommandResult<unknown, unknown>>) | undefined)
+    | undefined;
   /** Deletes a box's chat, where it is this viewer's own here: absent for a box whose it is not. */
   readonly boxChatDeleter?: ((boxId: string) => (() => void) | undefined) | undefined;
   /**
@@ -4301,7 +4304,7 @@ export function RoomBoard({
     onChange === undefined
       ? Promise.resolve(false)
       : queueChange(noteRef(noteId), () => onChange(change));
-  const sendComment = (
+  const sendComment = async (
     note: RoomBoardNote,
     text: string,
     mentions: ReadonlyArray<RoomBoardMention> = [],
@@ -4316,7 +4319,12 @@ export function RoomBoard({
         ...named,
       });
     }
-    send({ kind: "note", id: note.id }, settleBoardValue({ ...note, text, ...named }));
+    const target = { kind: "note" as const, id: note.id };
+    const taken = await changeComment(
+      note.id,
+      boardChangeOf(target, settleBoardValue({ ...note, text, ...named })),
+    );
+    if (!taken) return false;
     const to = boardCommentLineTo(shown, draftComment?.on ?? null);
     if (to !== null) {
       const line = randomUUID();
@@ -4325,12 +4333,12 @@ export function RoomBoard({
         send(
           { kind: "edge", id: line },
           { id: line, from: noteRef(note.id), to },
-          boardEditKey({ kind: "note", id: note.id }),
+          boardEditKey(target),
         );
       });
     }
     setDraftComment(null);
-    return Promise.resolve(true);
+    return true;
   };
   const askBoxes =
     askInComments && canEdit && onPromptBox !== undefined

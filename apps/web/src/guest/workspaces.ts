@@ -33,6 +33,7 @@ import {
   openAccountBoard,
   readBoardAccountProfile,
   refreshAccountBoards,
+  SIGN_IN_UNCONFIRMED,
 } from "./boardAccount";
 import { cloudBoardsHost, cloudBoardsOrigin } from "./cloudBoardsHost";
 import { type JoinedGuestShare, rememberGuestShare } from "./guestShares";
@@ -173,13 +174,17 @@ export async function createWorkspace(input: {
   readonly name: string;
   readonly color: RoomBoardNoteColor;
 }): Promise<CloudWorkspace | string> {
+  const account = readBoardAccountProfile();
   const response = await accountRequest(
     CLOUD_WORKSPACES_ROUTE,
     jsonInit("POST", { ...input, profile: profile() }),
   );
   if (response?.ok !== true) return failureOf(response, "Could not make the workspace. Try again.");
-  const made = Option.getOrNull(decodeWorkspace(await response.json().catch(() => null)));
+  const json: unknown = await response.json().catch(() => null);
+  if (readBoardAccountProfile()?.userId !== account?.userId) return SIGN_IN_UNCONFIRMED;
+  const made = Option.getOrNull(decodeWorkspace(json));
   await refreshWorkspaces();
+  if (readBoardAccountProfile()?.userId !== account?.userId) return SIGN_IN_UNCONFIRMED;
   return made ?? "Could not make the workspace. Try again.";
 }
 
@@ -208,13 +213,17 @@ export const leaveWorkspace = (workspaceId: string) =>
 export async function renewWorkspaceInvite(
   workspaceId: string,
 ): Promise<{ readonly invite: string } | string> {
+  const account = readBoardAccountProfile();
   const response = await accountRequest(
     scoped(CLOUD_WORKSPACE_INVITE_ROUTE, { [CLOUD_WORKSPACE_PARAM]: workspaceId }),
     jsonInit("POST"),
   );
   if (response?.ok !== true) return failureOf(response, "Could not make a new link. Try again.");
-  const made = Option.getOrNull(decodeInvite(await response.json().catch(() => null)));
+  const json: unknown = await response.json().catch(() => null);
+  if (readBoardAccountProfile()?.userId !== account?.userId) return SIGN_IN_UNCONFIRMED;
+  const made = Option.getOrNull(decodeInvite(json));
   await refreshWorkspaces();
+  if (readBoardAccountProfile()?.userId !== account?.userId) return SIGN_IN_UNCONFIRMED;
   return made ?? "Could not make a new link. Try again.";
 }
 
@@ -303,10 +312,13 @@ async function openWorkspaceBoard(
   );
   if (response?.ok !== true) {
     const failed = await failureOf(response, "Could not open this board. Try again.");
+    if (readBoardAccountProfile()?.userId !== account.userId) return SIGN_IN_UNCONFIRMED;
     if (response !== null) void refreshWorkspaces();
     return failed;
   }
-  const opened = Option.getOrNull(decodeOpened(await response.json().catch(() => null)));
+  const json: unknown = await response.json().catch(() => null);
+  if (readBoardAccountProfile()?.userId !== account.userId) return SIGN_IN_UNCONFIRMED;
+  const opened = Option.getOrNull(decodeOpened(json));
   if (opened === null) return "Could not open this board. Try again.";
   const { board } = opened;
   const share: JoinedGuestShare = {
@@ -357,14 +369,18 @@ export async function previewWorkspaceInvite(
 
 /** Joins by an invite link and shows that workspace on the home. */
 export async function joinWorkspace(code: string): Promise<CloudWorkspace | string> {
+  const account = readBoardAccountProfile();
   const response = await accountRequest(
     CLOUD_WORKSPACE_JOIN_ROUTE,
     jsonInit("POST", { code, profile: profile() }),
   );
   if (response?.ok !== true) return failureOf(response, "Could not join. Try again.");
-  const joined = Option.getOrNull(decodeWorkspace(await response.json().catch(() => null)));
+  const json: unknown = await response.json().catch(() => null);
+  if (readBoardAccountProfile()?.userId !== account?.userId) return SIGN_IN_UNCONFIRMED;
+  const joined = Option.getOrNull(decodeWorkspace(json));
   if (joined === null) return "Could not join. Try again.";
   await refreshWorkspaces();
+  if (readBoardAccountProfile()?.userId !== account?.userId) return SIGN_IN_UNCONFIRMED;
   setWorkspaceScope(joined.id);
   return joined;
 }

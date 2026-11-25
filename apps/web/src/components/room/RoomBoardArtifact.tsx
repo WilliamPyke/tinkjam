@@ -9,10 +9,9 @@ import {
 import { CodeXmlIcon, PenLineIcon, RefreshCwIcon, RotateCcwIcon } from "lucide-react";
 import { type PointerEvent, type RefObject, useEffect, useRef, useState } from "react";
 
+import { useRelativeTimeState } from "~/hooks/useRelativeTimeState";
 import { useStableCallback } from "~/hooks/useStableCallback";
 import { cn } from "~/lib/utils";
-
-import { boardTimeLabel } from "../boards/boardsHome.logic";
 
 import ChatMarkdown from "../ChatMarkdown";
 import { Button } from "../ui/button";
@@ -809,14 +808,19 @@ function RoomArtifactMeta({
   readonly artifact: RoomArtifactContent | undefined;
   readonly people: BoardPeople;
 }) {
-  // When the card was drawn: how long ago it was written is said in words, never a clock time.
-  const [now] = useState(() => Date.now());
+  const relative = useRelativeTimeState(artifact?.updatedAt ?? null);
   if (author === undefined || artifact === undefined) return null;
+  const updated =
+    relative.status !== "relative"
+      ? undefined
+      : relative.suffix === null
+        ? relative.value
+        : `${relative.value} ${relative.suffix}`;
   const cards = artifact.cards ?? [];
   return (
     <div className="flex shrink-0 flex-col gap-0.5 border-t border-board-hairline px-3 py-2">
       <p className="min-w-0 truncate text-2xs text-muted-foreground">
-        {[author, artifact.model, boardTimeLabel(artifact.updatedAt, now)?.toLowerCase()]
+        {[author, artifact.model, updated]
           .filter((part) => part !== undefined && part !== "")
           .join(" · ")}
       </p>

@@ -584,7 +584,7 @@ function GuestThreadSession({
     const ref = boxThread(boxId);
     if (ref === undefined) return undefined;
     return () =>
-      void interruptOwnBox({
+      interruptOwnBox({
         environmentId: ref.environmentId,
         input: { threadId: ref.threadId },
       });

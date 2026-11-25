@@ -143,12 +143,15 @@ export function guestBoardOpenStep(input: {
   readonly account: "off" | "loading" | "signed-out" | "signed-in";
   /** The account already asked the host, and it refused. */
   readonly accountRefused: boolean;
-}): "board" | "opening" | "account" | "invalid" {
+  /** The account already asked, but the host could not be reached or read. */
+  readonly accountUnreachable: boolean;
+}): "board" | "opening" | "account" | "invalid" | "unreachable" {
   if (input.hasSession) return "board";
   if (input.reopening) return "opening";
   if (!input.cloud || input.accountRefused) return "invalid";
   if (input.account === "loading") return "opening";
-  return input.account === "signed-in" ? "account" : "invalid";
+  if (input.account !== "signed-in") return "invalid";
+  return input.accountUnreachable ? "unreachable" : "account";
 }
 
 /**

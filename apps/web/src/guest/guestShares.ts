@@ -88,7 +88,6 @@ function readStored(): ReadonlyArray<JoinedGuestShare> {
     const handedOver = window.localStorage.getItem(MOVED_SHARES_KEY);
     if (handedOver === null) return own;
     // Boards our older address handed over (see domainMove.logic.ts), taken in once.
-    window.localStorage.removeItem(MOVED_SHARES_KEY);
     const merged = mergeMovedShares(
       own,
       Option.getOrElse(decodeStored(handedOver), () => []),
@@ -101,6 +100,7 @@ function readStored(): ReadonlyArray<JoinedGuestShare> {
         }),
     );
     if (merged !== own) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    window.localStorage.removeItem(MOVED_SHARES_KEY);
     return merged;
   } catch {
     return [];

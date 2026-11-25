@@ -25,6 +25,7 @@ import {
   boardAccountsEnabled,
   openAccountBoard,
   readBoardAccountProfile,
+  SIGN_IN_UNCONFIRMED,
 } from "./boardAccount";
 import { findGuestShare, guestShareLocation, reopenGuestShare } from "./guestShares";
 import { openListedBoard } from "./workspaces";
@@ -127,6 +128,7 @@ export async function loadInbox(): Promise<void> {
 
 /** Marks some items, or all, read: here at once, then on the host. */
 export async function markInboxRead(which: ReadonlyArray<string> | "all"): Promise<void> {
+  const user = userNow();
   const inbox = appAtomRegistry.get(inboxAtom);
   if (inbox !== null) {
     const items = inbox.items.map((item) =>
@@ -146,7 +148,7 @@ export async function markInboxRead(which: ReadonlyArray<string> | "all"): Promi
   });
   if (response?.ok !== true) return;
   const count = Option.getOrNull(decodeCount(await response.json().catch(() => null)));
-  if (count !== null) appAtomRegistry.set(inboxCountAtom, count);
+  if (count !== null && userNow() === user) appAtomRegistry.set(inboxCountAtom, count);
 }
 
 let watchers = 0;
@@ -190,7 +192,8 @@ export async function askEditAccess(
   shareId: string,
   input: { readonly message: string; readonly credential?: string | undefined },
 ): Promise<string | null> {
-  const name = readBoardAccountProfile()?.name ?? "Someone";
+  const account = readBoardAccountProfile();
+  const name = account?.name ?? "Someone";
   const message = input.message.trim();
   const response = await accountRequest(
     `${CLOUD_BOARD_ACCESS_ROUTE}?${GUEST_SHARE_PARAM}=${encodeURIComponent(shareId)}`,
@@ -205,7 +208,9 @@ export async function askEditAccess(
     },
   );
   if (response?.ok !== true) return messageOf(response, "Could not ask. Try again.");
-  const asked = Option.getOrNull(decodeAsked(await response.json().catch(() => null)));
+  const json: unknown = await response.json().catch(() => null);
+  if (userNow() !== account?.userId) return SIGN_IN_UNCONFIRMED;
+  const asked = Option.getOrNull(decodeAsked(json));
   if (asked === null) return "Could not ask. Try again.";
   appAtomRegistry.update(askedAtom, (current) => ({ ...current, [shareId]: asked.request }));
   return null;
@@ -216,12 +221,14 @@ export async function askEditAccess(
  * loaded again says Asked instead of offering to ask once more.
  */
 export async function loadAskedAccess(shareId: string): Promise<void> {
+  const user = userNow();
+  if (user === null) return;
   const response = await accountRequest(
     `${CLOUD_BOARD_ACCESS_ROUTE}?${GUEST_SHARE_PARAM}=${encodeURIComponent(shareId)}`,
   );
-  if (response?.status !== 200) return;
+  if (response?.status !== 200 || userNow() !== user) return;
   const asked = Option.getOrNull(decodeAsked(await response.json().catch(() => null)));
-  if (asked === null) return;
+  if (asked === null || userNow() !== user) return;
   appAtomRegistry.update(askedAtom, (current) => ({ ...current, [shareId]: asked.request }));
 }
 
@@ -296,8 +303,10 @@ export async function takeGrantedAccess(shareId: string): Promise<string | null>
 
 /** Every task given to the account across its boards, or what went wrong. */
 export async function loadMyTasks(): Promise<ReadonlyArray<CloudMyTask> | string> {
+  const user = userNow();
   const response = await accountRequest(CLOUD_MY_TASKS_ROUTE);
   if (response?.ok !== true) return messageOf(response, "Could not read your tasks. Try again.");
   const read = Option.getOrNull(decodeTasks(await response.json().catch(() => null)));
+  if (userNow() !== user) return "Could not read your tasks. Try again.";
   return read?.tasks ?? "Could not read your tasks. Try again.";
 }

@@ -157,6 +157,7 @@ const NO_INVITE = (
     <GoToTinkjam />
   </GuestNotice>
 );
+const UNREACHABLE_DETAIL = "Could not reach Tinkjam. Check your connection and try again.";
 
 /**
  * Where a guest link lands. It asks for the guest's name, joins the share on the owner's host,
@@ -172,11 +173,13 @@ export function GuestPage() {
   const checking = joined === null && step.step === "check" ? step.share : null;
   const endedNotice = useAtomValue(endedShareNoticesAtom).get(entry.shareId ?? "") ?? null;
   // A plain address with no invite, on a browser with no session: the account may open it.
+  const [accountAttempt, setAccountAttempt] = useState(0);
   const accountStep = useAccountBoardOpen({
     shareId: entry.shareId,
     hasSession: step.step !== "invalid",
     reopening: false,
     cloud: credential === null && (host === null || isCloudBoardsHost(host)),
+    attempt: accountAttempt,
   });
   // Pasting another guest link into this tab changes only the hash, which does not reload the
   // page; reload so the new invite is read instead of the one already captured.
@@ -236,7 +239,13 @@ export function GuestPage() {
         <TinkjamLoading cover label="Opening the board" />
       ) : step.step === "invalid" || host === null || credential === null ? (
         endedNotice === null ? (
-          host !== null && credential === null ? (
+          step.step === "invalid" && accountStep === "unreachable" ? (
+            <GuestNotice title="This board could not be opened" detail={UNREACHABLE_DETAIL}>
+              <Button type="button" onClick={() => setAccountAttempt((attempt) => attempt + 1)}>
+                Try again
+              </Button>
+            </GuestNotice>
+          ) : host !== null && credential === null ? (
             NO_INVITE
           ) : (
             INVALID
@@ -309,13 +318,19 @@ function JoinAsAccount({
 
 /** A view link opens the board at once: no name, no sign-in, and nobody's seat. */
 function ViewStep({ credential, host, onJoined }: JoinProps) {
-  const [failed, setFailed] = useState<string | null>(null);
-  const settle = useEffectEvent((opened: JoinedGuestShare | string) => {
-    if (typeof opened === "string") setFailed(opened);
-    else onJoined(opened);
-  });
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- opens the board on its host once, from the view link
+  const [failed, setFailed] = useState<
+    { readonly message: string } | { readonly temporary: true } | null
+  >(null);
+  const settle = useEffectEvent(
+    (opened: JoinedGuestShare | string | { readonly temporary: true }) => {
+      if (typeof opened === "string") setFailed({ message: opened });
+      else if ("temporary" in opened) setFailed(opened);
+      else onJoined(opened);
+    },
+  );
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- opens the board on its host once for each attempt, from the view link
   useEffect(() => {
+    if (failed !== null) return;
     let stopped = false;
     void openViewLink({ credential, host }).then((opened) => {
       if (!stopped) settle(opened);
@@ -323,12 +338,18 @@ function ViewStep({ credential, host, onJoined }: JoinProps) {
     return () => {
       stopped = true;
     };
-  }, [credential, host]);
-  return failed === null ? (
-    <TinkjamLoading cover label="Opening the board" />
-  ) : (
-    <GuestNotice title="This board could not be opened" detail={failed} />
-  );
+  }, [credential, host, failed]);
+  if (failed === null) return <TinkjamLoading cover label="Opening the board" />;
+  if ("temporary" in failed) {
+    return (
+      <GuestNotice title="This board could not be opened" detail={UNREACHABLE_DETAIL}>
+        <Button type="button" onClick={() => setFailed(null)}>
+          Try again
+        </Button>
+      </GuestNotice>
+    );
+  }
+  return <GuestNotice title="This board could not be opened" detail={failed.message} />;
 }
 
 function NameForm({

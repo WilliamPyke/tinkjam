@@ -44,6 +44,8 @@ export const joinedBoardOutlineAtom = Atom.family((shareId: string) =>
 );
 
 const decodeOutline = Schema.decodeUnknownOption(RoomBoardOutline);
+const outlineReads = new Map<string, number>();
+let nextOutlineRead = 0;
 
 /** A joined board's outline as its room names it: only a board on a computer has a room thread. */
 const joinedBoardOutline = (
@@ -89,9 +91,12 @@ export async function refreshJoinedBoardOutline(board: {
   readonly workspaceId: string | null;
 }): Promise<void> {
   const atom = joinedBoardOutlineAtom(board.shareId);
+  const read = ++nextOutlineRead;
+  outlineReads.set(board.shareId, read);
   const kept = appAtomRegistry.get(atom).outline;
   appAtomRegistry.set(atom, { status: "loading", outline: kept });
   const next = await fetchOutline(board);
+  if (outlineReads.get(board.shareId) !== read) return;
   appAtomRegistry.set(
     atom,
     next.outline === null && kept !== null ? { status: "ready", outline: kept } : next,

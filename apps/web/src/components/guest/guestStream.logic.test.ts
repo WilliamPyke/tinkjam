@@ -291,11 +291,19 @@ describe("guestBoardOpenStep", () => {
     cloud: true,
     account: "signed-in",
     accountRefused: false,
+    accountUnreachable: false,
   } as const;
   it("opens a cloud board's plain address as the signed-in account before calling it ended", () => {
     expect(guestBoardOpenStep(cold)).toBe("account");
     expect(guestBoardOpenStep({ ...cold, account: "loading" })).toBe("opening");
     expect(guestBoardOpenStep({ ...cold, accountRefused: true })).toBe("invalid");
+    expect(guestBoardOpenStep({ ...cold, accountUnreachable: true })).toBe("unreachable");
+    expect(guestBoardOpenStep({ ...cold, accountRefused: true, accountUnreachable: true })).toBe(
+      "invalid",
+    );
+    expect(guestBoardOpenStep({ ...cold, account: "loading", accountUnreachable: true })).toBe(
+      "opening",
+    );
     expect(guestBoardOpenStep({ ...cold, account: "signed-out" })).toBe("invalid");
     expect(guestBoardOpenStep({ ...cold, cloud: false })).toBe("invalid");
     expect(guestBoardOpenStep({ ...cold, hasSession: true, accountRefused: true })).toBe("board");

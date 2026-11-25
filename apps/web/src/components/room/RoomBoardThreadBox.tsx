@@ -1,5 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
 import {
+  type AtomCommandResult,
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
@@ -22,6 +23,8 @@ import { environmentThreadDetails, threadEnvironment } from "~/state/threads";
 import { useAtomCommand } from "~/state/use-atom-command";
 
 import { Button } from "../ui/button";
+import { Spinner } from "../ui/spinner";
+import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ComposerPendingApprovalActions } from "../chat/ComposerPendingApprovalActions";
 import { guestMessageArtifactTitle } from "../chat/roomBoardPrompt";
@@ -39,6 +42,8 @@ import {
 import { RoomLiveContext, useBoxProgress } from "./roomBoardLive";
 
 const stopPointer = (event: PointerEvent) => event.stopPropagation();
+
+type StopBoxAgent = () => Promise<AtomCommandResult<unknown, unknown>> | void;
 
 const APPROVAL_FALLBACK = {
   command: "Command approval",
@@ -254,7 +259,7 @@ export function BoxProgress({
   /** Mounted only while the run waits on approval, so it reads the box's requests only then. */
   readonly approval?: ReactNode;
   /** Absent where this person may not stop the box's agent. */
-  readonly onStop?: (() => void) | undefined;
+  readonly onStop?: StopBoxAgent | undefined;
   /** How its last run ended, shown where the working status was until the next run. */
   readonly ended?: BoardAgentOutcome | undefined;
 }) {
@@ -298,7 +303,8 @@ export function BoxProgress({
 }
 
 /** Stops a box's agent: quiet beside its working status, or on its row in the Agents panel. */
-export function BoxStopButton({ onStop }: { readonly onStop: () => void }) {
+export function BoxStopButton({ onStop }: { readonly onStop: StopBoxAgent }) {
+  const [stopping, setStopping] = useState(false);
   return (
     <Tooltip>
       <TooltipTrigger
@@ -307,15 +313,23 @@ export function BoxStopButton({ onStop }: { readonly onStop: () => void }) {
             size="icon-tiny"
             variant="ghost-muted"
             aria-label="Stop the agent"
+            aria-busy={stopping}
+            disabled={stopping}
             onPointerDown={stopPointer}
-            onClick={(event) => {
+            onClick={async (event) => {
               event.stopPropagation();
-              onStop();
+              if (stopping) return;
+              setStopping(true);
+              const result = await onStop();
+              setStopping(false);
+              if (result !== undefined && result._tag === "Failure") {
+                toastManager.add({ type: "error", title: "The agent could not be stopped." });
+              }
             }}
           />
         }
       >
-        <SquareIcon />
+        {stopping ? <Spinner aria-hidden /> : <SquareIcon />}
       </TooltipTrigger>
       <TooltipPopup side="top">Stop the agent</TooltipPopup>
     </Tooltip>
