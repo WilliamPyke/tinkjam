@@ -1123,6 +1123,7 @@ function PlanAdd({
         autoFocus
         aria-label={`New task in ${BOARD_PLAN_COLUMNS.find((column) => column.status === status)?.title ?? "this column"}`}
         placeholder="Write a task, then press Enter"
+        maxLength={ROOM_BOARD_NOTE_MAX_LENGTH}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={(event) => {
@@ -1636,6 +1637,7 @@ function PlanTaskDialog({
             rows={3}
             value={draft ?? task.text}
             readOnly={!canEdit}
+            maxLength={ROOM_BOARD_NOTE_MAX_LENGTH}
             placeholder="Write a task"
             onChange={(event) => {
               setDraft(event.target.value);
