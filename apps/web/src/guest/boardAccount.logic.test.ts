@@ -357,4 +357,36 @@ describe("board account requests around sign-out", () => {
     expect(shares.readGuestShares()).toEqual([]);
   });
 
+  it("does not let an older list of account boards overwrite a newer one", async () => {
+    const { account, accountBoards } = await accountHarness();
+    vi.stubEnv("VITE_CLOUD_BOARDS_URL", "https://boards.example.test");
+    const { fetchMock, pending } = pendingFetch();
+    const first = account.refreshAccountBoards();
+    const second = account.refreshAccountBoards();
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    pending[1]!.resolve(
+      Response.json({
+        boards: [
+          {
+            shareId,
+            threadId: `board-${shareId}`,
+            title: "Newer board",
+            guestId: "guest-1",
+            maker: true,
+            addedAt: new Date(0).toISOString(),
+          },
+        ],
+      }),
+    );
+    await second;
+    expect(accountBoards().map((board) => board.shareId)).toEqual([shareId]);
+
+    pending[0]!.resolve(Response.json({ boards: [] }));
+    await first;
+    expect(accountBoards().map((board) => board.shareId)).toEqual([shareId]);
+  });
+
+
 });

@@ -26,10 +26,13 @@ import { cloudBoardsHost, cloudBoardsOrigin } from "./cloudBoardsHost";
 import {
   type JoinedGuestShare,
   accountBoardsAtom,
+  applyAccountBoards,
+  beginAccountBoardsWrite,
   forgetGuestShare,
   isCloudShare,
   readGuestShares,
   rememberGuestShare,
+  writeAccountBoards,
 } from "./guestShares";
 import { clearWelcomeDraft } from "./welcomeDraft";
 
@@ -248,9 +251,10 @@ const listedOf = async (response: Response | null) =>
 /** Reads the account's boards from the host again. */
 export async function refreshAccountBoards(): Promise<void> {
   const reader = readBoardAccount()?.userId;
+  const write = reader === undefined ? 0 : beginAccountBoardsWrite();
   const listed = await listedOf(await accountRequest(CLOUD_BOARD_ACCOUNT_ROUTE));
   if (reader === undefined || readBoardAccount()?.userId !== reader) return;
-  if (listed !== null) appAtomRegistry.set(accountBoardsAtom, listed.boards);
+  if (listed !== null) applyAccountBoards(write, listed.boards);
   appAtomRegistry.set(accountListSettledAtom, true);
 }
 
@@ -283,7 +287,7 @@ async function claimLocalBoards(): Promise<void> {
     if (listed === null) return;
     const account = readBoardAccount();
     if (account === null) return;
-    appAtomRegistry.set(accountBoardsAtom, listed.boards);
+    writeAccountBoards(listed.boards);
     // The account's now: they go from this browser when it signs out, like any of its boards.
     const taken = new Set<string>(listed.boards.map((board) => board.shareId));
     for (const share of claim) {
@@ -317,7 +321,7 @@ export function syncBoardAccount(session: BoardAccountSession | null): void {
     return;
   }
   appAtomRegistry.set(boardAccountAtom, session);
-  appAtomRegistry.set(accountBoardsAtom, null);
+  writeAccountBoards(null);
   appAtomRegistry.set(accountListSettledAtom, false);
   triedClaims.clear();
   const leaving = new Set(sharesOfOtherAccounts(readGuestShares(), session?.userId ?? null));

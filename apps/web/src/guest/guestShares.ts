@@ -195,6 +195,27 @@ export const accountBoardsAtom = Atom.make<ReadonlyArray<CloudBoardAccountBoard>
   Atom.withLabel("account-boards"),
 );
 
+let accountBoardsWrite = 0;
+
+export function beginAccountBoardsWrite() {
+  return ++accountBoardsWrite;
+}
+
+export function writeAccountBoards(boards: ReadonlyArray<CloudBoardAccountBoard> | null) {
+  const write = beginAccountBoardsWrite();
+  appAtomRegistry.set(accountBoardsAtom, boards);
+  return write;
+}
+
+export function applyAccountBoards(
+  write: number,
+  boards: ReadonlyArray<CloudBoardAccountBoard>,
+) {
+  if (accountBoardsWrite !== write) return false;
+  appAtomRegistry.set(accountBoardsAtom, boards);
+  return true;
+}
+
 // Per browser: the last preview of each board this browser had open, for its tile on the home
 // when the board host has none to give (signed out, or before it sent one). Apart from the shares
 // so an open board's changes never re-render what reads them.
@@ -273,6 +294,7 @@ export function forgetGuestShare(shareId: string, endedDetail?: string) {
     writePreviews(others);
   }
   // Left, removed or deleted: the host took it off the account's list too.
+  beginAccountBoardsWrite();
   const listed = appAtomRegistry.get(accountBoardsAtom);
   if (listed?.some((board) => board.shareId === shareId)) {
     appAtomRegistry.set(
