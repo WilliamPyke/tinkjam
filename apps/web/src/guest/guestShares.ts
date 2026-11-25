@@ -213,10 +213,7 @@ export function writeAccountBoards(boards: ReadonlyArray<CloudBoardAccountBoard>
   return write;
 }
 
-export function applyAccountBoards(
-  write: number,
-  boards: ReadonlyArray<CloudBoardAccountBoard>,
-) {
+export function applyAccountBoards(write: number, boards: ReadonlyArray<CloudBoardAccountBoard>) {
   if (accountBoardsWrite !== write) return false;
   appAtomRegistry.set(accountBoardsAtom, boards);
   return true;

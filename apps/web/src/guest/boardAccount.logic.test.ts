@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("../components/ui/toast", () => ({ toastManager: { add: vi.fn() } }));
 
+import "./cloudBoards";
+
 import {
   accountDisplayName,
   accountNameParts,
@@ -388,7 +390,6 @@ describe("board account requests around sign-out", () => {
     expect(accountBoards().map((board) => board.shareId)).toEqual([shareId]);
   });
 
-
   it("signing out cancels a board that was about to reopen", () => {
     vi.useFakeTimers();
     return accountHarness().then(({ account, shares }) => {
@@ -408,5 +409,4 @@ describe("board account requests around sign-out", () => {
       expect(shares.readGuestShares()).toEqual([]);
     });
   });
-
 });
