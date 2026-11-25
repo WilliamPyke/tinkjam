@@ -1776,6 +1776,10 @@ a {
     width: 34px;
     height: 34px;
   }
+  .sync__files .btn {
+    line-height: 1.25;
+    white-space: normal;
+  }
   .footer {
     flex-direction: column;
     align-items: flex-start;
