@@ -16,9 +16,9 @@ import {
   useSyncExternalStore,
 } from "react";
 
+import { useRelativeTimeState } from "~/hooks/useRelativeTimeState";
 import { useStableCallback } from "~/hooks/useStableCallback";
 import { cn, isMacPlatform } from "~/lib/utils";
-import { formatRelativeTimeLabel } from "~/timestampFormat";
 
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -295,6 +295,14 @@ export interface BoardAgentRecent {
   readonly onUndo: ((undone: boolean) => void) | undefined;
 }
 
+/** A recent change's age, which keeps counting up even while no agent is running. */
+function RecentChangeTime({ at }: { readonly at: string }) {
+  const relative = useRelativeTimeState(at);
+  if (relative.status !== "relative") return null;
+  const label = relative.suffix === null ? relative.value : `${relative.value} ${relative.suffix}`;
+  return <> · {label}</>;
+}
+
 /** What the board's agents last changed, newest first, each with Show and, where allowed, Undo. */
 function RecentChanges({
   recent,
@@ -303,7 +311,6 @@ function RecentChanges({
   readonly recent: ReadonlyArray<BoardAgentRecent>;
   readonly onClose: () => void;
 }) {
-  const now = useBoardNow();
   return (
     <section
       aria-label="Recent changes by agents"
@@ -329,9 +336,7 @@ function RecentChanges({
                   <span className={item.undone ? undefined : "font-medium text-foreground"}>
                     {item.name}
                   </span>
-                  {formatRelativeTimeLabel(item.at, now) === ""
-                    ? null
-                    : ` · ${formatRelativeTimeLabel(item.at, now)}`}
+                  <RecentChangeTime at={item.at} />
                 </span>
                 <Tooltip>
                   <TooltipTrigger render={<span className="line-clamp-2 break-words" />}>
