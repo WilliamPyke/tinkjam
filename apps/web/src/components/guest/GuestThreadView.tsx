@@ -372,9 +372,9 @@ export function GuestNotice({
 }) {
   return (
     <div className="m-auto flex w-full max-w-sm flex-col items-center gap-2 rounded-dialog border bg-raised px-6 py-7 text-center text-card-foreground shadow-board">
-      <p className="font-heading text-xl leading-tight font-semibold tracking-brand text-balance">
+      <h1 className="font-heading text-xl leading-tight font-semibold tracking-brand text-balance">
         {title}
-      </p>
+      </h1>
       {detail ? <p className="text-sm text-pretty text-muted-foreground">{detail}</p> : null}
       {children ? <div className="mt-3 flex justify-center">{children}</div> : null}
     </div>
