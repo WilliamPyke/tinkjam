@@ -480,6 +480,41 @@ describe("cloud room", () => {
     expect(object.room?.title).toBe("Newer title");
   });
 
+  it("checks copies are still allowed after the token is read", async () => {
+    const token = makeSecret("share-one-0000");
+    const sessionHash = await hashSecret(token);
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+    const made = newRoom();
+    const copyingOn = {
+      ...made,
+      allowCopies: true as const,
+      guests: made.guests.map((guest) => ({ ...guest, sessionHash })),
+    };
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      copyFor(
+        token: string,
+        copier: GuestId,
+        at: string,
+      ): Promise<{ readonly title: string } | { readonly failure: { readonly reason: string } }>;
+    };
+    object.room = copyingOn;
+    let release!: (value: ArrayBuffer) => void;
+    const gate = new Promise<ArrayBuffer>((resolve) => {
+      release = resolve;
+    });
+    const read = vi.spyOn(crypto.subtle, "digest").mockImplementation(() => gate);
+    try {
+      const copied = object.copyFor(token, GuestId.make("guest-copier"), NOW);
+      const { allowCopies: _copies, ...copyingOff } = copyingOn;
+      object.room = copyingOff;
+      release(digest);
+      await expect(copied).resolves.toMatchObject({ failure: { reason: "copies_off" } });
+    } finally {
+      read.mockRestore();
+    }
+  });
+
   it("deletes a board a day after it was made if nobody changed it, else after 90 idle days", () => {
     const made = Date.parse(NOW);
     const day = 24 * 60 * 60_000;

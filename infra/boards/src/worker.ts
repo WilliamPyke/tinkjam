@@ -1288,8 +1288,8 @@ export class BoardRoom extends DurableObject<Env> {
   ): Promise<
     { readonly title: string; readonly board: RoomBoard } | { readonly failure: RoomFailure }
   > {
-    const room = this.room;
     const hash = await hashSecret(token);
+    const room = this.room;
     const refused = copyRefusal(room, guestBySession(room, hash), isViewLink(room, hash));
     if (refused !== null || room === null) return { failure: refused ?? roomFailure("ended") };
     return { title: copyTitle(room.title), board: copiedBoard(room, copier, at) };
