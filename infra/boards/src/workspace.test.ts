@@ -7,11 +7,17 @@ import {
   type RoomBoardChange,
 } from "@t3tools/contracts";
 import * as Result from "effect/Result";
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 import { accountLockedOut, linkAccount, withAccountSession } from "./account.ts";
 import { machineGuestOf } from "./machines.ts";
 import { changeBoard, createRoom, guestBySession, joinRoom, type CloudRoom } from "./room.ts";
+vi.mock("cloudflare:workers", () => ({
+  DurableObject: function (this: Record<string, unknown>, ctx: unknown, env: unknown) {
+    Object.assign(this, { ctx, env });
+  },
+}));
+
 import {
   checkAddBoard,
   createWorkspace,
@@ -29,6 +35,7 @@ import {
   workspaceView,
   type WorkspaceState,
 } from "./workspace.ts";
+import { BoardWorkspace } from "./workspaceObject.ts";
 
 const NOW = "2026-11-17T10:00:00.000Z";
 const INVITE = "ws-one-0000.invite";
@@ -278,5 +285,62 @@ describe("boards in a workspace", () => {
     expect(nextBoardWork<Work>(retry, [], ["b"], [], 2)).toEqual([]);
     const last = { ...lock, retry: { shareIds: ["b"], attempt: BOARD_WORK_ATTEMPTS - 1 } };
     expect(nextBoardWork<Work>(last, [], ["b"], ["b"], 2)).toEqual([]);
+  });
+
+  it("keeps board work queued while a step waits on a board", async () => {
+    const entries = new Map<string, unknown>([
+      ["workspace", team()],
+      [
+        "board:share-one-0000",
+        {
+          shareId: GuestShareId.make("share-one-0000"),
+          threadId: ThreadId.make("board-share-one-0000"),
+          title: "Roadmap",
+          addedAt: NOW,
+        },
+      ],
+    ]);
+    const storage = {
+      get: async (key: string) => entries.get(key),
+      put: async (key: string | Record<string, unknown>, value?: unknown) => {
+        if (typeof key === "string") entries.set(key, value);
+        else for (const [name, entry] of Object.entries(key)) entries.set(name, entry);
+      },
+      delete: async (key: string) => entries.delete(key),
+      deleteAll: async () => entries.clear(),
+      list: async (options: { prefix?: string }) =>
+        new Map([...entries].filter(([key]) => key.startsWith(options.prefix ?? ""))),
+      setAlarm: async () => undefined,
+    };
+    let start!: () => void;
+    let finish!: () => void;
+    const started = new Promise<void>((resolve) => {
+      start = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const lockOut = vi.fn(async () => {
+      start();
+      await gate;
+    });
+    const env = {
+      BOARDS: {
+        idFromName: (shareId: string) => shareId,
+        get: () => ({ lockOut, leaveWorkspace: vi.fn() }),
+      },
+    };
+    const object = new BoardWorkspace({ storage } as never, env as never);
+    const first = { kind: "lock", account: "user_grace", workspaceId: "ws-one-0000" } as const;
+    entries.set("work", [first]);
+
+    const running = object.alarm();
+    await started;
+    const second = { kind: "lock", account: "user_hugo", workspaceId: "ws-one-0000" } as const;
+    entries.set("work", [first, second]);
+    finish();
+    await running;
+
+    expect(entries.get("work")).toEqual([second]);
   });
 });

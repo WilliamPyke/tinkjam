@@ -59,6 +59,8 @@ type BoardWork = {
  * verified; each method checks that account's membership and role itself.
  */
 export class BoardWorkspace extends DurableObject<WorkspaceEnv> {
+  private stepping = false;
+
   private async state(): Promise<WorkspaceState | null> {
     return (await this.ctx.storage.get<WorkspaceState>(STATE_KEY)) ?? null;
   }
@@ -209,8 +211,7 @@ export class BoardWorkspace extends DurableObject<WorkspaceEnv> {
     const member = memberOf(state, account);
     if (state === null || member === undefined) return { failure: roomFailure("not_member") };
     if (member.role !== "owner") return { failure: roomFailure("not_owner") };
-    await this.ctx.storage.delete(STATE_KEY);
-    await this.queue({ kind: "release", workspaceId: state.id });
+    await this.queue({ kind: "release", workspaceId: state.id }, null);
     return { value: null };
   }
 
@@ -262,16 +263,20 @@ export class BoardWorkspace extends DurableObject<WorkspaceEnv> {
 
   /** Keeps the workspace without `removed`, then takes their way in to its boards away. */
   private async takeOut(state: WorkspaceState, removed: WorkspaceMember): Promise<void> {
-    await this.keep(state);
+    await this.queue({ kind: "lock", account: removed.account, workspaceId: state.id }, state);
     await indexOf(this.env, removed.account)
       .forgetWorkspaces([state.id])
       .catch(() => undefined);
-    await this.queue({ kind: "lock", account: removed.account, workspaceId: state.id });
   }
 
-  private async queue(work: BoardWork): Promise<void> {
-    const pending = (await this.ctx.storage.get<ReadonlyArray<BoardWork>>(WORK_KEY)) ?? [];
-    await this.ctx.storage.put(WORK_KEY, [...pending, work]);
+  private async queue(work: BoardWork, state?: WorkspaceState | null): Promise<void> {
+    await this.ctx.storage.transaction(async (txn) => {
+      const pending = (await txn.get<ReadonlyArray<BoardWork>>(WORK_KEY)) ?? [];
+      const entries: Record<string, unknown> = { [WORK_KEY]: [...pending, work] };
+      if (state !== undefined) entries[STATE_KEY] = state;
+      await txn.put(entries);
+      await txn.setAlarm(Date.now() + 1_000);
+    });
     await this.step();
   }
 
@@ -281,38 +286,47 @@ export class BoardWorkspace extends DurableObject<WorkspaceEnv> {
 
   /** Does one step of the oldest work, and comes back for the rest. */
   private async step(): Promise<void> {
-    const [work, ...rest] = (await this.ctx.storage.get<ReadonlyArray<BoardWork>>(WORK_KEY)) ?? [];
-    if (work === undefined) return;
-    const boards =
-      work.retry?.shareIds ??
-      [
-        ...(
-          await this.ctx.storage.list<CloudWorkspaceBoard>({
-            prefix: BOARD_PREFIX,
-            ...(work.after === undefined ? {} : { startAfter: BOARD_PREFIX + work.after }),
-            limit: BOARDS_PER_STEP,
-          })
-        ).values(),
-      ].map((board) => board.shareId);
-    // A board still unreached opens nothing new: the workspace is asked on every open.
-    const told = await Promise.allSettled(
-      boards.map((shareId) =>
-        work.kind === "lock"
-          ? boardOf(this.env, shareId).lockOut(work.account, work.workspaceId)
-          : boardOf(this.env, shareId).leaveWorkspace(work.workspaceId),
-      ),
-    );
-    const failed = boards.filter((_, index) => told[index]?.status === "rejected");
-    const next = nextBoardWork(work, rest, boards, failed, BOARDS_PER_STEP);
-    if (next.length > 0) {
-      await this.ctx.storage.put(WORK_KEY, next);
-      await this.ctx.storage.setAlarm(Date.now() + (failed.length > 0 ? 30_000 : 1_000));
-      return;
+    if (this.stepping) return;
+    this.stepping = true;
+    try {
+      const [work] = (await this.ctx.storage.get<ReadonlyArray<BoardWork>>(WORK_KEY)) ?? [];
+      if (work === undefined) return;
+      const boards =
+        work.retry?.shareIds ??
+        [
+          ...(
+            await this.ctx.storage.list<CloudWorkspaceBoard>({
+              prefix: BOARD_PREFIX,
+              ...(work.after === undefined ? {} : { startAfter: BOARD_PREFIX + work.after }),
+              limit: BOARDS_PER_STEP,
+            })
+          ).values(),
+        ].map((board) => board.shareId);
+      // A board still unreached opens nothing new: the workspace is asked on every open.
+      const told = await Promise.allSettled(
+        boards.map((shareId) =>
+          work.kind === "lock"
+            ? boardOf(this.env, shareId).lockOut(work.account, work.workspaceId)
+            : boardOf(this.env, shareId).leaveWorkspace(work.workspaceId),
+        ),
+      );
+      const failed = boards.filter((_, index) => told[index]?.status === "rejected");
+      const rest = ((await this.ctx.storage.get<ReadonlyArray<BoardWork>>(WORK_KEY)) ?? []).slice(
+        1,
+      );
+      const next = nextBoardWork(work, rest, boards, failed, BOARDS_PER_STEP);
+      if (next.length > 0) {
+        await this.ctx.storage.put(WORK_KEY, next);
+        await this.ctx.storage.setAlarm(Date.now() + (failed.length > 0 ? 30_000 : 1_000));
+        return;
+      }
+      if (work.kind === "release" && (await this.state()) === null) {
+        await this.ctx.storage.deleteAll();
+        return;
+      }
+      await this.ctx.storage.delete(WORK_KEY);
+    } finally {
+      this.stepping = false;
     }
-    if (work.kind === "release" && (await this.state()) === null) {
-      await this.ctx.storage.deleteAll();
-      return;
-    }
-    await this.ctx.storage.delete(WORK_KEY);
   }
 }
