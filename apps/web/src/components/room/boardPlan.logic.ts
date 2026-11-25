@@ -223,8 +223,6 @@ export function boardPlanAttachments(board: RoomBoard): ReadonlyMap<string, Boar
 }
 
 const TASK_GAP = 24;
-const TASK_STEP_X = ROOM_BOARD_TASK_SIZE.w + TASK_GAP;
-const TASK_STEP_Y = ROOM_BOARD_TASK_SIZE.h + TASK_GAP;
 /** Where a section's first card sits from its corner, as the templates lay them out. */
 export const SECTION_INSET = { x: 24, y: 56 };
 // Rows a free-standing pile of tasks is laid out in, at the least.
@@ -238,13 +236,13 @@ const centreIn = (rect: BoardRect, inner: BoardRect) => {
   return x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height;
 };
 
-const clearOf = (taken: ReadonlyArray<BoardRect>, at: BoardPoint) =>
+const clearOf = (taken: ReadonlyArray<BoardRect>, at: BoardPoint, size: RoomBoardSize) =>
   !taken.some(
     (rect) =>
       at.x < rect.x + rect.width + TASK_GAP / 2 &&
-      at.x + ROOM_BOARD_TASK_SIZE.w + TASK_GAP / 2 > rect.x &&
+      at.x + size.w + TASK_GAP / 2 > rect.x &&
       at.y < rect.y + rect.height + TASK_GAP / 2 &&
-      at.y + ROOM_BOARD_TASK_SIZE.h + TASK_GAP / 2 > rect.y,
+      at.y + size.h + TASK_GAP / 2 > rect.y,
   );
 
 /** The first clear slot of a grid `columns` wide from `origin`, row by row, or null. */
@@ -252,15 +250,18 @@ function firstClearSlot(
   origin: BoardPoint,
   columns: number,
   taken: ReadonlyArray<BoardRect>,
+  size: RoomBoardSize,
   rows = MAX_ROWS,
 ): BoardPoint | null {
+  const stepX = size.w + TASK_GAP;
+  const stepY = size.h + TASK_GAP;
   for (let row = 0; row < rows; row += 1) {
     for (let column = 0; column < columns; column += 1) {
       const at = {
-        x: Math.round(origin.x + column * TASK_STEP_X),
-        y: Math.round(origin.y + row * TASK_STEP_Y),
+        x: Math.round(origin.x + column * stepX),
+        y: Math.round(origin.y + row * stepY),
       };
-      if (clearOf(taken, at)) return at;
+      if (clearOf(taken, at, size)) return at;
     }
   }
   return null;
@@ -319,6 +320,9 @@ function boardPlanTaskSpot(
     );
   }
   const newestRect = rectOf(newest);
+  const taskSize = newest.size ?? ROOM_BOARD_TASK_SIZE;
+  const stepX = taskSize.w + TASK_GAP;
+  const stepY = taskSize.h + TASK_GAP;
   const section = sections.findLast((candidate) => centreIn(boardNoteRect(candidate), newestRect));
   if (section !== undefined) {
     const frame = boardNoteRect(section);
@@ -328,24 +332,21 @@ function boardPlanTaskSpot(
       y: Math.min(...inside.map((rect) => rect.y), frame.y + SECTION_INSET.y),
     };
     const right = frame.x + frame.width - SECTION_INSET.x;
-    const columns = Math.max(
-      1,
-      Math.floor((right - origin.x - ROOM_BOARD_TASK_SIZE.w) / TASK_STEP_X) + 1,
-    );
-    const at = firstClearSlot(origin, columns, taken);
+    const columns = Math.max(1, Math.floor((right - origin.x - taskSize.w) / stepX) + 1);
+    const at = firstClearSlot(origin, columns, taken, taskSize);
     if (at !== null) {
       // Grown only past an edge the task would cross, with the margin a template gives its cards.
-      const slotRight = at.x + ROOM_BOARD_TASK_SIZE.w;
-      const slotBottom = at.y + ROOM_BOARD_TASK_SIZE.h;
-      const size = {
+      const slotRight = at.x + taskSize.w;
+      const slotBottom = at.y + taskSize.h;
+      const grown = {
         w: slotRight > frame.x + frame.width ? slotRight + SECTION_INSET.x - frame.x : frame.width,
         h: slotBottom > frame.y + frame.height ? slotBottom + TASK_GAP - frame.y : frame.height,
       };
-      const fits = clampBoardSize(size, boardMaxSide(section));
-      if (fits.w === size.w && fits.h === size.h) {
-        return size.w === frame.width && size.h === frame.height
+      const fits = clampBoardSize(grown, boardMaxSide(section));
+      if (fits.w === grown.w && fits.h === grown.h) {
+        return grown.w === frame.width && grown.h === frame.height
           ? at
-          : { ...at, grow: { id: section.id, size } };
+          : { ...at, grow: { id: section.id, size: grown } };
       }
     }
   }
@@ -355,8 +356,9 @@ function boardPlanTaskSpot(
     const frame = boardNoteRect(section);
     const below = firstClearSlot(
       { x: frame.x + SECTION_INSET.x, y: frame.y + frame.height + TASK_GAP },
-      Math.max(1, Math.floor((frame.width - SECTION_INSET.x) / TASK_STEP_X)),
+      Math.max(1, Math.floor((frame.width - SECTION_INSET.x) / stepX)),
       blocked,
+      taskSize,
       FREE_ROWS,
     );
     if (below !== null) return below;
@@ -365,18 +367,18 @@ function boardPlanTaskSpot(
   const free = tasks
     .map(rectOf)
     .filter((rect) => !sections.some((candidate) => centreIn(boardNoteRect(candidate), rect)));
-  const row = free.filter((rect) => Math.abs(rect.y - newestRect.y) < TASK_STEP_Y / 2);
+  const row = free.filter((rect) => Math.abs(rect.y - newestRect.y) < stepY / 2);
   const left = Math.min(newestRect.x, ...row.map((rect) => rect.x));
-  const columns = Math.max(FREE_ROW_TASKS, Math.round((newestRect.x - left) / TASK_STEP_X) + 1);
+  const columns = Math.max(FREE_ROW_TASKS, Math.round((newestRect.x - left) / stepX) + 1);
   // A few rows at most: past them, a crowded board would push the task far off. The nearest
   // clear spot right of the newest task is better then.
   return (
-    firstClearSlot({ x: left, y: newestRect.y }, columns, blocked, FREE_ROWS) ??
+    firstClearSlot({ x: left, y: newestRect.y }, columns, blocked, taskSize, FREE_ROWS) ??
     placeBoardItem(
-      ROOM_BOARD_TASK_SIZE,
+      taskSize,
       {
-        x: newestRect.x + newestRect.width + TASK_GAP + ROOM_BOARD_TASK_SIZE.w / 2,
-        y: newestRect.y + ROOM_BOARD_TASK_SIZE.h / 2,
+        x: newestRect.x + newestRect.width + TASK_GAP + taskSize.w / 2,
+        y: newestRect.y + taskSize.h / 2,
       },
       blocked,
     )

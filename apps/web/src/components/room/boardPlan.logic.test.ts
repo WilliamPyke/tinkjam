@@ -206,6 +206,18 @@ describe("boardPlanTaskPlace", () => {
     expect(plain.size).toBeUndefined();
   });
 
+  it("places a resized task clear of the cards around it", () => {
+    const size = { w: 300, h: 300 };
+    const at = boardPlanTaskPlace(
+      {
+        positions: {},
+        notes: [task("new", { x: 0, y: 0, size }), { id: "beside", text: "", x: 640, y: 0 }],
+      },
+      [],
+    );
+    expect(at.x + size.w).toBeLessThanOrEqual(640);
+  });
+
   it("goes under a section that can grow no more, lined up with its tasks", () => {
     const full = { w: 240, h: ROOM_BOARD_MAX_SECTION_SIZE };
     const board: RoomBoard = {
