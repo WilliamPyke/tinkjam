@@ -290,8 +290,23 @@ export function BoardPlan({
   const ghostAt = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const endDrag = useRef<(() => void) | null>(null);
   const clickBlocked = useRef(false);
-  // The day the Plan opened on: a Plan left open past midnight reads due days a day behind.
-  const [today] = useState(() => boardPlanToday(new Date()));
+  // Due labels follow the day, even in a Plan left open past midnight.
+  const [today, setToday] = useState(() => boardPlanToday(new Date()));
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- the day changes outside React, at midnight
+  useEffect(() => {
+    let timer: number | undefined;
+    const arm = () => {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      timer = window.setTimeout(() => {
+        setToday(boardPlanToday(new Date()));
+        arm();
+      }, midnight.getTime() - now.getTime());
+    };
+    arm();
+    return () => window.clearTimeout(timer);
+  }, []);
   const all = BOARD_PLAN_COLUMNS.flatMap(({ status }) => columns[status]);
   // Tasks someone else took off, or a filter hides, leave the picked ones.
   const picked: ReadonlySet<string> =
