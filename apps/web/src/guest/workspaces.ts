@@ -112,15 +112,18 @@ export const refreshWorkspaceList = () => {
   if (syncedUser !== null && boardAccountsEnabled()) void refreshWorkspaces();
 };
 
+let workspaceRefresh = 0;
+
 async function refreshWorkspaces(): Promise<void> {
   const user = syncedUser;
+  const refresh = ++workspaceRefresh;
   const response = await accountRequest(CLOUD_WORKSPACES_ROUTE);
-  if (user !== syncedUser) return;
+  if (user !== syncedUser || refresh !== workspaceRefresh) return;
   const listed =
     response?.ok === true
       ? Option.getOrNull(decodeList(await response.json().catch(() => null)))
       : null;
-  if (user !== syncedUser) return;
+  if (user !== syncedUser || refresh !== workspaceRefresh) return;
   if (listed !== null) appAtomRegistry.set(workspacesAtom, listed.workspaces);
   // Signed in, the switcher always shows, so a workspace can be started even when the list
   // could not be read this time.
