@@ -9,7 +9,7 @@ import {
   SplineIcon,
   XIcon,
 } from "lucide-react";
-import { type MouseEvent, type ReactNode, useState } from "react";
+import { type MouseEvent, type ReactNode, useRef, useState } from "react";
 
 import { useBoardAccount } from "~/guest/boardAccount";
 import { cn } from "~/lib/utils";
@@ -76,6 +76,8 @@ export function BoardGuide({
 }) {
   const [initial] = useState(initialBoardGuideState);
   const state = useBoardGuideState(initial);
+  const collapsedGuide = useRef<HTMLButtonElement | null>(null);
+  const openGuide = useRef<HTMLDivElement | null>(null);
   // Until sign-in says who this is, what this browser keeps may be the last person's.
   const whoKnown = useBoardAccount().status !== "loading";
   const steps = boardGuideSteps({ ...input, done: state.done });
@@ -121,6 +123,19 @@ export function BoardGuide({
       description: "Bring it back any time from the board menu, beside the board's name.",
     });
   };
+  const expand = () => {
+    collapseBoardGuide(false);
+    window.requestAnimationFrame(() => {
+      const guide = openGuide.current;
+      if (guide !== null && guide.getClientRects().length > 0) {
+        guide.focus({ preventScroll: true });
+      }
+    });
+  };
+  const collapse = () => {
+    collapseBoardGuide(true);
+    window.requestAnimationFrame(() => collapsedGuide.current?.focus({ preventScroll: true }));
+  };
   const open = !state.collapsed;
   // Clear of the toolbar until the board is wide enough for both on one row.
   const corner = "absolute right-3 bottom-16 z-30 @5xl/board:bottom-3";
@@ -134,10 +149,11 @@ export function BoardGuide({
       >
         <BoardFloat className="p-1">
           <Button
+            ref={collapsedGuide}
             size="xs"
             variant="ghost"
             aria-expanded={false}
-            onClick={() => collapseBoardGuide(false)}
+            onClick={expand}
           >
             <ListChecksIcon />
             <span className="@max-md/board:sr-only">Getting started</span>
@@ -150,6 +166,12 @@ export function BoardGuide({
       {open ? (
         <div
           data-board-guide="open"
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            event.stopPropagation();
+            collapse();
+          }}
           className={cn(
             corner,
             // On a phone the open card sits above the zoom controls, which share its row.
@@ -157,8 +179,10 @@ export function BoardGuide({
           )}
         >
           <BoardFloat
+            ref={openGuide}
             role="region"
             aria-label="Getting started"
+            tabIndex={-1}
             className="w-64 flex-col items-stretch gap-2 p-3"
           >
             <div className="flex items-center gap-1">
@@ -176,7 +200,7 @@ export function BoardGuide({
                       variant="ghost-muted"
                       aria-label="Minimize getting started"
                       aria-expanded
-                      onClick={() => collapseBoardGuide(true)}
+                      onClick={collapse}
                     />
                   }
                 >

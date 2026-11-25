@@ -13,6 +13,9 @@ export interface MentionPerson {
 // Long enough for a full name typed after the `@`.
 const MAX_QUERY_LENGTH = 40;
 
+const foldMentionText = (text: string) =>
+  text.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+
 /**
  * The `@` word the caret is at the end of, or null: an `@` at the start or after a space or an
  * opening bracket, then up to a few words, with no line break.
@@ -39,10 +42,10 @@ export function rankMentionPeople(
   query: string,
   limit = 6,
 ): ReadonlyArray<MentionPerson> {
-  const wanted = query.trim().toLowerCase();
+  const wanted = foldMentionText(query.trim());
   return people
     .flatMap((person) => {
-      const name = person.name.toLowerCase();
+      const name = foldMentionText(person.name);
       const score =
         wanted === "" || name.startsWith(wanted)
           ? 0

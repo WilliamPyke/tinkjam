@@ -134,6 +134,29 @@ describe("RoomArtifactBody", () => {
 });
 
 describe("RoomArtifactLive", () => {
+  it("opens an empty page for writing with the field focused", async () => {
+    const onWrite = vi.fn().mockResolvedValue(true);
+    await using screen = await render(
+      <RoomArtifactLive
+        noteId="art"
+        artifact={undefined}
+        author={undefined}
+        writingFallback={null}
+        boxName={() => "Agent"}
+        onRestore={undefined}
+        onWrite={onWrite}
+        people={{ guests: [], viewer: null, ownerName: "Sam" }}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Write it yourself" }));
+    const field = screen.getByRole("textbox", { name: "Artifact text" });
+    await expect.element(field).toBeVisible();
+    await expect.element(field).toHaveFocus();
+    await userEvent.type(field, "A page written by hand");
+    await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    await vi.waitFor(() => expect(onWrite).toHaveBeenCalledWith("A page written by hand"));
+  });
+
   it("keeps what was typed when saving does not take, and can save it again", async () => {
     const onWrite = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
     await using screen = await render(

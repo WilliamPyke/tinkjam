@@ -86,31 +86,44 @@ export function ReactionChips({
   if (chips.length === 0) return null;
   return (
     <div className={cn("flex shrink-0 flex-wrap gap-1", className)}>
-      {chips.map(({ emoji, count, mine, names }) => (
-        <Tooltip key={emoji}>
-          <TooltipTrigger
-            render={
-              <button
-                type="button"
-                aria-pressed={mine}
-                aria-label={`${emoji} ${count}: ${names}`}
-                disabled={onReact === undefined}
-                className={cn(
-                  "flex h-5 items-center gap-1 rounded-full border px-1.5 text-2xs tabular-nums",
-                  mine ? "border-primary/50 bg-primary/12" : "border-current/15 bg-card/70",
-                  onReact !== undefined && "hover:border-primary/70",
-                )}
-                onPointerDown={stopPointer}
-                onClick={() => onReact?.(emoji)}
-              />
-            }
-          >
-            <span aria-hidden>{emoji}</span>
-            {count}
-          </TooltipTrigger>
-          <TooltipPopup side="bottom">{names}</TooltipPopup>
-        </Tooltip>
-      ))}
+      {chips.map(({ emoji, count, mine, names }) => {
+        const readOnly = onReact === undefined;
+        const chipClass = cn(
+          "flex h-5 items-center gap-1 rounded-full border px-1.5 text-2xs tabular-nums outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+          mine ? "border-primary/50 bg-primary/12" : "border-current/15 bg-card/70",
+          !readOnly && "hover:border-primary/70",
+        );
+        return (
+          <Tooltip key={emoji}>
+            <TooltipTrigger
+              render={
+                readOnly ? (
+                  <span
+                    role="group"
+                    tabIndex={0}
+                    aria-label={`${emoji} ${count}: ${names}`}
+                    className={chipClass}
+                    onPointerDown={stopPointer}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    aria-pressed={mine}
+                    aria-label={`${emoji} ${count}: ${names}`}
+                    className={chipClass}
+                    onPointerDown={stopPointer}
+                    onClick={() => onReact(emoji)}
+                  />
+                )
+              }
+            >
+              <span aria-hidden>{emoji}</span>
+              {count}
+            </TooltipTrigger>
+            <TooltipPopup side="bottom">{names}</TooltipPopup>
+          </Tooltip>
+        );
+      })}
     </div>
   );
 }

@@ -414,11 +414,13 @@ export function GuestThreadRoute({ threadRef }: { readonly threadRef: ScopedThre
     (shareId) => guestEnvironmentId(shareId) === threadRef.environmentId,
   );
   // A bookmark or a pasted link on a new device: the account may open it as its own.
+  const [accountAttempt, setAccountAttempt] = useState(0);
   const step = useAccountBoardOpen({
     shareId: guestShareIdOfEnvironment(threadRef.environmentId),
     hasSession: share !== null,
     reopening,
     cloud: share === null && cloudBoardsHost() !== null,
+    attempt: accountAttempt,
   });
   const signedOut = useBoardAccount().status === "signed-out" && boardAccountsEnabled();
   const endedNotice =
@@ -440,6 +442,15 @@ export function GuestThreadRoute({ threadRef }: { readonly threadRef: ScopedThre
       ) : null}
       {share === null && step === "opening" ? (
         <TinkjamLoading cover={isLandingOnBoard()} label="Opening the board" />
+      ) : share === null && step === "unreachable" ? (
+        <GuestNotice
+          title="This board could not be opened"
+          detail="Could not reach Tinkjam. Check your connection and try again."
+        >
+          <Button type="button" onClick={() => setAccountAttempt((attempt) => attempt + 1)}>
+            Try again
+          </Button>
+        </GuestNotice>
       ) : share === null && endedNotice !== null ? (
         <GuestNotice title={endedNotice.title} detail={endedNotice.detail}>
           <GoToTinkjam />

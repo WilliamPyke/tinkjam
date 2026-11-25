@@ -20,7 +20,9 @@ export function WhyNot({
       <TooltipTrigger
         render={
           <span
+            role="group"
             tabIndex={0}
+            aria-label={reason}
             className="inline-flex rounded-md outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring [&>*]:pointer-events-none"
           />
         }

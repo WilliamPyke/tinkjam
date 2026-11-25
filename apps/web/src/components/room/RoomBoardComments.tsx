@@ -443,7 +443,18 @@ export function CommentThreadPanel({
     if (placed) panel.current?.querySelector("textarea")?.focus({ preventScroll: true });
   }, [placed]);
   const close = () => {
-    returnFocus.current?.focus({ preventScroll: true });
+    const remembered = returnFocus.current;
+    let focused = false;
+    if (remembered?.isConnected === true) {
+      remembered.focus({ preventScroll: true });
+      focused = document.activeElement === remembered;
+    }
+    if (!focused) {
+      const board =
+        panel.current?.closest<HTMLElement>('[role="application"]') ??
+        document.querySelector<HTMLElement>('[role="application"]');
+      board?.focus({ preventScroll: true });
+    }
     onClose();
   };
   const send = async () => {

@@ -43,25 +43,50 @@ const rectOf = (note: RoomBoardNote, drawn: ReadonlyMap<string, BoardRect>): Boa
 /** Lines of `text` that fit `width`, at most `max`, the last cut with an ellipsis. */
 function wrap(context: CanvasRenderingContext2D, text: string, width: number, max: number) {
   const lines: Array<string> = [];
-  for (const paragraph of text.split("\n")) {
+  const piecesOf = (word: string) => {
+    const pieces: Array<string> = [];
+    let piece = "";
+    for (const char of word) {
+      const next = `${piece}${char}`;
+      if (piece !== "" && context.measureText(next).width > width) {
+        pieces.push(piece);
+        piece = char;
+      } else piece = next;
+    }
+    pieces.push(piece);
+    return pieces;
+  };
+  let cutOff = false;
+  const paragraphs = text.split("\n");
+  for (const [paragraphIndex, paragraph] of paragraphs.entries()) {
     let line = "";
     for (const word of paragraph.split(/\s+/)) {
       const next = line === "" ? word : `${line} ${word}`;
-      if (context.measureText(next).width <= width || line === "") line = next;
-      else {
-        lines.push(line);
-        line = word;
+      if (context.measureText(next).width <= width) {
+        line = next;
+        continue;
       }
+      if (line !== "") lines.push(line);
+      if (context.measureText(word).width <= width) {
+        line = word;
+        continue;
+      }
+      const pieces = piecesOf(word);
+      lines.push(...pieces.slice(0, -1));
+      line = pieces.at(-1) ?? "";
     }
     lines.push(line);
-    if (lines.length >= max) break;
+    if (lines.length >= max) {
+      cutOff = lines.length > max || paragraphIndex < paragraphs.length - 1;
+      break;
+    }
   }
   if (lines.length > max) lines.length = max;
   const last = lines.at(-1);
-  if (last !== undefined && lines.length === max) {
+  if (cutOff && last !== undefined) {
     let cut = last;
     while (cut.length > 1 && context.measureText(`${cut}…`).width > width) cut = cut.slice(0, -1);
-    lines[lines.length - 1] = cut === last ? last : `${cut}…`;
+    lines[lines.length - 1] = `${cut}…`;
   }
   return lines;
 }

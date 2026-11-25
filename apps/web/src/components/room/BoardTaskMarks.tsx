@@ -59,9 +59,11 @@ export function TaskDueChip({
   readonly done: boolean;
 }) {
   const { label, overdue } = boardPlanDue(due, today);
+  const bareDay = !label.startsWith("Due") && !label.startsWith("Overdue");
   return (
     <BoardChip tone={overdue && !done ? "error" : "neutral"}>
       <CalendarIcon aria-hidden className="size-3" />
+      {bareDay ? <span className="sr-only">{"Due "}</span> : null}
       {label}
     </BoardChip>
   );
@@ -82,6 +84,7 @@ export function TaskAssigneeDot({
       <TooltipTrigger
         render={
           <span
+            role="img"
             aria-label={`For ${name}`}
             data-assignee={assignee.guestId ?? "owner"}
             className="flex shrink-0"

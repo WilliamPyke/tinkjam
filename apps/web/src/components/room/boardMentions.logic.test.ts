@@ -43,6 +43,9 @@ describe("rankMentionPeople", () => {
     ]);
     expect(rankMentionPeople(people, "zed")).toEqual([]);
     expect(rankMentionPeople(people, "", 2)).toHaveLength(2);
+    expect(
+      rankMentionPeople([{ key: "j", name: "José 🚀" }], "jose").map((person) => person.name),
+    ).toEqual(["José 🚀"]);
   });
 });
 

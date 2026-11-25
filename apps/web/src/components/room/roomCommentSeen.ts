@@ -32,6 +32,9 @@ const subscribeSeen = (onChange: () => void) => {
   });
 };
 
+const seenCommentKey = (shareId: string, noteId: string, viewer: string | null) =>
+  `${viewer ?? "owner"}|${boardSeenCommentKey(shareId, noteId)}`;
+
 /**
  * Which comment threads of a board have replies this viewer has not seen on this device, and
  * the open thread remembered as seen. No share, as on a team's board: none are.
@@ -43,7 +46,7 @@ export function useCommentUnread(
 ): (note: RoomBoardNote) => boolean {
   const seen = useSyncExternalStore(subscribeSeen, readSeen, () => NOTHING_SEEN);
   const openKey =
-    shareId === undefined || open === null ? null : boardSeenCommentKey(shareId, open.id);
+    shareId === undefined || open === null ? null : seenCommentKey(shareId, open.id, viewer);
   const openAt = open === null ? undefined : boardNewestReplyAt(open);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- writes what the viewer read to this device's storage, which outlives the board
   useEffect(() => {
@@ -58,5 +61,10 @@ export function useCommentUnread(
   return (note) =>
     shareId !== undefined &&
     note.id !== open?.id &&
-    boardCommentUnread(note, viewer, seen[boardSeenCommentKey(shareId, note.id)]);
+    boardCommentUnread(
+      note,
+      viewer,
+      // What was seen before the key named its viewer still counts, so nothing turns unread again.
+      seen[seenCommentKey(shareId, note.id, viewer)] ?? seen[boardSeenCommentKey(shareId, note.id)],
+    );
 }

@@ -16,6 +16,7 @@ export const boardNewestChange = (notes: ReadonlyArray<RoomBoardNote>): BoardVis
     const times = [
       note.changed?.at,
       note.artifact?.updatedAt,
+      note.artifact?.previous?.updatedAt,
       ...(note.replies ?? []).map((reply) => reply.at),
     ];
     return times.reduce<string>(
@@ -30,6 +31,7 @@ export const boardNewestChange = (notes: ReadonlyArray<RoomBoardNote>): BoardVis
  */
 export interface BoardCatchUpStep {
   readonly note: RoomBoardNote;
+  readonly added: boolean;
   readonly changed: boolean;
   readonly replies: number;
 }
@@ -51,16 +53,24 @@ export function boardCatchUp(
   return notes
     .flatMap((note) => {
       if (note.section === true) return [];
-      const changed =
-        note.changed !== undefined && counts(note.changed.at, note.changed.guestId)
-          ? [note.changed.at]
-          : [];
+      const artifact = note.artifact;
+      const changed = [
+        note.changed,
+        artifact === undefined ? undefined : { at: artifact.updatedAt, guestId: artifact.guestId },
+      ].flatMap((change) =>
+        change !== undefined && counts(change.at, change.guestId) ? [change.at] : [],
+      );
       const replies = (note.replies ?? []).flatMap((reply) =>
         counts(reply.at, reply.guestId) ? [reply.at] : [],
       );
       const times = [...changed, ...replies];
       if (times.length === 0) return [];
-      const step = { note, changed: changed.length > 0, replies: replies.length };
+      const step = {
+        note,
+        added: note.createdAt !== undefined && counts(note.createdAt, note.guestId),
+        changed: changed.length > 0,
+        replies: replies.length,
+      };
       return [{ step, at: times.toSorted().at(-1) ?? "" }];
     })
     .toSorted((left, right) => (left.at < right.at ? -1 : 1))
@@ -81,11 +91,11 @@ const CARD_NOUNS: Readonly<Record<NonNullable<RoomBoardNote["kind"]>, string>> =
 };
 
 /** What is new in one step: "New comment and 1 reply", "2 new replies", "New or changed task". */
-export function boardCatchUpStepLabel({ note, changed, replies }: BoardCatchUpStep): string {
+export function boardCatchUpStepLabel({ note, added, changed, replies }: BoardCatchUpStep): string {
   if (!changed) return newReplies(replies);
   const card =
     note.kind === "comment"
-      ? note.editedAt !== undefined && note.editedAt === note.changed?.at
+      ? !added && note.editedAt !== undefined && note.editedAt === note.changed?.at
         ? "Edited comment"
         : "New comment"
       : `New or changed ${note.kind === undefined ? "note" : CARD_NOUNS[note.kind]}`;

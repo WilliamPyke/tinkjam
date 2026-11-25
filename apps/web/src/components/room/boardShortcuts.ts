@@ -55,20 +55,21 @@ export function boardKeyAction(event: BoardKeyEvent): BoardKeyAction | null {
   return LETTERS[event.key.toLowerCase()] ?? null;
 }
 
-/** A key as the shortcuts sheet and menus show it: `mod` is Cmd on a Mac and Ctrl elsewhere. */
+/** A key as the shortcuts sheet and menus show it: `mod` is Cmd on a Mac and Ctrl elsewhere; `ctrl` is Ctrl everywhere. */
 export interface BoardKey {
   readonly key: string;
   readonly mod?: boolean;
+  readonly ctrl?: boolean;
   readonly shift?: boolean;
   readonly alt?: boolean;
 }
 
 export function boardKeyLabel(shortcut: BoardKey, mac: boolean): string {
   if (mac) {
-    return `${shortcut.alt === true ? "⌥" : ""}${shortcut.shift === true ? "⇧" : ""}${shortcut.mod === true ? "⌘" : ""}${shortcut.key}`;
+    return `${shortcut.ctrl === true ? "⌃" : ""}${shortcut.alt === true ? "⌥" : ""}${shortcut.shift === true ? "⇧" : ""}${shortcut.mod === true ? "⌘" : ""}${shortcut.key}`;
   }
   return [
-    ...(shortcut.mod === true ? ["Ctrl"] : []),
+    ...(shortcut.mod === true || shortcut.ctrl === true ? ["Ctrl"] : []),
     ...(shortcut.alt === true ? ["Alt"] : []),
     ...(shortcut.shift === true ? ["Shift"] : []),
     shortcut.key,
@@ -98,7 +99,7 @@ export const BOARD_SHORTCUTS: ReadonlyArray<BoardShortcutGroup> = [
       { label: "Select and move", keys: [{ key: "V" }] },
       { label: "Hand tool: drag to move around", keys: [{ key: "H" }] },
       { label: "Move around while held", keys: [{ key: "Space" }] },
-      { label: "Next note beside this one", keys: [{ key: "Enter", mod: true }] },
+      { label: "Add the next note beside this one", keys: [{ key: "Enter", mod: true }] },
     ],
   },
   {
@@ -131,18 +132,20 @@ export const BOARD_SHORTCUTS: ReadonlyArray<BoardShortcutGroup> = [
         ],
       },
       { label: "Duplicate", keys: [{ key: "D", mod: true }] },
+      { label: "Duplicate while dragging", keys: [{ key: "Drag", alt: true }] },
       { label: "Group in a section", keys: [{ key: "G", mod: true }] },
       {
         label: "Move a little, move more",
         keys: [{ key: "Arrows" }, { key: "Arrows", shift: true }],
       },
       { label: "Drag without snapping: hold while dragging", keys: [{ key: "Drag", mod: true }] },
-      { label: "Delete", keys: [{ key: "Delete" }] },
+      { label: "Delete", keys: [{ key: "Delete" }, { key: "Backspace" }] },
       {
         label: "Undo, redo",
         keys: [
           { key: "Z", mod: true },
           { key: "Z", mod: true, shift: true },
+          { key: "Y", ctrl: true },
         ],
       },
       { label: "Stop: leave text, drop the tool or the selection", keys: [{ key: "Esc" }] },
@@ -151,9 +154,9 @@ export const BOARD_SHORTCUTS: ReadonlyArray<BoardShortcutGroup> = [
   {
     title: "Plan and List",
     shortcuts: [
-      { label: "New task", keys: [{ key: "C" }] },
+      { label: "New task", keys: [{ key: "C" }, { key: "N" }] },
       { label: "Select every task shown", keys: [{ key: "A", mod: true }] },
-      { label: "Delete the selected tasks", keys: [{ key: "Delete" }] },
+      { label: "Delete the selected tasks", keys: [{ key: "Delete" }, { key: "Backspace" }] },
       { label: "Clear the selection", keys: [{ key: "Esc" }] },
     ],
   },
@@ -161,7 +164,7 @@ export const BOARD_SHORTCUTS: ReadonlyArray<BoardShortcutGroup> = [
     title: "Menus and agents",
     shortcuts: [
       { label: "Command menu", keys: [{ key: "K", mod: true }] },
-      { label: "Card menu", keys: [{ key: "F10", shift: true }] },
+      { label: "Card menu", keys: [{ key: "F10", shift: true }, { key: "Menu" }] },
       { label: "Ask an agent about the selection", keys: [{ key: "A", alt: true }] },
       { label: "Agents on this board", keys: [{ key: "G", alt: true }] },
       { label: "Vote for the selection", keys: [{ key: "V", alt: true }] },
@@ -180,8 +183,16 @@ export function boardShortcutsMatching(
   if (words.length === 0) return groups;
   return groups.flatMap((group) => {
     const shortcuts = group.shortcuts.filter((shortcut) => {
-      const text =
-        `${group.title} ${shortcut.label} ${shortcut.keys.map((key) => boardKeyLabel(key, mac)).join(" ")}`.toLowerCase();
+      const keys = shortcut.keys.map((key) =>
+        [
+          boardKeyLabel(key, mac),
+          ...(key.mod === true ? [mac ? "cmd command" : "ctrl control"] : []),
+          ...(key.ctrl === true ? ["ctrl control"] : []),
+          ...(key.alt === true ? [mac ? "option alt" : "alt"] : []),
+          ...(key.shift === true ? ["shift"] : []),
+        ].join(" "),
+      );
+      const text = `${group.title} ${shortcut.label} ${keys.join(" ")}`.toLowerCase();
       return words.every((word) => text.includes(word));
     });
     return shortcuts.length === 0 ? [] : [{ ...group, shortcuts }];

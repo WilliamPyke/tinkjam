@@ -178,7 +178,17 @@ export function RoomCodeWindow({
                   onCheckedChange={(checked) => {
                     const next = checked ? "turn" : "thread";
                     setScope(next);
-                    if (selected !== null) open(selected, next);
+                    if (selected === null) return;
+                    const inNext =
+                      next === "thread" ||
+                      changes.files.some(
+                        (file) => file.path === selected && file.lastTurn !== undefined,
+                      );
+                    if (inNext) open(selected, next);
+                    else {
+                      setSelected(null);
+                      setOpened(null);
+                    }
                   }}
                 />
                 Last turn only

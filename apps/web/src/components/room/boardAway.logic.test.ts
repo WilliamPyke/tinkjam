@@ -121,6 +121,18 @@ describe("boardAwaySummary", () => {
     expect(summary(notes, extra)).toEqual(rows);
   });
 
+  it("still names a person who changed an artifact another agent rewrote", () => {
+    const page = note("page", {
+      kind: "artifact",
+      artifact: { body: "New", guestId: sam, turnId: "run", updatedAt: at(1) },
+      ...by(maya, at(2)),
+    });
+    expect(summary([page], { seen: new Set(["page"]) })).toEqual([
+      { label: "Maya changed 1 artifact", noteIds: ["page"] },
+      { label: "Sam's agent rewrote page", noteIds: ["page"] },
+    ]);
+  });
+
   it("gives an agent's turn its cards, and names the artifacts an agent rewrote", () => {
     const turn: RoomBoardAgentTurn = {
       id: "run",

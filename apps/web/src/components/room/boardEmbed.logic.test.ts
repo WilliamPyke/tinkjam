@@ -62,6 +62,28 @@ describe("boardCanFramePage", () => {
     expect(boardCanFramePage("http://example.com/a", own)).toBe(false);
     expect(boardCanFramePage(undefined, own)).toBe(false);
   });
+
+  it("stands up to hostile spellings and takes ordinary international addresses", () => {
+    const own = ["app.tinkjam.com"];
+    for (const url of [
+      "JaVaScRiPt:alert(1)",
+      "  javascript:alert(1)",
+      "data:text/html,hi",
+      "file:///etc/passwd",
+      "blob:https://example.com/id",
+      "//example.com/a",
+      "https://sam:secret@example.com/a",
+    ]) {
+      expect(boardCanFramePage(url, own), url).toBe(false);
+    }
+    for (const url of [
+      " HTTPS://EXAMPLE.COM/a",
+      "\u0001https://example.com/a",
+      "https://example.com/ー?x=1#top",
+    ]) {
+      expect(boardCanFramePage(url, own), url).toBe(true);
+    }
+  });
 });
 
 describe("boardEmbedTitleUrl", () => {

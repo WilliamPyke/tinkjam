@@ -41,4 +41,5 @@ export const isBoardVoteKey = (event: {
   readonly altKey: boolean;
   readonly ctrlKey: boolean;
   readonly metaKey: boolean;
-}) => event.code === "KeyV" && event.altKey && !event.ctrlKey && !event.metaKey;
+  readonly shiftKey: boolean;
+}) => event.code === "KeyV" && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;

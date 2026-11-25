@@ -55,6 +55,15 @@ describe("boardCatchUp", () => {
     ]);
   });
 
+  it("counts an artifact an agent rewrote as a change", () => {
+    const rewritten = card("artifact", null, undefined, {
+      kind: "artifact",
+      artifact: { body: "# Plan", guestId: sam, turnId: "run", updatedAt: t(20) },
+    });
+    expect(boardCatchUp([rewritten], t(10), null).map(({ note }) => note.id)).toEqual(["artifact"]);
+    expect(boardCatchUp([rewritten], t(10), sam)).toEqual([]);
+  });
+
   it("counts new replies in an older comment thread as one step, at the newest", () => {
     const reply = (id: string, at: string, by?: GuestId) => ({
       id,
@@ -100,6 +109,15 @@ describe("boardCatchUp", () => {
     expect(boardCatchUp([edited], t(10), null).map(boardCatchUpStepLabel)).toEqual([
       "Edited comment",
     ]);
+    const freshEdited = card("fresh-edited", t(34), sam, {
+      kind: "comment",
+      guestId: sam,
+      createdAt: t(30),
+      editedAt: t(34),
+    });
+    expect(boardCatchUp([freshEdited], t(10), null).map(boardCatchUpStepLabel)).toEqual([
+      "New comment",
+    ]);
     // Dismissing keeps the newest reply as the visit, so none of them comes back.
     expect(boardNewestChange(board)).toBe(t(45));
     expect(boardCatchUp(board, boardNewestChange(board), null)).toEqual([]);
@@ -118,6 +136,16 @@ describe("boardCatchUp", () => {
 
   it("remembers the newest stamp a board showed, and a bounded number of boards", () => {
     expect(boardNewestChange(notes)).toBe(t(50));
+    const restored = card("restored", null, undefined, {
+      kind: "artifact",
+      artifact: {
+        body: "Old",
+        turnId: "run:1",
+        updatedAt: t(10),
+        previous: { body: "New", turnId: "run:2", updatedAt: t(20) },
+      },
+    });
+    expect(boardNewestChange([restored])).toBe(t(20));
     expect(boardNewestChange([card("a", null)])).toBe("");
     const visits = { a: t(1), b: t(2), c: t(3) };
     expect(boardVisitsWith(visits, "a", t(9), 3)).toEqual({ b: t(2), c: t(3), a: t(9) });

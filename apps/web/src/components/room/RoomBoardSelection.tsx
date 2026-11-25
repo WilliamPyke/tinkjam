@@ -18,6 +18,7 @@ import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
 import { boardChromeAt, boardRailReach } from "./BoardChrome";
 import { selectionBarSpot } from "./roomBoard.logic";
 import { holdPointer } from "./roomBoardPointer";
+import { WhyNot } from "./RoomBoardWhy";
 
 const NOTHING_SELECTED: ReadonlySet<string> = new Set();
 
@@ -236,6 +237,7 @@ export function SelectionBar({
     bar.style.top = `${spot.top}px`;
   });
   const deleteLabel = `Delete ${removable}`;
+  const keptReason = `Only whoever added ${kept === 1 ? "it" : "these"}, or the board owner, can delete`;
   return (
     <div
       ref={barRef}
@@ -277,7 +279,15 @@ export function SelectionBar({
               </MenuPopup>
             </Menu>
           )}
-          {removable === 0 ? null : (
+          {removable === 0 ? (
+            kept === 0 ? null : (
+              <WhyNot reason={keptReason}>
+                <Button size="icon-lg" variant="ghost-muted" aria-label="Delete" disabled>
+                  <Trash2Icon />
+                </Button>
+              </WhyNot>
+            )
+          ) : (
             <Button
               size="icon-lg"
               variant="ghost-muted"
@@ -308,7 +318,7 @@ export function SelectionBar({
           {removable === 0 ? (
             kept === 0 ? null : (
               <span className="px-1.5 whitespace-nowrap text-muted-foreground" data-selection-kept>
-                Only whoever added {kept === 1 ? "it" : "these"}, or the board owner, can delete
+                {keptReason}
               </span>
             )
           ) : (

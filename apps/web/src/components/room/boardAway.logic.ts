@@ -94,21 +94,23 @@ export function boardAwaySummary(input: BoardAwayInput): ReadonlyArray<BoardAway
     actors.set(key, made);
     return made;
   };
-  const rewritten = new Set<string>();
   const rewrites: Array<BoardAwayRow> = [];
   for (const note of input.notes) {
     const artifact = note.artifact;
     if (note.kind !== "artifact" || artifact === undefined || artifact.byHand === true) continue;
     if (!inVisit(artifact.updatedAt) || (artifact.guestId ?? null) === people.viewer) continue;
-    rewritten.add(note.id);
     rewrites.push({
       key: `rewrite:${note.id}`,
       label: `${capital(boardAgentName(people, artifact.guestId))} rewrote ${note.text.trim() || "an artifact"}`,
       noteIds: [note.id],
     });
   }
-  for (const { note, changed, replies } of input.steps) {
-    if (changed && !rewritten.has(note.id)) {
+  for (const { note, replies } of input.steps) {
+    const cardChanged =
+      note.changed !== undefined &&
+      inVisit(note.changed.at) &&
+      (note.changed.guestId ?? null) !== people.viewer;
+    if (cardChanged) {
       const at = note.changed?.at ?? "";
       // The agent's turn made the newest change when it is no older than the card's stamp.
       const turn = turns.findLast(

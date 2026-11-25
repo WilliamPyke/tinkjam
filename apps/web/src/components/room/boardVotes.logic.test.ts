@@ -1,7 +1,7 @@
 import { GuestId, type RoomBoardNote } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { boardByVotes, boardVoteCount, boardVoteToggles } from "./boardVotes.logic";
+import { boardByVotes, boardVoteCount, boardVoteToggles, isBoardVoteKey } from "./boardVotes.logic";
 
 const sam = GuestId.make("sam");
 const eve = GuestId.make("eve");
@@ -50,5 +50,16 @@ describe("boardByVotes", () => {
       "a",
       "e",
     ]);
+  });
+});
+
+describe("isBoardVoteKey", () => {
+  it("takes Alt+V alone, not Shift or another modifier with it", () => {
+    const key = { code: "KeyV", altKey: true, ctrlKey: false, metaKey: false, shiftKey: false };
+    expect(isBoardVoteKey(key)).toBe(true);
+    expect(isBoardVoteKey({ ...key, shiftKey: true })).toBe(false);
+    expect(isBoardVoteKey({ ...key, ctrlKey: true })).toBe(false);
+    expect(isBoardVoteKey({ ...key, metaKey: true })).toBe(false);
+    expect(isBoardVoteKey({ ...key, altKey: false })).toBe(false);
   });
 });
