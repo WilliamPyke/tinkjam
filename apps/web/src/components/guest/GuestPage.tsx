@@ -477,7 +477,7 @@ function SignInInstead() {
   const { openAuthPrompt } = useT3ConnectAuthPrompt();
   if (account.status !== "signed-out") return null;
   return (
-    <p className="flex flex-wrap items-center justify-center text-center text-sm text-muted-foreground">
+    <p className="flex flex-wrap items-center justify-center gap-x-1 text-center text-sm text-muted-foreground">
       <InlineButton
         tone="accent"
         touchTarget="padded"
