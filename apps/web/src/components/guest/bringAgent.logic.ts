@@ -111,18 +111,20 @@ export function bringAgentComputers(input: {
           ? "ready"
           : entry.phase === "connected"
             ? "connecting"
-            : input.listed && entry.relayOnly && onAccount === undefined
-              ? "gone"
-              : accountSays === "offline"
-                ? "offline"
-                : entry.phase === "connecting" ||
-                    entry.phase === "reconnecting" ||
-                    entry.phase === "available" ||
-                    accountSays === "online"
-                  ? "connecting"
-                  : accountSays === "error"
-                    ? "unchecked"
-                    : "offline";
+            : onAccount?.unsupported === true
+              ? "unsupported"
+              : input.listed && entry.relayOnly && onAccount === undefined
+                ? "gone"
+                : accountSays === "offline"
+                  ? "offline"
+                  : entry.phase === "connecting" ||
+                      entry.phase === "reconnecting" ||
+                      entry.phase === "available" ||
+                      accountSays === "online"
+                    ? "connecting"
+                    : accountSays === "error"
+                      ? "unchecked"
+                      : "offline";
     return {
       environmentId: entry.environmentId,
       name: entry.name,

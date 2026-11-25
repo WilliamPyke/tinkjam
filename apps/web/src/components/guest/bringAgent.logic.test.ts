@@ -152,6 +152,8 @@ describe("bringAgentComputers", () => {
         saved("lan", "Lan", "connected", true, false),
         // Stopped here, and the account could not say whether it is up.
         saved("unsure", "Unsure", "error", false),
+        // Still retried here, but the account already knows its Tinkjam Sync is too old.
+        saved("oldsync", "Old sync", "reconnecting", false),
       ],
       discovered: [
         // Saved here already: the account only says whether it is up.
@@ -163,6 +165,7 @@ describe("bringAgentComputers", () => {
         discovered("new", "New", "online"),
         discovered("away", "Away", "offline"),
         discovered("stale", "Stale", "online", true),
+        discovered("oldsync", "Old sync", "online", true),
         discovered("unsure", "Unsure", "error"),
         discovered("unknown", "Unknown", "error"),
       ],
@@ -181,6 +184,7 @@ describe("bringAgentComputers", () => {
       ["old", "offline", true],
       ["unknown", "unchecked", false],
       ["unsure", "unchecked", true],
+      ["oldsync", "unsupported", true],
       ["stale", "unsupported", false],
       ["ghost", "gone", true],
     ]);
