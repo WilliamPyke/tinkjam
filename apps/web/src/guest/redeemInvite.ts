@@ -46,10 +46,10 @@ export async function redeemInvite(input: {
       // The host's own page also gets the share's cookie; any other origin keeps only the token.
       credentials: origin === window.location.origin ? "same-origin" : "omit",
     });
+    const json: unknown = await response.json().catch(() => null);
     if (account !== null && readBoardAccountProfile()?.userId !== account.userId) {
       return SIGN_IN_UNCONFIRMED;
     }
-    const json: unknown = await response.json().catch(() => null);
     if (!response.ok) {
       return Option.match(decodeRefusalBody(json), {
         onNone: () => "Something went wrong. Try again.",

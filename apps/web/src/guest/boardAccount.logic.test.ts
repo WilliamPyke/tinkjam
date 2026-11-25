@@ -257,6 +257,27 @@ function pendingFetch() {
   return { fetchMock, pending };
 }
 
+function streamingJsonResponse() {
+  let controller!: ReadableStreamDefaultController<Uint8Array>;
+  const response = new Response(
+    new ReadableStream<Uint8Array>({
+      start(started) {
+        controller = started;
+      },
+    }),
+    { status: 200, headers: { "content-type": "application/json" } },
+  );
+  return { response, controller };
+}
+
+function finishJsonResponse(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  value: unknown,
+) {
+  controller.enqueue(new TextEncoder().encode(JSON.stringify(value)));
+  controller.close();
+}
+
 async function flushMicrotasks() {
   for (let index = 0; index < 8; index += 1) await Promise.resolve();
 }
@@ -269,6 +290,7 @@ const ACCOUNT = {
   readToken: () => Promise.resolve("token-a"),
   saveName: () => Promise.resolve(true),
 };
+const OTHER_ACCOUNT = { ...ACCOUNT, userId: "user_blair" };
 
 async function accountHarness() {
   vi.resetModules();
@@ -306,20 +328,21 @@ describe("board account requests around sign-out", () => {
     await flushMicrotasks();
     expect(fetchMock).toHaveBeenCalledOnce();
 
+    const stream = streamingJsonResponse();
+    pending[0]!.resolve(stream.response);
+    await flushMicrotasks();
     account.syncBoardAccount(null);
-    pending[0]!.resolve(
-      Response.json({
-        token: "opened-token",
-        board: {
-          shareId,
-          threadId: `board-${shareId}`,
-          title: "Account board",
-          guestId: "guest-1",
-          maker: false,
-          addedAt: new Date(0).toISOString(),
-        },
-      }),
-    );
+    finishJsonResponse(stream.controller, {
+      token: "opened-token",
+      board: {
+        shareId,
+        threadId: `board-${shareId}`,
+        title: "Account board",
+        guestId: "guest-1",
+        maker: false,
+        addedAt: new Date(0).toISOString(),
+      },
+    });
     await opening;
 
     expect(shares.readGuestShares()).toEqual([]);
@@ -345,18 +368,64 @@ describe("board account requests around sign-out", () => {
     await flushMicrotasks();
     expect(fetchMock).toHaveBeenCalledOnce();
 
+    const stream = streamingJsonResponse();
+    pending[0]!.resolve(stream.response);
+    await flushMicrotasks();
     account.syncBoardAccount(null);
-    pending[0]!.resolve(
-      Response.json({
-        token: "copy-token",
-        shareId: copyId,
-        threadId: `board-${copyId}`,
-        credential: "copy-credential",
-      }),
-    );
+    finishJsonResponse(stream.controller, {
+      token: "copy-token",
+      shareId: copyId,
+      threadId: `board-${copyId}`,
+      credential: "copy-credential",
+    });
     await copying;
 
     expect(shares.readGuestShares()).toEqual([]);
+  });
+
+  it("does not use a claim answer after the account changes", async () => {
+    const { account, shares, accountBoards } = await accountHarness();
+    shares.rememberGuestShare({
+      host: "boards.example.test",
+      shareId,
+      threadId: ThreadId.make(`board-${shareId}`),
+      token: "local-token",
+      credential: "local-credential",
+      title: "Local board",
+      joinedAt: new Date(0).toISOString(),
+    });
+    vi.stubEnv("VITE_CLOUD_BOARDS_URL", "https://boards.example.test");
+    const { fetchMock, pending } = pendingFetch();
+    account.syncBoardAccount(null);
+    account.syncBoardAccount(ACCOUNT);
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    pending[0]!.resolve(Response.json({ boards: [] }));
+    await flushMicrotasks();
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const stream = streamingJsonResponse();
+    pending[1]!.resolve(stream.response);
+    await flushMicrotasks();
+    account.syncBoardAccount(OTHER_ACCOUNT);
+    finishJsonResponse(stream.controller, {
+      boards: [
+        {
+          shareId,
+          threadId: `board-${shareId}`,
+          title: "Local board",
+          guestId: "guest-1",
+          maker: true,
+          addedAt: new Date(0).toISOString(),
+        },
+      ],
+    });
+    await flushMicrotasks();
+
+    expect(accountBoards()).toEqual([]);
+    expect(shares.findGuestShare(shareId)?.accountId).toBeUndefined();
   });
 
   it("does not let an older list of account boards overwrite a newer one", async () => {

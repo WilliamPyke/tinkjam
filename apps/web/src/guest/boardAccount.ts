@@ -265,7 +265,9 @@ export async function refreshAccountBoards(): Promise<void> {
  * page becomes that person at once and nobody is on a board twice.
  */
 async function claimLocalBoards(): Promise<void> {
-  while (readBoardAccount() !== null) {
+  while (true) {
+    const claiming = readBoardAccount();
+    if (claiming === null) return;
     const claim = boardsToClaim({
       shares: readGuestShares(),
       tried: triedClaims,
@@ -287,7 +289,7 @@ async function claimLocalBoards(): Promise<void> {
     );
     if (listed === null) return;
     const account = readBoardAccount();
-    if (account === null) return;
+    if (account?.userId !== claiming.userId) return;
     writeAccountBoards(listed.boards);
     // The account's now: they go from this browser when it signs out, like any of its boards.
     const taken = new Set<string>(listed.boards.map((board) => board.shareId));
@@ -354,6 +356,7 @@ export async function openAccountBoard(shareId: string): Promise<JoinedGuestShar
   );
   if (response === null) return "Could not reach the board service.";
   const json: unknown = await response.json().catch(() => null);
+  if (readBoardAccount()?.userId !== account.userId) return SIGN_IN_UNCONFIRMED;
   if (!response.ok) {
     if (response.status === 410) forgetGuestShare(shareId);
     return Option.match(decodeMessage(json), {
