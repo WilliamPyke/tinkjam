@@ -1128,6 +1128,16 @@ describe("boardConnector", () => {
     expect(boardConnector(card, boardCardBox({ x: 340, y: 230 })).path).toBe(
       "M320 212 C325.3 227.3, 330.7 242.7, 336 258",
     );
+    // Cards a pixel apart have no room for the arrow's gap, let alone a hook back.
+    expect(boardConnector(card, boardCardBox({ x: 321, y: 0 })).path).toBe(
+      "M320 120 C320.2 120, 320.3 120, 320.5 120",
+    );
+    expect(boardConnector(card, boardCardBox({ x: 320, y: 0 })).path).toBe(
+      "M320 120 C320 120, 320 120, 320 120",
+    );
+    expect(boardConnector(card, boardCardBox({ x: 0, y: 241 })).path).toBe(
+      "M160 240 C160 240.2, 160 240.3, 160 240.5",
+    );
     // A long line bends in proportion: an even S, not two small hooks on a straight run.
     expect(boardConnector(card, boardNoteBox({ x: 2_000, y: 900 })).path).toBe(
       "M320 120 C1158 120, 1158 972, 1996 972",

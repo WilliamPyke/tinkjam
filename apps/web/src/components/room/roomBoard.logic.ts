@@ -1204,7 +1204,10 @@ export function boardLineEnds(from: BoardBox, to: BoardBox, ends?: BoardLineEnds
   const tip = boardSidePoint(to, toSide, toSlot);
   const out = SIDE_OUT[fromSide];
   const into = SIDE_OUT[toSide];
-  const end = { x: tip.x + into.x * ARROW_GAP, y: tip.y + into.y * ARROW_GAP };
+  const across = Math.max(to.x - (from.x + from.width), from.x - (to.x + to.width), 0);
+  const down = Math.max(to.y - (from.y + from.height), from.y - (to.y + to.height), 0);
+  const arrowGap = Math.min(ARROW_GAP, Math.hypot(across, down) / 2);
+  const end = { x: tip.x + into.x * arrowGap, y: tip.y + into.y * arrowGap };
   return { start, end, out, into };
 }
 
@@ -1236,7 +1239,7 @@ export function boardConnector(
   // With no room to bend, each control point slides onto the straight run between the ends.
   const ahead = (end.x - start.x) * out.x + (end.y - start.y) * out.y;
   const room =
-    turning || ahead <= 0 ? 1 : clamp((ahead - NO_BEND_GAP) / (SHORT_GAP - NO_BEND_GAP), 0, 1);
+    turning || ahead < 0 ? 1 : clamp((ahead - NO_BEND_GAP) / (SHORT_GAP - NO_BEND_GAP), 0, 1);
   const control = (at: BoardPoint, way: BoardPoint, length: number, other: BoardPoint) => ({
     x: (at.x + way.x * length) * room + (at.x + (other.x - at.x) / 3) * (1 - room),
     y: (at.y + way.y * length) * room + (at.y + (other.y - at.y) / 3) * (1 - room),
