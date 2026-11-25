@@ -163,9 +163,9 @@ describe("listHomeBoards", () => {
       teams: [],
       isOwnEnvironment: () => true,
     });
-    expect(
-      boards.find((board) => board.kind === "joined" && board.shareId === "here")?.title,
-    ).toBe("Renamed");
+    expect(boards.find((board) => board.kind === "joined" && board.shareId === "here")?.title).toBe(
+      "Renamed",
+    );
     expect(
       boards.map((board) =>
         board.kind === "joined" ? [board.shareId, board.shared, board.remote, board.maker] : null,

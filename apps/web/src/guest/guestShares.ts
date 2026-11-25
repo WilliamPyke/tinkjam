@@ -283,6 +283,17 @@ export function forgetGuestShare(shareId: string, endedDetail?: string) {
   writeEndedNotice(shareId, endedDetail);
 }
 
+/** Gives the account's list a board's new name, which the home shows ahead of this browser's. */
+export function noteAccountBoardTitle(shareId: string, title: string) {
+  const listed = appAtomRegistry.get(accountBoardsAtom);
+  if (listed?.some((board) => board.shareId === shareId && board.title !== title)) {
+    appAtomRegistry.set(
+      accountBoardsAtom,
+      listed.map((board) => (board.shareId === shareId ? { ...board, title } : board)),
+    );
+  }
+}
+
 /** What a share's stream last said about its room. Empty until the thread is open. */
 interface GuestRoomState {
   readonly view: GuestShareView | null;
@@ -382,6 +393,7 @@ export const layerGuestShareAccess = Layer.succeed(
         appAtomRegistry.update(guestRoomAtom(shareId), (room) => ({ ...room, view }));
         const share = findGuestShare(shareId);
         if (share !== null) noteBoardPreview(shareId, view);
+        noteAccountBoardTitle(shareId, view.title);
         if (
           share !== null &&
           (share.title !== view.title ||

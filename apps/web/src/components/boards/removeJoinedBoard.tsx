@@ -18,7 +18,12 @@ import {
   refreshAccountBoards,
 } from "~/guest/boardAccount";
 import { deleteCloudBoard, removeFromCloudBoard, renameCloudBoard } from "~/guest/cloudBoards";
-import { findGuestShare, forgetGuestShare, rememberGuestShare } from "~/guest/guestShares";
+import {
+  findGuestShare,
+  forgetGuestShare,
+  noteAccountBoardTitle,
+  rememberGuestShare,
+} from "~/guest/guestShares";
 import { moveBoardOutOfWorkspace, moveBoardToWorkspace, useWorkspaces } from "~/guest/workspaces";
 import { ensureLocalApi } from "~/localApi";
 
@@ -150,6 +155,7 @@ function RenameJoinedBoardDialog({
       // What the boards list shows until the account's list comes back.
       rememberGuestShare({ ...share, title: next });
     }
+    noteAccountBoardTitle(board.shareId, next);
     void refreshAccountBoards();
     onClose();
   };
