@@ -99,6 +99,22 @@ describe("RoomArtifactBody", () => {
     );
   });
 
+  it("offers a download link's menu instead of letting the sandbox swallow its click", async () => {
+    using opened = vi.spyOn(window, "open").mockReturnValue(null);
+    const page = `<!doctype html><html><body><a id="download" href="https://roofs.example/price-list.pdf" download>Price list</a><script>addEventListener("message", (event) => { if (event.data && event.data.type === "mode") setTimeout(() => document.getElementById("download").click()); });</script></body></html>`;
+    await using _screen = await render(
+      <div style={{ display: "flex", flexDirection: "column", width: 400, height: 300 }}>
+        <RoomArtifactBody artifact={written(page)} active />
+      </div>,
+    );
+    await userEvent.click(browser.getByRole("menuitem", { name: "Open in a new tab" }));
+    expect(opened).toHaveBeenCalledWith(
+      "https://roofs.example/price-list.pdf",
+      "_blank",
+      "noopener,noreferrer",
+    );
+  });
+
   it("shows a page still being written as its source, never running it in a frame", async () => {
     const page = "<!doctype html><html><body><h1>Pricing mockup</h1></body></html>";
     await using screen = await render(

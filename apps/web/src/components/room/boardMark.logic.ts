@@ -450,7 +450,6 @@ function boardMarkPage(
     )
       return;
     if (click) {
-      if (anchor.hasAttribute("download")) return;
       // A srcdoc page's address is its parent's, so its own "#spot" link would load the app here.
       if (href.charAt(0) === "#") {
         event.preventDefault();
