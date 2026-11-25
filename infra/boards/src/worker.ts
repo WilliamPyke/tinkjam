@@ -757,8 +757,9 @@ export class BoardRoom extends DurableObject<Env> {
       case INVITE_ROUTE: {
         const body = decodeInvite(await request.text());
         if (Option.isNone(body)) return failureResponse(roomFailure("bad_request"));
+        const hash = await hashSecret(body.value.credential);
         const room = this.room;
-        const refused = checkInvite(room, await hashSecret(body.value.credential));
+        const refused = checkInvite(room, hash);
         return refused !== null || room === null
           ? failureResponse(refused ?? roomFailure("invalid"))
           : Response.json(invitePreviewOf(room), { headers: NO_STORE });
@@ -768,8 +769,9 @@ export class BoardRoom extends DurableObject<Env> {
       case CLOUD_BOARD_VIEW_ROUTE: {
         const body = decodeInvite(await request.text());
         if (Option.isNone(body)) return failureResponse(roomFailure("bad_request"));
+        const hash = await hashSecret(body.value.credential);
         const room = this.room;
-        const refused = checkViewLink(room, await hashSecret(body.value.credential));
+        const refused = checkViewLink(room, hash);
         if (refused !== null || room === null) {
           return failureResponse(refused ?? roomFailure("invalid"));
         }

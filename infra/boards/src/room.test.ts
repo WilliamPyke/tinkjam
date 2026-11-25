@@ -1,5 +1,6 @@
 import {
   CLOUD_BOARD_OUTLINE_ROUTE,
+  CLOUD_BOARD_VIEW_ROUTE,
   CLOUD_BOARD_COPIES_ROUTE,
   CLOUD_BOARD_LINK_ROUTE,
   CLOUD_BOARD_PEOPLE_REMOVE_ROUTE,
@@ -17,7 +18,13 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { SESSION_ROUTE, SESSION_ROUTES, STREAM_ROUTE, checkAccess } from "./access.ts";
+import {
+  INVITE_ROUTE,
+  SESSION_ROUTE,
+  SESSION_ROUTES,
+  STREAM_ROUTE,
+  checkAccess,
+} from "./access.ts";
 import { askAccess } from "./accessRequests.ts";
 import { accountLockedOut, withAccountSession } from "./account.ts";
 import { EMPTY_AGENTS, machineGuestOf } from "./machines.ts";
@@ -627,6 +634,57 @@ describe("cloud room", () => {
       read.mockRestore();
     }
   });
+
+  it.each(["edit", "view"] as const)(
+    "checks a %s link against the board as it is now",
+    async (kind) => {
+      const credential =
+        kind === "edit" ? makeSecret("share-one-0000") : makeViewSecret("share-one-0000");
+      const hash = await hashSecret(credential);
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(credential));
+      const made = newRoom();
+      const before =
+        kind === "edit"
+          ? { ...made, inviteHash: hash, editLink: credential }
+          : { ...made, viewLink: { credential, hash } };
+      const object = Object.create(BoardRoom.prototype) as {
+        room: CloudRoom | null;
+        handle(request: Request): Promise<Response>;
+      };
+      object.room = before;
+      let release!: (value: ArrayBuffer) => void;
+      const gate = new Promise<ArrayBuffer>((resolve) => {
+        release = resolve;
+      });
+      let entered!: () => void;
+      const reading = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const read = vi.spyOn(crypto.subtle, "digest").mockImplementation(() => {
+        entered();
+        return gate;
+      });
+      try {
+        const opening = object.handle(
+          new Request(`https://boards${kind === "edit" ? INVITE_ROUTE : CLOUD_BOARD_VIEW_ROUTE}`, {
+            method: "POST",
+            body: JSON.stringify({ credential }),
+          }),
+        );
+        await reading;
+        if (kind === "edit") object.room = { ...before, inviteHash: "" };
+        else {
+          const { viewLink: _gone, ...withoutView } = before;
+          object.room = withoutView;
+        }
+        release(digest);
+        const response = await opening;
+        expect(response.status).toBe(403);
+      } finally {
+        read.mockRestore();
+      }
+    },
+  );
 
   it("deletes a board a day after it was made if nobody changed it, else after 90 idle days", () => {
     const made = Date.parse(NOW);
