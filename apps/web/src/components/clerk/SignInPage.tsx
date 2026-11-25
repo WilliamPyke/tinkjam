@@ -12,7 +12,7 @@ import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { signInScreenAppearance } from "./clerkAppearance";
 import { signInFromBoard } from "./authRedirect";
-import { readSignInPageRequest } from "./signInPageRequest";
+import { clearSignInPageRequestOnLeave, readSignInPageRequest } from "./signInPageRequest";
 
 /**
  * Signing in and making an account, every step of it (codes, a forgotten password, the return
@@ -22,7 +22,10 @@ import { readSignInPageRequest } from "./signInPageRequest";
 export function SignInPage() {
   const [request] = useState(readSignInPageRequest);
   const navigate = useNavigate();
-  const leave = (href: string) => void navigate({ href, replace: true });
+  const leave = (href: string) => {
+    clearSignInPageRequestOnLeave(window.location.pathname, href, window.location.origin);
+    void navigate({ href, replace: true });
+  };
   return (
     <SplitScreen
       corner={

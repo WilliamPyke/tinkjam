@@ -3,8 +3,8 @@ import type { ComponentProps, ReactNode } from "react";
 
 import { ManagedRelayAuthProvider } from "../../cloud/managedAuth";
 import { expectBoardAccountChange } from "../../guest/boardAccount";
-import { isSignInPath } from "../sidebar/mainAppLocation";
 import { staysInApp } from "./authRedirect";
+import { clearSignInPageRequestOnLeave } from "./signInPageRequest";
 import { BoardAccountBridge } from "./BoardAccountBridge";
 import { clerkAppearance, clerkLocalization } from "./clerkAppearance";
 
@@ -26,12 +26,16 @@ export default function BrowserManagedAuthShell({
   const move =
     (replace: boolean): ClerkRouterFn =>
     (to, metadata) => {
+      const leavesSignIn = clearSignInPageRequestOnLeave(
+        window.location.pathname,
+        to,
+        window.location.origin,
+      );
       if (!staysInApp(to, window.location.origin)) {
         return (metadata?.windowNavigate ?? window.location.assign.bind(window.location))(to);
       }
       // Clerk leaves the sign-in page before it says who signed in.
-      const leaves = !isSignInPath(new URL(to, window.location.origin).pathname);
-      if (leaves && isSignInPath(window.location.pathname)) expectBoardAccountChange();
+      if (leavesSignIn) expectBoardAccountChange();
       return navigate(to, replace);
     };
   return (

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
   parseSignInPageRequest,
@@ -6,6 +6,11 @@ import {
   signInFromBoard,
   staysInApp,
 } from "./authRedirect";
+import {
+  clearSignInPageRequestOnLeave,
+  keepSignInPageRequest,
+  readSignInPageRequest,
+} from "./signInPageRequest";
 
 describe("resolveClerkSignInProps", () => {
   it("removes a Clerk virtual pathname and callback params while preserving the desktop route", () => {
@@ -66,6 +71,54 @@ describe("parseSignInPageRequest", () => {
     ["something that is not JSON", "{"],
   ] as const)("goes home, never elsewhere, from %s", (_case, raw) => {
     expect(parseSignInPageRequest(raw, origin)).toEqual({ from: "/", withSignUp: true });
+  });
+});
+
+describe("clearSignInPageRequestOnLeave", () => {
+  const origin = "https://app.example.org";
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const stubStorage = () => {
+    const stored = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => void stored.set(key, value),
+      removeItem: vi.fn((key: string) => void stored.delete(key)),
+    };
+    vi.stubGlobal("window", { sessionStorage: storage, location: { origin } });
+    return storage;
+  };
+
+  it("forgets the page it came from once sign-in leaves for that page", () => {
+    const storage = stubStorage();
+    keepSignInPageRequest({
+      from: `${origin}/guest?share=abc`,
+      forceRedirectUrl: `${origin}/guest?share=abc`,
+      withSignUp: true,
+    });
+    expect(readSignInPageRequest().from).toBe("/guest?share=abc");
+
+    expect(clearSignInPageRequestOnLeave("/sign-in", "/guest?share=abc", origin)).toBe(true);
+
+    expect(storage.removeItem).toHaveBeenCalledOnce();
+    expect(readSignInPageRequest().from).toBe("/");
+  });
+
+  it.each([
+    ["another sign-in step", "/sign-in", "/sign-in/create"],
+    ["a sign-in step made from outside sign-in", "/", "/"],
+    ["a page on another site", "/sign-in", "https://accounts.example.org/"],
+  ] as const)("keeps the request through %s", (_case, fromPathname, to) => {
+    const storage = stubStorage();
+    keepSignInPageRequest({ from: `${origin}/guest?share=abc`, withSignUp: true });
+
+    expect(clearSignInPageRequestOnLeave(fromPathname, to, origin)).toBe(false);
+
+    expect(storage.removeItem).not.toHaveBeenCalled();
+    expect(readSignInPageRequest().from).toBe("/guest?share=abc");
   });
 });
 

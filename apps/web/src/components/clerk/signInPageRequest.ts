@@ -1,3 +1,4 @@
+import { isSignInPath } from "../sidebar/mainAppLocation";
 import { parseSignInPageRequest, type SignInPageRequest } from "./authRedirect";
 
 // Per tab, so it survives the sign-in page's own steps and a Google or Apple round trip.
@@ -17,4 +18,24 @@ export function readSignInPageRequest(): SignInPageRequest {
     raw = window.sessionStorage.getItem(REQUEST_KEY);
   } catch {}
   return parseSignInPageRequest(raw, window.location.origin);
+}
+
+export function clearSignInPageRequestOnLeave(
+  fromPathname: string,
+  to: string,
+  origin: string,
+): boolean {
+  let target: URL;
+  try {
+    target = new URL(to, origin);
+  } catch {
+    return false;
+  }
+  if (target.origin !== origin || !isSignInPath(fromPathname) || isSignInPath(target.pathname)) {
+    return false;
+  }
+  try {
+    window.sessionStorage.removeItem(REQUEST_KEY);
+  } catch {}
+  return true;
 }
