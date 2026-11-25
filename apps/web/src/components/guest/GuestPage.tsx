@@ -224,7 +224,7 @@ export function GuestPage() {
     setJoined(share);
   };
   return (
-    <BoardBackdrop className="relative flex h-dvh flex-col px-4 text-foreground">
+    <BoardBackdrop className="relative flex h-dvh flex-col overflow-y-auto px-4 py-10 text-foreground">
       {open === null ? <AccountCorner /> : null}
       {open !== null ? (
         <>
