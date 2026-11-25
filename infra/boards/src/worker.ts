@@ -855,19 +855,15 @@ export class BoardRoom extends DurableObject<Env> {
         const body = decodeLink(await request.text());
         if (Option.isNone(body)) return failureResponse(roomFailure("bad_request"));
         const manages = await this.manages(this.room ?? room, guest);
-        const current = this.room ?? room;
         const credential = body.value.on
           ? body.value.kind === "view"
-            ? makeViewSecret(current.shareId)
-            : makeSecret(current.shareId)
+            ? makeViewSecret(room.shareId)
+            : makeSecret(room.shareId)
           : null;
-        const next = withLink(
-          current,
-          manages,
-          body.value.kind,
-          credential === null ? null : { credential, hash: await hashSecret(credential) },
-          nowIso(),
-        );
+        const nextLink =
+          credential === null ? null : { credential, hash: await hashSecret(credential) };
+        const current = this.room ?? room;
+        const next = withLink(current, manages, body.value.kind, nextLink, nowIso());
         if (Result.isFailure(next)) return failureResponse(next.failure);
         await this.save(next.success);
         if (body.value.kind === "view") this.endOldViews();
@@ -878,10 +874,10 @@ export class BoardRoom extends DurableObject<Env> {
         const body = decodeSharing(await request.text());
         if (Option.isNone(body)) return failureResponse(roomFailure("bad_request"));
         const manages = await this.manages(this.room ?? room, guest);
-        const current = this.room ?? room;
-        const edit = makeSecret(current.shareId);
-        const view = makeViewSecret(current.shareId);
+        const edit = makeSecret(room.shareId);
+        const view = makeViewSecret(room.shareId);
         const [editHash, viewHash] = await Promise.all([hashSecret(edit), hashSecret(view)]);
+        const current = this.room ?? room;
         const next = withSharing(
           current,
           manages,

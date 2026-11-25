@@ -480,6 +480,77 @@ describe("cloud room", () => {
     expect(object.room?.title).toBe("Newer title");
   });
 
+  it.each([
+    { route: CLOUD_BOARD_LINK_ROUTE, body: { kind: "edit", on: true } },
+    { route: CLOUD_BOARD_SHARING_ROUTE, body: { sharing: "edit", renew: true } },
+  ])("keeps a newer board change made while a link is made", async ({ route, body }) => {
+    const token = makeSecret("share-one-0000");
+    const sessionHash = await hashSecret(token);
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+    const made = newRoom();
+    const before = {
+      ...made,
+      guests: made.guests.map((guest) => ({ ...guest, sessionHash })),
+    };
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      live: typeof EMPTY_LIVE;
+      agents: typeof EMPTY_AGENTS;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      handle(request: Request): Promise<Response>;
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+    };
+    object.room = before;
+    object.deleted = false;
+    object.streams = new Set();
+    object.live = EMPTY_LIVE;
+    object.agents = EMPTY_AGENTS;
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => undefined,
+        delete: async () => undefined,
+      },
+    };
+    object.keepTaskIndex = async () => undefined;
+    const gates: Array<(value: ArrayBuffer) => void> = [];
+    let entered!: () => void;
+    const making = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let reads = 0;
+    const read = vi.spyOn(crypto.subtle, "digest").mockImplementation(() => {
+      reads += 1;
+      if (reads === 1) return Promise.resolve(digest);
+      entered();
+      return new Promise<ArrayBuffer>((resolve) => {
+        gates.push(resolve);
+      });
+    });
+    try {
+      const response = object.handle(
+        new Request(`https://boards${route}`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        }),
+      );
+      await making;
+      if (object.room !== null) object.room = renameRoom(object.room, "Newer title", NOW);
+      for (const release of gates) release(digest);
+      await expect(response).resolves.toMatchObject({
+        status: route === CLOUD_BOARD_LINK_ROUTE ? 200 : 204,
+      });
+      expect(object.room?.title).toBe("Newer title");
+    } finally {
+      read.mockRestore();
+    }
+  });
+
   it("checks copies are still allowed after the token is read", async () => {
     const token = makeSecret("share-one-0000");
     const sessionHash = await hashSecret(token);
