@@ -196,7 +196,7 @@ const newBoardWaitingAtom = Atom.make(false).pipe(
   Atom.keepAlive,
   Atom.withLabel("boards:new-board-waiting"),
 );
-/** Whether New board is waiting for a machine still connecting before choosing where to go. */
+/** Whether New board is already starting one. */
 export const useNewBoardWaiting = () => useAtomValue(newBoardWaitingAtom);
 
 /** Waits until a machine can take a board or none is still connecting; never past the limit. */
@@ -441,42 +441,47 @@ export function useStartNewBoard() {
     title: string | null = null,
   ): Promise<boolean> => {
     if (appAtomRegistry.get(newBoardWaitingAtom)) return false;
-    const decide = (now: typeof machines, waited: boolean) =>
-      newBoardStart({
-        // After the wait, read again: the machine that finished connecting brought its projects.
-        projects: waited ? readProjects() : projects,
-        boards: listHomeBoards({ threads, joined: [], teams: [], isOwnEnvironment: () => true }),
-        lastUsed: readLastProject(),
-        ...now,
-        waited,
-        cloud: hasCloudBoards() && fitsCloud(template),
-        place,
-      });
-    let decision = decide(machines, false);
-    if (decision.kind === "wait") {
-      appAtomRegistry.set(newBoardWaitingAtom, true);
-      const failed = await waitForMachines().then(
-        () => null,
-        (error: unknown) => ({ error }),
-      );
-      appAtomRegistry.set(newBoardWaitingAtom, false);
-      if (failed !== null) throw failed.error;
-      decision = decide(appAtomRegistry.get(newBoardMachinesAtom), true);
-    }
-    if (decision.kind === "cloud") return createCloudBoard(template, knownBoardName(), title);
-    if (decision.kind === "use") return createBoard(decision.project, template, title);
-    if (decision.kind === "ask") {
-      appAtomRegistry.set(pickerOpenAtom, template);
+    appAtomRegistry.set(newBoardWaitingAtom, true);
+    try {
+      const decide = (now: typeof machines, waited: boolean) =>
+        newBoardStart({
+          // After the wait, read again: the machine that finished connecting brought its projects.
+          projects: waited ? readProjects() : projects,
+          boards: listHomeBoards({ threads, joined: [], teams: [], isOwnEnvironment: () => true }),
+          lastUsed: readLastProject(),
+          ...now,
+          waited,
+          cloud: hasCloudBoards() && fitsCloud(template),
+          place,
+        });
+      let decision = decide(machines, false);
+      if (decision.kind === "wait") {
+        const failed = await waitForMachines().then(
+          () => null,
+          (error: unknown) => ({ error }),
+        );
+        if (failed !== null) throw failed.error;
+        decision = decide(appAtomRegistry.get(newBoardMachinesAtom), true);
+      }
+      if (decision.kind === "cloud") {
+        return await createCloudBoard(template, knownBoardName(), title);
+      }
+      if (decision.kind === "use") return await createBoard(decision.project, template, title);
+      if (decision.kind === "ask") {
+        appAtomRegistry.set(pickerOpenAtom, template);
+        return false;
+      }
+      const environmentId = scratchEnvironmentId(primaryEnvironmentId);
+      const scratch =
+        environmentId === null
+          ? null
+          : await openScratchProject(environmentId, "Could not start a board");
+      if (scratch !== null) return await createBoard(scratch, template, title);
+      openCommandPalette({ open: "add-project" });
       return false;
+    } finally {
+      appAtomRegistry.set(newBoardWaitingAtom, false);
     }
-    const environmentId = scratchEnvironmentId(primaryEnvironmentId);
-    const scratch =
-      environmentId === null
-        ? null
-        : await openScratchProject(environmentId, "Could not start a board");
-    if (scratch !== null) return createBoard(scratch, template, title);
-    openCommandPalette({ open: "add-project" });
-    return false;
   };
 }
 
