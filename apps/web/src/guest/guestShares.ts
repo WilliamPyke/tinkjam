@@ -166,12 +166,18 @@ export function reopenGuestShare(share: JoinedGuestShare) {
   appAtomRegistry.update(reopeningSharesAtom, (current) => new Set([...current, share.shareId]));
   writeGuestShares(readGuestShares().filter((existing) => existing.shareId !== share.shareId));
   setTimeout(() => {
+    if (!appAtomRegistry.get(reopeningSharesAtom).has(share.shareId)) return;
     rememberGuestShare(share);
     appAtomRegistry.update(
       reopeningSharesAtom,
       (current) => new Set([...current].filter((shareId) => shareId !== share.shareId)),
     );
   }, REOPEN_GAP_MS);
+}
+
+/** Drops every remembered reopening, as when the account they belonged to leaves this browser. */
+export function cancelReopeningShares() {
+  appAtomRegistry.set(reopeningSharesAtom, new Set());
 }
 
 // Opening a board again within this long does not count as a newer visit, so a reload writes nothing.
@@ -284,6 +290,10 @@ function noteBoardPreview(shareId: string, view: GuestShareView) {
  * no longer opens, which the share's page then shows instead of "not valid".
  */
 export function forgetGuestShare(shareId: string, endedDetail?: string) {
+  appAtomRegistry.update(
+    reopeningSharesAtom,
+    (current) => new Set([...current].filter((reopening) => reopening !== shareId)),
+  );
   const shares = readGuestShares();
   if (shares.some((share) => share.shareId === shareId)) {
     writeGuestShares(shares.filter((share) => share.shareId !== shareId));

@@ -28,6 +28,7 @@ import {
   accountBoardsAtom,
   applyAccountBoards,
   beginAccountBoardsWrite,
+  cancelReopeningShares,
   forgetGuestShare,
   isCloudShare,
   readGuestShares,
@@ -322,6 +323,7 @@ export function syncBoardAccount(session: BoardAccountSession | null): void {
   }
   appAtomRegistry.set(boardAccountAtom, session);
   writeAccountBoards(null);
+  cancelReopeningShares();
   appAtomRegistry.set(accountListSettledAtom, false);
   triedClaims.clear();
   const leaving = new Set(sharesOfOtherAccounts(readGuestShares(), session?.userId ?? null));

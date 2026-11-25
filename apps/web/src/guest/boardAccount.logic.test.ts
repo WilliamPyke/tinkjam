@@ -389,4 +389,24 @@ describe("board account requests around sign-out", () => {
   });
 
 
+  it("signing out cancels a board that was about to reopen", () => {
+    vi.useFakeTimers();
+    return accountHarness().then(({ account, shares }) => {
+      shares.reopenGuestShare({
+        host: "boards.example.test",
+        shareId,
+        threadId: ThreadId.make(`board-${shareId}`),
+        token: "account-token",
+        title: "Account board",
+        joinedAt: new Date(0).toISOString(),
+        accountId: ACCOUNT.userId,
+      });
+
+      account.syncBoardAccount(null);
+      vi.advanceTimersByTime(300);
+
+      expect(shares.readGuestShares()).toEqual([]);
+    });
+  });
+
 });
