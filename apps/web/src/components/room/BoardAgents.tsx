@@ -143,7 +143,9 @@ export function BoardAgentsMoreButton({
       size={needs === 0 ? "icon" : "sm"}
       variant="ghost"
       aria-label={
-        needs === 0 ? "More tools" : `More tools, ${needs} agent${needs === 1 ? "" : "s"} need you`
+        needs === 0
+          ? "More tools"
+          : `More tools, ${needs} agent${needs === 1 ? "" : "s"} ${needs === 1 ? "needs" : "need"} you`
       }
     >
       {children}
@@ -166,7 +168,11 @@ export function BoardAgentsNeedsBadge({
 }) {
   const needs = useAgentsNeedingViewer(entries, viewer);
   return needs === 0 ? null : (
-    <Badge size="sm" variant="warning" aria-label={`${needs} need you`}>
+    <Badge
+      size="sm"
+      variant="warning"
+      aria-label={`${needs} agent${needs === 1 ? "" : "s"} ${needs === 1 ? "needs" : "need"} you`}
+    >
       {needs}
     </Badge>
   );
