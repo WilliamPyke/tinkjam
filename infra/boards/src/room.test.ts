@@ -66,7 +66,7 @@ import {
   type CloudRoom,
 } from "./room.ts";
 import { hashSecret, makeSecret, makeViewSecret, shareOfSecret } from "./secrets.ts";
-import { BoardRoom } from "./worker.ts";
+import worker, { BoardRoom } from "./worker.ts";
 
 vi.mock("cloudflare:workers", () => ({
   DurableObject: class {
@@ -108,6 +108,34 @@ const decodeEvent = Schema.decodeUnknownSync(
   Schema.fromJsonString(Schema.toCodecJson(GuestStreamEvent)),
 );
 const frameData = (frame: string) => frame.replace(/^data: /, "").trimEnd();
+
+describe("cloud board worker", () => {
+  it("does not read a board to copy once the copier is over their limit", async () => {
+    const copyFor = vi.fn(async () => ({
+      title: "Source",
+      board: { positions: {}, notes: [] },
+    }));
+    const objectNamespace = (object: object) => ({
+      idFromName: (name: string) => name,
+      get: () => object,
+    });
+    const response = await worker.fetch(
+      new Request("https://boards/api/boards/copy", {
+        method: "POST",
+        body: JSON.stringify({ name: "Sam", source: "source-share-0000.secret" }),
+      }) as never,
+      {
+        ALLOWED_ORIGINS: "",
+        BOARDS: objectNamespace({ copyFor }),
+        CREATE_LIMITS: objectNamespace({ take: async () => false }),
+        ACCOUNTS: objectNamespace({}),
+        WORKSPACES: objectNamespace({}),
+      } as never,
+    );
+    expect(response.status).toBe(429);
+    expect(copyFor).not.toHaveBeenCalled();
+  });
+});
 
 describe("cloud room", () => {
   it("joins a second guest whose change shows in everyone's view", () => {

@@ -501,10 +501,6 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (Option.isNone(copy)) return failureResponse(roomFailure("bad_request"));
     const sourceId = shareOfSecret(copy.value.source);
     if (sourceId === null) return failureResponse(roomFailure("invalid"));
-    // The copier's id is made here, so the source writes the copy's cards as theirs.
-    const copier = GuestId.make(crypto.randomUUID());
-    const source = await boardOf(env, sourceId).copyFor(copy.value.source, copier, nowIso());
-    if ("failure" in source) return failureResponse(source.failure);
     // A copy is a new board: it counts against the same limit as making one, keyed the
     // same way so a signed-in person's address is not shared with strangers behind it.
     const maker =
@@ -513,6 +509,10 @@ async function route(request: Request, env: Env): Promise<Response> {
         : `account:${account}`;
     const limit = env.CREATE_LIMITS.get(env.CREATE_LIMITS.idFromName(maker));
     if (!(await limit.take(Date.now()))) return failureResponse(roomFailure("too_fast"));
+    // The copier's id is made here, so the source writes the copy's cards as theirs.
+    const copier = GuestId.make(crypto.randomUUID());
+    const source = await boardOf(env, sourceId).copyFor(copy.value.source, copier, nowIso());
+    if ("failure" in source) return failureResponse(source.failure);
     const shareId = crypto.randomUUID();
     const made = await boardOf(env, shareId).createCopy({
       shareId,
