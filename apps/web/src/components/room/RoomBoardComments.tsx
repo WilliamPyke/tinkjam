@@ -423,6 +423,7 @@ export function CommentThreadPanel({
   const confirm = useInlineActionConfirm(note.id);
   const deleteArmed = confirm.isArmed("thread");
   const panel = useRef<HTMLElement | null>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
   const [area, setArea] = useState<BoardSize | null>(null);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keeps the thread inside the board, whose size only the browser knows, before it paints
   useLayoutEffect(() => {
@@ -436,8 +437,15 @@ export function CommentThreadPanel({
   const placed = spot !== null;
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- the field cannot take focus while the panel is hidden for measuring, so it is focused once placed
   useLayoutEffect(() => {
+    if (returnFocus.current === null && document.activeElement instanceof HTMLElement) {
+      returnFocus.current = document.activeElement;
+    }
     if (placed) panel.current?.querySelector("textarea")?.focus({ preventScroll: true });
   }, [placed]);
+  const close = () => {
+    returnFocus.current?.focus({ preventScroll: true });
+    onClose();
+  };
   const send = async () => {
     const body = text.trim();
     if (body === "" || sending) return;
@@ -482,7 +490,7 @@ export function CommentThreadPanel({
         const inside = event.target instanceof Node && event.currentTarget.contains(event.target);
         if (event.key !== "Escape" || !inside) return;
         event.stopPropagation();
-        onClose();
+        close();
       }}
     >
       <header className="flex shrink-0 items-center gap-1 border-b border-board-hairline py-1.5 ps-3 pe-1.5">
@@ -506,7 +514,7 @@ export function CommentThreadPanel({
             {deleteArmed ? "Delete?" : null}
           </Button>
         )}
-        <Button size="icon-micro" variant="ghost-muted" aria-label="Close" onClick={onClose}>
+        <Button size="icon-micro" variant="ghost-muted" aria-label="Close" onClick={close}>
           <XIcon />
         </Button>
       </header>
