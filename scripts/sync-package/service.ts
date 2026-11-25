@@ -392,11 +392,11 @@ const writeFile = (path: string, contents: string) => {
   NodeFS.writeFileSync(path, contents);
 };
 
-/** File text as both single-byte and UTF-16, so paths inside Windows shortcuts match too. */
+/** File text as UTF-8, single-byte and UTF-16, so paths inside Windows shortcuts match too. */
 const readLoose = (path: string) => {
   try {
     const bytes = NodeFS.readFileSync(path);
-    return `${bytes.toString("latin1")}\n${bytes.toString("utf16le")}`;
+    return `${bytes.toString("utf8")}\n${bytes.toString("latin1")}\n${bytes.toString("utf16le")}`;
   } catch {
     return "";
   }

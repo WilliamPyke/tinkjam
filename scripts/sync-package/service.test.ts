@@ -180,6 +180,27 @@ describe("Tinkjam Sync's login items", () => {
       ),
     ).toBe("unrelated");
   });
+
+  it("reads UTF-8 login items so a non-English home is cleaned up", () => {
+    const parent = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "sync-helper-test-"));
+    const baseDir = NodePath.join(parent, "Zoë ");
+    const configHome = NodePath.join(parent, "config");
+    const autostart = NodePath.join(configHome, "autostart");
+    NodeFS.mkdirSync(autostart, { recursive: true });
+    const item = NodePath.join(autostart, "helper.desktop");
+    NodeFS.writeFileSync(item, `[Desktop Entry]\nExec=node ${baseDir}\n`, "utf8");
+    const previousConfigHome = process.env.XDG_CONFIG_HOME;
+    process.env.XDG_CONFIG_HOME = configHome;
+    try {
+      const removed = syncService(baseDir, "linux").sweep();
+      expect(removed.some((line) => line.includes(item))).toBe(true);
+      expect(NodeFS.existsSync(item)).toBe(false);
+    } finally {
+      if (previousConfigHome === undefined) delete process.env.XDG_CONFIG_HOME;
+      else process.env.XDG_CONFIG_HOME = previousConfigHome;
+      NodeFS.rmSync(parent, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("Tinkjam Sync's background copy", () => {
