@@ -37,6 +37,9 @@ describe("boardLiveEmbeds", () => {
     expect(boardLiveEmbeds(row, view, 1, ["f0"]).has("f0")).toBe(true);
     expect(boardLiveEmbeds(row, view, 0.2, ["f0"]).size).toBe(0);
     expect(boardLiveEmbeds(row, { ...view, y: 5_000 }, 1, ["f0"]).size).toBe(0);
+    // On a phone nothing loads unasked, and only the last one opened stays loaded.
+    expect(boardLiveEmbeds(row, view, 1, [], new Set(), true).size).toBe(0);
+    expect([...boardLiveEmbeds(row, view, 1, ["f0", "f3"], new Set(), true)]).toEqual(["f3"]);
   });
 
   it("loads a page someone chose to show only for a viewer who asked for it", () => {

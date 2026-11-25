@@ -59,10 +59,9 @@ const loadsFrame = (
     (note.framed === true && shown.has(note.id) && boardCanFramePage(note.url, [])));
 
 /**
- * The embeds whose pages load now: only those in view at a readable zoom, the ones someone
- * clicked (`opened`, newest last) first, then the nearest the middle of the view, up to
- * `BOARD_LIVE_EMBEDS_MAX`. A page someone chose to show loads only for a viewer who asked for it
- * (`shown`): any site sees the address of whoever loads it.
+ * The embeds whose pages load now: those in view at a readable zoom, the ones clicked (`opened`)
+ * first, then the nearest the middle. A page someone chose to show loads only for a viewer who
+ * asked (`shown`). A phone (`askFirst`) lacks the memory to load any unasked: one, once opened.
  */
 export function boardLiveEmbeds(
   notes: ReadonlyArray<RoomBoardNote>,
@@ -70,6 +69,7 @@ export function boardLiveEmbeds(
   zoom: number,
   opened: ReadonlyArray<string>,
   shown: ReadonlySet<string> = new Set(),
+  askFirst = false,
 ): ReadonlySet<string> {
   if (within === null || zoom < BOARD_EMBED_MIN_ZOOM) return new Set();
   const centre = { x: within.x + within.width / 2, y: within.y + within.height / 2 };
@@ -87,9 +87,10 @@ export function boardLiveEmbeds(
       return [];
     }
     const rank = opened.lastIndexOf(note.id);
+    if (askFirst && rank < 0) return [];
     const distance = Math.hypot(note.x + w / 2 - centre.x, note.y + h / 2 - centre.y);
     return [{ id: note.id, rank, distance }];
   });
   inView.sort((left, right) => right.rank - left.rank || left.distance - right.distance);
-  return new Set(inView.slice(0, BOARD_LIVE_EMBEDS_MAX).map(({ id }) => id));
+  return new Set(inView.slice(0, askFirst ? 1 : BOARD_LIVE_EMBEDS_MAX).map(({ id }) => id));
 }

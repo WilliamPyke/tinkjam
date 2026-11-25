@@ -1355,6 +1355,7 @@ export function RoomBoard({
     view.zoom,
     embedsOpened,
     pagesShown,
+    touchFirst(),
   );
   const showEmbed = (noteId: string) => {
     setEmbedsOpened((opened) => [...opened.filter((id) => id !== noteId), noteId].slice(-8));
