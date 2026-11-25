@@ -40,6 +40,14 @@ import { RoomLiveContext, useBoxProgress } from "./roomBoardLive";
 
 const stopPointer = (event: PointerEvent) => event.stopPropagation();
 
+const APPROVAL_FALLBACK = {
+  command: "Command approval",
+  "file-change": "File change approval",
+  "file-read": "File read approval",
+  permission: "App permission approval",
+  "mcp-elicitation": "App access approval",
+} as const;
+
 /**
  * A box's reply: as written, or, when it is a whole HTML page, what the page is called, with its
  * source a press away and, for the last reply, a way to put the page in an artifact window.
@@ -424,7 +432,7 @@ export function BoxApproval({
       onPointerDown={stopPointer}
     >
       <p className="line-clamp-2 font-mono text-2xs whitespace-pre-wrap [overflow-wrap:anywhere]">
-        {approval.detail || approval.requestKind}
+        {approval.detail || APPROVAL_FALLBACK[approval.requestKind]}
       </p>
       {approval.responseCapability === "live" ? null : (
         <p className="text-2xs text-warning-foreground">
