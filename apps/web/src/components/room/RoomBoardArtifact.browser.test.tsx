@@ -5,7 +5,7 @@ import { render } from "../../../test/render";
 import "../../index.css";
 
 import { boardMarkSelectorOf } from "./boardMark.logic";
-import { RoomArtifactBody } from "./RoomBoardArtifact";
+import { RoomArtifactBody, RoomArtifactLive } from "./RoomBoardArtifact";
 
 const written = (body: string) => ({
   body,
@@ -114,6 +114,35 @@ describe("RoomArtifactBody", () => {
     );
     await expect.element(screen.getByText("Ship the board on Friday.")).toBeVisible();
     expect(screen.container.querySelector("iframe")).toBeNull();
+  });
+});
+
+describe("RoomArtifactLive", () => {
+  it("keeps what was typed when saving does not take, and can save it again", async () => {
+    const onWrite = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    await using screen = await render(
+      <RoomArtifactLive
+        noteId="art"
+        artifact={undefined}
+        author={undefined}
+        writingFallback={null}
+        boxName={() => "Agent"}
+        onRestore={undefined}
+        onWrite={onWrite}
+        people={{ guests: [], viewer: null, ownerName: "Sam" }}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Write it yourself" }));
+    const field = screen.getByRole("textbox", { name: "Artifact text" });
+    await userEvent.type(field, "A newer page");
+    await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    await vi.waitFor(() => expect(onWrite).toHaveBeenCalledWith("A newer page"));
+    await expect.element(field).toBeInTheDocument();
+    await expect.element(field).toHaveValue("A newer page");
+
+    await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    await vi.waitFor(() => expect(onWrite).toHaveBeenCalledTimes(2));
+    await expect.element(field).not.toBeInTheDocument();
   });
 });
 

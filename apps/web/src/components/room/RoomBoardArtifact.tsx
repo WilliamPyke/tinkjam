@@ -556,8 +556,20 @@ export function RoomArtifactLive({
       <RoomArtifactEditor
         initial={artifact?.body ?? ""}
         onDone={async (body) => {
-          setEditing(false);
-          if (body !== null) await onWrite(body);
+          if (body === null) {
+            setEditing(false);
+            return true;
+          }
+          if (await onWrite(body).catch(() => false)) {
+            setEditing(false);
+            return true;
+          }
+          toastManager.add({
+            type: "info",
+            title: "Could not save the page",
+            description: "What you wrote is still here. Try again.",
+          });
+          return false;
         }}
       />
     );
@@ -626,7 +638,7 @@ function RoomArtifactEditor({
   onDone,
 }: {
   readonly initial: string;
-  readonly onDone: (body: string | null) => void;
+  readonly onDone: (body: string | null) => Promise<boolean>;
 }) {
   const [text, setText] = useState(initial);
   // Ctrl+Enter or Escape closes the field, and the blur that may follow must not save again.
@@ -635,7 +647,9 @@ function RoomArtifactEditor({
     if (done.current) return;
     done.current = true;
     const body = text.trim();
-    onDone(save && body !== "" && body !== initial.trim() ? body : null);
+    void onDone(save && body !== "" && body !== initial.trim() ? body : null).then((close) => {
+      if (!close) done.current = false;
+    });
   };
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-1 border-t border-board-hairline px-3 py-2">
