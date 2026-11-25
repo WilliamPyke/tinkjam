@@ -468,5 +468,5 @@ export function nextBoardWork<
     failed.length > 0 && attempt < BOARD_WORK_ATTEMPTS
       ? [{ ...base, retry: { shareIds: failed, attempt } } as W]
       : [];
-  return [...more, ...rest, ...again];
+  return [...more, ...again, ...rest];
 }

@@ -270,8 +270,8 @@ describe("boards in a workspace", () => {
     };
     expect(nextBoardWork<Work>(lock, [release], ["a", "b"], ["b"], 2)).toEqual([
       { ...lock, after: "b" },
-      release,
       { ...lock, retry: { shareIds: ["b"], attempt: 1 } },
+      release,
     ]);
     // A retry asks only its boards, and stops after the last attempt.
     const retry = { ...lock, retry: { shareIds: ["b"], attempt: 1 } };
