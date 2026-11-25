@@ -69,14 +69,13 @@ export function RemoveT3ConnectEnvironmentDialog({
             <AlertDialogDescription>
               {shown.registration === "registered" ? (
                 <>
-                  It stays on your Tinkjam Connect account and keeps its host space. Deregister it
-                  in {accountPageLink} to free it.
+                  It stays on your Tinkjam Connect account. You can remove it in {accountPageLink}.
                 </>
               ) : shown.registration === "unregistered" ? (
                 "It's no longer on your Tinkjam Connect account."
               ) : (
                 <>
-                  This doesn't change your Tinkjam Connect account. To deregister it there, use{" "}
+                  This doesn't change your Tinkjam Connect account. To remove it there, use{" "}
                   {accountPageLink}.
                 </>
               )}
