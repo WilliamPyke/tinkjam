@@ -1556,6 +1556,8 @@ export class BoardRoom extends DurableObject<Env> {
     if (Result.isFailure(answered)) return { failure: answered.failure };
     const { request, seat } = answered.success;
     const next = answered.success.room;
+    const told = accountGuestOf(next, request.account)?.id;
+    await this.save(withInboxAt(next, told === undefined ? [] : [told], now));
     const requester = this.indexOf(request.account);
     await requester
       .deliver([accessAnswerItem(next, request, guest?.name ?? "An owner of its workspace")])
@@ -1568,8 +1570,6 @@ export class BoardRoom extends DurableObject<Env> {
     const managers = await this.managerAccounts(next);
     const item = accessRequestItem(next, request, true);
     await Promise.allSettled(managers.map((manager) => this.indexOf(manager).deliver([item])));
-    const told = accountGuestOf(next, request.account)?.id;
-    await this.save(withInboxAt(next, told === undefined ? [] : [told], now));
     return { value: null };
   }
 

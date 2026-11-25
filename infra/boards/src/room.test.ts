@@ -18,6 +18,7 @@ import * as Schema from "effect/Schema";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { SESSION_ROUTE, SESSION_ROUTES, STREAM_ROUTE, checkAccess } from "./access.ts";
+import { askAccess } from "./accessRequests.ts";
 import { accountLockedOut, withAccountSession } from "./account.ts";
 import { machineGuestOf } from "./machines.ts";
 import {
@@ -323,6 +324,58 @@ describe("cloud room", () => {
     object.keepTaskIndex = async () => undefined;
     object.previewLater = () => undefined;
     await object.saveChange(before, after);
+    expect(object.room?.title).toBe("Newer title");
+  });
+
+  it("keeps a newer board change made while an access answer goes out", async () => {
+    const made = newRoom();
+    const owned = {
+      ...made,
+      guests: made.guests.map((guest) => ({ ...guest, accountId: "user_ada" })),
+    };
+    const asked = Result.getOrThrow(
+      askAccess(owned, {
+        id: "request-one",
+        account: "user_sam",
+        name: "Sam",
+        viewing: true,
+        now: NOW,
+      }),
+    );
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      preview: string;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      answerAccess(account: string, requestId: string, approve: boolean): Promise<unknown>;
+      indexOf(account: string): {
+        deliver(items: ReadonlyArray<unknown>): Promise<void>;
+        add(items: ReadonlyArray<unknown>): Promise<void>;
+      };
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+    };
+    object.room = asked.room;
+    object.deleted = false;
+    object.streams = new Set();
+    object.preview = "";
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => undefined,
+        delete: async () => undefined,
+      },
+    };
+    object.indexOf = () => ({
+      deliver: async () => {
+        if (object.room !== null) object.room = renameRoom(object.room, "Newer title", NOW);
+      },
+      add: async () => undefined,
+    });
+    object.keepTaskIndex = async () => undefined;
+    await object.answerAccess("user_ada", "request-one", true);
     expect(object.room?.title).toBe("Newer title");
   });
 
