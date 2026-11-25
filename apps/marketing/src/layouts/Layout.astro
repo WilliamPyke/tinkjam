@@ -17,7 +17,10 @@ const {
   noindex = false,
   navOver = false,
 } = Astro.props;
-const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
+const canonicalPath = Astro.url.pathname
+  .replace(/\/index\.html$/, "/")
+  .replace(/\.html$/, "");
+const canonicalUrl = new URL(canonicalPath, Astro.site);
 const socialImageUrl = new URL("/og.png", Astro.site);
 const year = new Date().getFullYear();
 ---
