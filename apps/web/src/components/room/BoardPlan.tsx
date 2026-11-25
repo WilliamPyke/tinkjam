@@ -68,6 +68,7 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../
 import { Textarea } from "../ui/textarea";
 import { Toggle } from "../ui/toggle";
 import { Toggle as GroupToggle, ToggleGroup } from "../ui/toggle-group";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { BoardChip, PersonDot } from "./BoardChrome";
 import { useMentionPicker } from "./BoardMentions";
 import {
@@ -191,6 +192,14 @@ const SORTS: ReadonlyArray<{ readonly sort: BoardPlanSort; readonly title: strin
 
 const isPicking = (event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }) =>
   event.shiftKey || event.ctrlKey || event.metaKey;
+
+const planTaskButton = (id: string) =>
+  document.querySelector<HTMLElement>(`[data-plan-card="${CSS.escape(id)}"] > button`);
+
+const planActionsButton = (id: string) =>
+  document.querySelector<HTMLElement>(`[data-plan-card="${CSS.escape(id)}"] [data-plan-actions]`);
+
+const planSearch = () => document.querySelector<HTMLElement>("[data-plan-search]");
 
 /** Whether a key went to something that takes typing, or a dialog or menu that has its own keys. */
 const typingIn = (target: EventTarget | null) =>
@@ -334,6 +343,41 @@ export function BoardPlan({
   const editingTask = editing === null ? undefined : all.find((task) => task.id === editing);
   const liftedTask = lifted === null ? undefined : all.find((task) => task.id === lifted.id);
   const pickedTasks = all.filter((task) => picked.has(task.id));
+  const listRows = boardPlanSorted(
+    BOARD_PLAN_COLUMNS.flatMap(({ status }) =>
+      columns[status].filter((task) => boardPlanShows(task, filter)),
+    ),
+    listSort,
+  );
+  // The order Shift-click selects along: down each column in turn, or down the list.
+  const shownOrder = (
+    layout === "list" ? listRows : BOARD_PLAN_COLUMNS.flatMap(({ status }) => shownColumns[status])
+  ).map((task) => task.id);
+  function focusAfterDelete(taskIds: ReadonlyArray<string>) {
+    const deleted = new Set(taskIds);
+    const remaining = shownOrder.filter((id) => !deleted.has(id));
+    const first = Math.min(
+      ...taskIds.map((id) => shownOrder.indexOf(id)).filter((index) => index >= 0),
+    );
+    const target =
+      remaining.length === 0 ? undefined : remaining[Math.min(first, remaining.length - 1)];
+    window.setTimeout(() => {
+      const button = target === undefined ? null : planTaskButton(target);
+      (button ?? planSearch())?.focus();
+    }, 0);
+  }
+  const actionsFor = (task: RoomBoardNote): PlanTaskActions => {
+    const actions = actionsOf(task);
+    const remove = actions.onDelete;
+    if (remove === undefined) return actions;
+    return {
+      ...actions,
+      onDelete: () => {
+        remove();
+        focusAfterDelete([task.id]);
+      },
+    };
+  };
   const changePicked = (update: (task: RoomBoardNote) => RoomBoardNote) => {
     for (const task of pickedTasks) onChange(task, update);
   };
@@ -341,7 +385,9 @@ export function BoardPlan({
   const deletePicked = () => {
     const removable = pickedTasks.filter((task) => actionsOf(task).onDelete !== undefined);
     if (removable.length === 0) return;
-    onDeleteAll(removable.map((task) => task.id));
+    const ids = removable.map((task) => task.id);
+    onDeleteAll(ids);
+    focusAfterDelete(ids);
     setPicked(
       new Set(pickedTasks.filter((task) => !removable.includes(task)).map((task) => task.id)),
     );
@@ -514,16 +560,6 @@ export function BoardPlan({
     endDrag.current = end;
   };
 
-  const listRows = boardPlanSorted(
-    BOARD_PLAN_COLUMNS.flatMap(({ status }) =>
-      columns[status].filter((task) => boardPlanShows(task, filter)),
-    ),
-    listSort,
-  );
-  // The order Shift-click selects along: down each column in turn, or down the list.
-  const shownOrder = (
-    layout === "list" ? listRows : BOARD_PLAN_COLUMNS.flatMap(({ status }) => shownColumns[status])
-  ).map((task) => task.id);
   // Ctrl or Cmd+A selects every task shown, as on the board.
   const pickAll = useStableCallback((event: KeyboardEvent) => {
     if (
@@ -577,6 +613,7 @@ export function BoardPlan({
       shown={BOARD_PLAN_COLUMNS.reduce((sum, { status }) => sum + shownColumns[status].length, 0)}
       filter={filter}
       onFilter={setFilter}
+      tasks={all}
       people={people}
       guests={guests}
       viewer={viewer}
@@ -646,7 +683,7 @@ export function BoardPlan({
         guests={guests}
         ownerAssignable={ownerAssignable}
         canEdit={canEdit}
-        actions={actionsOf(editingTask)}
+        actions={actionsFor(editingTask)}
         onChange={onChange}
         onStatus={(status) =>
           onMove(
@@ -679,7 +716,7 @@ export function BoardPlan({
                   {...cardOf(task)}
                   picked={picked.has(task.id)}
                   canEdit={canEdit}
-                  actions={actionsOf(task)}
+                  actions={actionsFor(task)}
                   pickedCount={picked.has(task.id) ? picked.size : 1}
                   onMoveTo={(to) => moveTo(task, to)}
                   onOpen={(event) => open(event, task)}
@@ -759,7 +796,7 @@ export function BoardPlan({
                   const placeholder = lifted?.id === task.id;
                   const before = !placeholder && lineAt === shownAt;
                   if (!placeholder) shownAt += 1;
-                  const index = column.findIndex((other) => other.id === task.id);
+                  const index = tasks.findIndex((other) => other.id === task.id);
                   return (
                     <li key={task.id} className="flex flex-col gap-2">
                       {before ? <DropLine /> : null}
@@ -771,10 +808,16 @@ export function BoardPlan({
                         pickedCount={picked.has(task.id) ? picked.size : 1}
                         status={status}
                         canMoveUp={manual && index > 0}
-                        canMoveDown={manual && index >= 0 && index < column.length - 1}
-                        actions={actionsOf(task)}
+                        canMoveDown={manual && index >= 0 && index < tasks.length - 1}
+                        actions={actionsFor(task)}
                         onMoveTo={(to) => moveTo(task, to)}
-                        onMoveBy={(by) => onMove(task.id, status, index + by)}
+                        onMoveBy={(by) =>
+                          onMove(
+                            task.id,
+                            status,
+                            boardPlanIndexAmong(column, tasks, task.id, index + by),
+                          )
+                        }
                         onOpen={(event) => open(event, task)}
                         onDetails={() => setEditing(task.id)}
                         onPress={(event) => press(event, task)}
@@ -849,6 +892,7 @@ function PlanToolbar({
   shown,
   filter,
   onFilter,
+  tasks,
   people,
   guests,
   viewer,
@@ -865,6 +909,7 @@ function PlanToolbar({
   readonly shown: number;
   readonly filter: BoardPlanFilter;
   readonly onFilter: (filter: BoardPlanFilter) => void;
+  readonly tasks: ReadonlyArray<RoomBoardNote>;
   readonly people: BoardPeople;
   readonly guests: ReadonlyArray<ThreadGuest>;
   readonly viewer: string | null;
@@ -886,6 +931,13 @@ function PlanToolbar({
     ...(ownerAssignable ? [OWNER] : []),
     ...guests.map((guest) => guest.id as string),
   ];
+  const addChoice = (choice: string) => {
+    if (!choices.includes(choice)) choices.push(choice);
+  };
+  for (const task of tasks) {
+    if (task.assignee !== undefined) addChoice(task.assignee.guestId ?? OWNER);
+  }
+  if (person !== null && person !== "nobody") addChoice(person.guestId ?? OWNER);
   const nameOf = (value: string) =>
     value === EVERYONE
       ? "Everyone"
@@ -953,6 +1005,7 @@ function PlanToolbar({
           <Input
             size="sm"
             type="search"
+            data-plan-search
             aria-label="Search tasks"
             placeholder="Search tasks"
             value={filter.text}
@@ -1015,7 +1068,12 @@ function PlanToolbar({
         Hide done
       </Toggle>
       {isPlanFiltered(filter) ? (
-        <Button size="xs" variant="ghost-muted" onClick={() => onFilter(NO_PLAN_FILTER)}>
+        <Button
+          size="xs"
+          variant="ghost-muted"
+          aria-label={`Clear filters, showing ${shown} of ${total} tasks`}
+          onClick={() => onFilter(NO_PLAN_FILTER)}
+        >
           <XIcon />
           {shown} of {total}
         </Button>
@@ -1040,18 +1098,24 @@ function SortMenu({
 }) {
   return (
     <Menu>
-      <MenuTrigger
-        render={
-          <Button
-            size="icon-xs"
-            variant={sort === "manual" ? "ghost-muted" : "ghost"}
-            aria-label={label}
-            title={label}
-          />
-        }
-      >
-        <ArrowDownWideNarrowIcon />
-      </MenuTrigger>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <MenuTrigger
+              render={
+                <Button
+                  size="icon-xs"
+                  variant={sort === "manual" ? "ghost-muted" : "ghost"}
+                  aria-label={label}
+                />
+              }
+            />
+          }
+        >
+          <ArrowDownWideNarrowIcon />
+        </TooltipTrigger>
+        <TooltipPopup side="top">{label}</TooltipPopup>
+      </Tooltip>
       <MenuPopup align="end">
         <MenuGroup>
           <MenuGroupLabel>Sort by</MenuGroupLabel>
@@ -1107,19 +1171,29 @@ function PlanAdd({
 }) {
   const [draft, setDraft] = useState("");
   if (!open) {
+    const button = (
+      <Button
+        size="sm"
+        variant="ghost-muted"
+        disabled={cannotAdd !== null}
+        onClick={onOpen}
+        data-plan-add={status}
+      >
+        <PlusIcon />
+        Add a task
+      </Button>
+    );
     return (
       <div className="flex px-2 pt-1 pb-2">
         <WhyNot reason={cannotAdd}>
-          <Button
-            size="sm"
-            variant="ghost-muted"
-            disabled={cannotAdd !== null}
-            onClick={onOpen}
-            title={status === "todo" ? "Add a task (C)" : undefined}
-          >
-            <PlusIcon />
-            Add a task
-          </Button>
+          {status === "todo" && cannotAdd === null ? (
+            <Tooltip>
+              <TooltipTrigger render={button} />
+              <TooltipPopup side="top">Add a task (C)</TooltipPopup>
+            </Tooltip>
+          ) : (
+            button
+          )}
         </WhyNot>
       </div>
     );
@@ -1146,6 +1220,9 @@ function PlanAdd({
             event.preventDefault();
             setDraft("");
             onClose();
+            window.setTimeout(() => {
+              document.querySelector<HTMLElement>(`[data-plan-add="${status}"]`)?.focus();
+            }, 0);
           }
         }}
         onBlur={() => {
@@ -1171,6 +1248,7 @@ interface PlanCardShows {
 
 /** The task's menu: where to move it, or the picked tasks with it, and what else it does. */
 function PlanCardMenu({
+  taskId,
   label,
   status,
   canEdit,
@@ -1184,6 +1262,7 @@ function PlanCardMenu({
   open,
   onOpenChange,
 }: {
+  readonly taskId: string;
   readonly label: string;
   readonly status: RoomTaskStatus;
   readonly canEdit: boolean;
@@ -1202,11 +1281,24 @@ function PlanCardMenu({
   return (
     <Menu open={open} onOpenChange={onOpenChange}>
       <MenuTrigger
-        render={<Button size="icon-xs" variant="ghost" aria-label={`Actions for ${label}`} />}
+        render={
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            aria-label={`Actions for ${label}`}
+            data-plan-actions
+          />
+        }
       >
         <EllipsisIcon />
       </MenuTrigger>
-      <MenuPopup align="end">
+      <MenuPopup
+        align="end"
+        finalFocus={(closeType) => {
+          if (closeType !== "keyboard") return true;
+          return planActionsButton(taskId) ?? planTaskButton(taskId) ?? false;
+        }}
+      >
         <MenuItem onClick={onDetails}>
           <PencilIcon />
           {canEdit ? "Edit details" : "Details"}
@@ -1309,6 +1401,7 @@ function PlanCard({
         className="absolute top-2 right-2 opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 group-hover/plan:opacity-100 group-focus-within/plan:opacity-100 has-[[data-popup-open]]:opacity-100"
       >
         <PlanCardMenu
+          taskId={shows.task.id}
           label={label}
           status={status}
           canEdit={canEdit}
@@ -1354,6 +1447,7 @@ function PlanListRow({
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <li
+      data-plan-card={task.id}
       className={cn(
         "group/plan relative flex min-h-12 items-center gap-2.5 border-b border-board-hairline px-4 py-2 last:border-b-0 hover:bg-accent/40",
         picked && "bg-primary/8",
@@ -1402,6 +1496,7 @@ function PlanListRow({
       />
       <span className="relative">
         <PlanCardMenu
+          taskId={shows.task.id}
           label={label}
           status={status}
           canEdit={canEdit}

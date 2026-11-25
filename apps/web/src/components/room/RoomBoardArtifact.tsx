@@ -565,7 +565,7 @@ export function RoomArtifactLive({
             return true;
           }
           toastManager.add({
-            type: "info",
+            type: "error",
             title: "Could not save the page",
             description: "What you wrote is still here. Try again.",
           });

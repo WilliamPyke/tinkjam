@@ -40,6 +40,10 @@ const inboxCountAtom = Atom.make<CloudInboxCount | null>(null).pipe(
   Atom.withLabel("inbox-count"),
 );
 const inboxAtom = Atom.make<CloudInbox | null>(null).pipe(Atom.keepAlive, Atom.withLabel("inbox"));
+const inboxLoadFailedAtom = Atom.make(false).pipe(
+  Atom.keepAlive,
+  Atom.withLabel("inbox-load-failed"),
+);
 /** Edit access this page asked for, by board: the request's id, until it is answered. */
 const askedAtom = Atom.make<Readonly<Record<string, string>>>({}).pipe(
   Atom.keepAlive,
@@ -48,6 +52,7 @@ const askedAtom = Atom.make<Readonly<Record<string, string>>>({}).pipe(
 
 export const useInboxCount = () => useAtomValue(inboxCountAtom);
 export const useInbox = () => useAtomValue(inboxAtom);
+export const useInboxLoadFailed = () => useAtomValue(inboxLoadFailedAtom);
 export const useAskedAccess = (shareId: string) => useAtomValue(askedAtom)[shareId] ?? null;
 
 const decodeCount = Schema.decodeUnknownOption(CloudInboxCount);
@@ -70,6 +75,7 @@ async function messageOf(response: Response | null, fallback: string): Promise<s
 
 let countUser: string | null = null;
 let countReadAt = 0;
+let inboxRead = 0;
 // Focus and showing the page come together; one read answers both.
 const COUNT_STEP_MS = 5_000;
 
@@ -78,8 +84,10 @@ export async function refreshInboxCount(now = false): Promise<void> {
   const user = userNow();
   if (user !== countUser) {
     countUser = user;
+    inboxRead += 1;
     appAtomRegistry.set(inboxCountAtom, null);
     appAtomRegistry.set(inboxAtom, null);
+    appAtomRegistry.set(inboxLoadFailedAtom, false);
     appAtomRegistry.set(askedAtom, {});
   }
   if (user === null || !boardAccountsEnabled()) return;
@@ -95,10 +103,19 @@ export async function refreshInboxCount(now = false): Promise<void> {
 export async function loadInbox(): Promise<void> {
   const user = userNow();
   if (user === null) return;
+  const read = ++inboxRead;
+  appAtomRegistry.set(inboxLoadFailedAtom, false);
   const response = await accountRequest(CLOUD_INBOX_ROUTE);
-  if (userNow() !== user || response?.ok !== true) return;
-  const inbox = Option.getOrNull(decodeInbox(await response.json().catch(() => null)));
-  if (inbox === null) return;
+  if (userNow() !== user || read !== inboxRead) return;
+  const inbox =
+    response?.ok === true
+      ? Option.getOrNull(decodeInbox(await response.json().catch(() => null)))
+      : null;
+  if (userNow() !== user || read !== inboxRead) return;
+  if (inbox === null) {
+    appAtomRegistry.set(inboxLoadFailedAtom, true);
+    return;
+  }
   appAtomRegistry.set(inboxAtom, inbox);
   appAtomRegistry.set(inboxCountAtom, {
     unread: inbox.unread,

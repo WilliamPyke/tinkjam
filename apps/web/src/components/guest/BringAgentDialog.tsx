@@ -93,6 +93,8 @@ export function BringAgentDialog({
   const [brought, setBrought] = useState(false);
   // A computer this browser is still connecting to: its agent comes once it is ready.
   const [pending, setPending] = useState<BringTarget | null>(null);
+  // The wait that has not been cancelled, so a slow answer cannot put its error back.
+  const waitingFor = useRef<BringTarget | null>(null);
   // Counts closes, so work that finishes after one does not write into the next opening.
   const opening = useRef(0);
   // Chosen as it opens and kept until it has closed, so nothing that happens inside resizes it:
@@ -104,6 +106,7 @@ export function BringAgentDialog({
   const changeOpen = (next: boolean) => {
     if (!next) {
       opening.current += 1;
+      waitingFor.current = null;
       setBusy(null);
       setPending(null);
       setError(null);
@@ -138,6 +141,7 @@ export function BringAgentDialog({
     ) && agentsChecked(providersByEnvironment.get(environmentId) ?? []);
 
   const bringWhenReady = useEffectEvent((target: BringTarget) => {
+    waitingFor.current = null;
     setPending(null);
     void bring(target);
   });
@@ -149,6 +153,8 @@ export function BringAgentDialog({
   }, [pending, pendingReady]);
 
   const giveUpWaiting = useEffectEvent((target: BringTarget) => {
+    if (waitingFor.current !== target) return;
+    waitingFor.current = null;
     setPending(null);
     const connected = computers.some(
       (computer) => computer.environmentId === target.environmentId && computer.status === "ready",
@@ -172,6 +178,7 @@ export function BringAgentDialog({
     if (readyToBring(computer.environmentId)) return void bring(target);
     const mine = opening.current;
     setError(null);
+    waitingFor.current = target;
     setPending(target);
     if (computer.saved) return;
     const result = await registerEnvironment(
@@ -182,13 +189,18 @@ export function BringAgentDialog({
         }),
       }),
     );
-    if (result._tag === "Failure" && mine === opening.current) {
+    if (result._tag === "Failure" && mine === opening.current && waitingFor.current === target) {
+      waitingFor.current = null;
       setPending(null);
       setError({
         message: `Could not reach ${computer.name}. Check that Tinkjam Sync is running on it.`,
         retry: target,
       });
     }
+  };
+  const cancelWaiting = () => {
+    waitingFor.current = null;
+    setPending(null);
   };
   const tryAgain = (target: BringTarget) => {
     const computer = computers.find((entry) => entry.environmentId === target.environmentId);
@@ -274,7 +286,7 @@ export function BringAgentDialog({
                           working={waiting || bringing}
                           disabled={busy !== null || pending !== null}
                           onBring={(project) => void choose(computer, project)}
-                          onCancel={waiting ? () => setPending(null) : null}
+                          onCancel={waiting ? cancelWaiting : null}
                         />
                       </ComputerRow>
                     );
@@ -360,7 +372,7 @@ export function WaitingForComputer({ next }: { readonly next: string }) {
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium">Waiting for your computer…</span>
         <span className="block text-xs text-muted-foreground">
-          It shows up here by itself once you press Connect. {next}
+          It shows up here by itself once you approve it. {next}
         </span>
       </span>
     </div>
@@ -393,14 +405,15 @@ function BringControls({
       project.isScratch !== true &&
       project.archivedAt == null,
   );
-  // The project last picked for this computer here, else none: an agent in no project cannot
-  // change anyone's code until the person picks one.
-  const [projectId, setProjectId] = useState<string>(() => {
-    const remembered = readBringProject(computer.environmentId);
-    return remembered !== null && projects.some((project) => project.id === remembered)
+  // `choice` is only what the person picked here; until then the remembered project fills in once
+  // its computer's projects arrive. An agent in no project cannot change anyone's code.
+  const [choice, setChoice] = useState<string | null>(null);
+  const [remembered] = useState(() => readBringProject(computer.environmentId));
+  const projectId =
+    choice ??
+    (remembered !== null && projects.some((project) => project.id === remembered)
       ? remembered
-      : NO_PROJECT;
-  });
+      : NO_PROJECT);
   const items = [
     { value: NO_PROJECT, label: "No project" },
     ...projects.map((project) => ({ value: project.id, label: project.title })),
@@ -413,7 +426,7 @@ function BringControls({
           <Select
             value={projectId}
             onValueChange={(next) => {
-              if (next) setProjectId(next);
+              if (next) setChoice(next);
             }}
             items={items}
           >
@@ -462,7 +475,7 @@ export function ConnectComputerRoutes({
 }) {
   const [os, setOs] = useState<SyncOs | null>(detectSyncOs);
   const signIn = withAccount && !signedIn;
-  const connect = "Your browser opens by itself. Sign in if it asks, then press Connect.";
+  const connect = "Your browser opens by itself. Sign in if it asks, then approve the computer.";
   return (
     <div className="flex flex-col gap-3" data-bring-agent-steps>
       <section className="flex flex-col gap-3 rounded-2xl border border-border bg-panel p-4">
@@ -541,8 +554,8 @@ export function ConnectComputerRoutes({
                   <CommandLine os={os} />
                 </Step>
                 <Step number={2}>
-                  Open the link it prints and press Connect. It then runs in the background and
-                  starts when you log in.
+                  Open the link it prints and approve the computer. It then runs in the background
+                  and starts when you log in.
                 </Step>
                 {signIn ? (
                   <Step number={3}>

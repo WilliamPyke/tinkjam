@@ -106,6 +106,7 @@ export function BoardsSection({ canStart }: { readonly canStart: boolean }) {
             size="nav"
             variant="nav"
             isActive={atHome && scope === "all"}
+            aria-current={atHome && scope === "all" ? "page" : undefined}
             render={<Link to="/" />}
             onClick={() => {
               setWorkspaceScope("all");
@@ -123,6 +124,7 @@ export function BoardsSection({ canStart }: { readonly canStart: boolean }) {
               size="nav"
               variant="nav"
               isActive={atHome && scope === "personal"}
+              aria-current={atHome && scope === "personal" ? "page" : undefined}
               onClick={() => showScope("personal")}
               data-sidebar-my-boards
             >
@@ -144,6 +146,7 @@ export function BoardsSection({ canStart }: { readonly canStart: boolean }) {
                   size="nav"
                   variant="selectable"
                   isActive={scope === workspace.id}
+                  aria-current={scope === workspace.id ? "true" : undefined}
                   onClick={() => showScope(workspace.id)}
                   data-sidebar-workspace={workspace.id}
                 >
@@ -195,6 +198,7 @@ export function BoardsSection({ canStart }: { readonly canStart: boolean }) {
                 size="nav"
                 variant="nav"
                 isActive={openBoard === board.threadId}
+                aria-current={openBoard === board.threadId ? "page" : undefined}
                 onClick={closeMobile}
                 render={
                   board.kind === "own" ? (

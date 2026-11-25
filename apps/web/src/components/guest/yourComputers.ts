@@ -35,7 +35,7 @@ const COMPUTER_STATUS_TEXT: Record<BringAgentComputer["status"], string> = {
   ready: "Online",
   online: "Online",
   connecting: "Connecting…",
-  offline: "Offline. Wake it, or open Tinkjam Sync from Applications or the Start menu.",
+  offline: "Offline. Wake it, or open Tinkjam Sync on it.",
   unchecked: "Could not check. Try again in a moment.",
   unsupported: "Out of date. Open Tinkjam Sync on it and choose Check for Updates.",
   gone: "No longer connected. Remove it, or open Tinkjam Sync on it and choose Connect.",

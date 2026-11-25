@@ -64,7 +64,7 @@ const BOX_SIZE = { w: 340, h: 460 };
 export const BLANK_BOARD_TEMPLATE: BoardTemplate = {
   id: "blank",
   name: "Blank",
-  description: "An empty board with its thread box.",
+  description: "An empty board with its agent box.",
   cloudDescription: "An empty board.",
   thread: { x: 80, y: 72 },
   items: [],
@@ -326,7 +326,7 @@ export const BOARD_TEMPLATES: ReadonlyArray<BoardTemplate> = [
       {
         key: "how",
         kind: "note",
-        text: "Select tasks, then Run with an agent and pick Builder.",
+        text: "Select tasks, choose Run with an agent, and pick Builder.",
         x: 1660,
         y: 40,
         color: "yellow",

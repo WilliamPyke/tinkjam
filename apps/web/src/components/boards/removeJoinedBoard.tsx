@@ -238,14 +238,7 @@ export function JoinedBoardMenu({
     <>
       <Menu>
         <MenuTrigger
-          render={
-            <Button
-              size={size}
-              variant={variant}
-              aria-label={`More for ${board.title}`}
-              title="More"
-            />
-          }
+          render={<Button size={size} variant={variant} aria-label={`More for ${board.title}`} />}
           data-joined-board-menu
         >
           <EllipsisIcon />

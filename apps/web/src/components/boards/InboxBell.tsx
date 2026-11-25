@@ -12,6 +12,7 @@ import {
   refreshInboxCount,
   useInbox,
   useInboxCount,
+  useInboxLoadFailed,
   watchInbox,
 } from "~/guest/inbox";
 import { setWorkspaceScope } from "~/guest/workspaces";
@@ -84,6 +85,7 @@ function SignedInBell({
   const sidebar = presentation === "sidebar";
   const count = useInboxCount();
   const inbox = useInbox();
+  const inboxLoadFailed = useInboxLoadFailed();
   const [open, setOpen] = useState(false);
   const [answering, setAnswering] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -183,7 +185,16 @@ function SignedInBell({
           )}
         </div>
         {inbox === null ? (
-          <p className="py-6 text-center text-xs text-muted-foreground">Loading...</p>
+          inboxLoadFailed ? (
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <p className="text-xs text-destructive">Could not read your inbox.</p>
+              <Button size="xs" variant="outline" onClick={() => void loadInbox()}>
+                Try again
+              </Button>
+            </div>
+          ) : (
+            <p className="py-6 text-center text-xs text-muted-foreground">Loading...</p>
+          )
         ) : inbox.items.length === 0 ? (
           <p className="py-6 text-center text-xs text-muted-foreground">
             Nothing yet. When someone mentions you, gives you a task or replies to you, it shows

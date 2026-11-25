@@ -52,6 +52,8 @@ import { SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
+const initialOf = (name: string) => Array.from(name.trim())[0]?.toUpperCase() ?? "?";
+
 /** A workspace's mark: its first letter on its colour. */
 export function WorkspaceMark({
   name,
@@ -71,7 +73,7 @@ export function WorkspaceMark({
         paintSwatchClassName(color),
       )}
     >
-      {name.trim().charAt(0).toUpperCase() || "?"}
+      {initialOf(name)}
     </span>
   );
 }
@@ -274,7 +276,7 @@ export function WorkspaceInvite({ workspace }: { readonly workspace: CloudWorksp
       <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
         <WorkspaceMark name={workspace.name} color={workspace.color} size="md" />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <p className="text-ui-md font-semibold text-foreground">
+          <p className="wrap-anywhere text-ui-md font-semibold text-foreground">
             {alone ? `Invite your team to ${workspace.name}` : `No boards in ${workspace.name} yet`}
           </p>
           <p className="text-sm text-muted-foreground">
@@ -344,6 +346,8 @@ function WorkspacePeopleDialog({
   readonly onClose: () => void;
 }) {
   const owner = workspace.role === "owner";
+  const lastOwner =
+    owner && workspace.members.filter((member) => member.role === "owner").length === 1;
   const copyInvite = useCopyInvite();
   const [name, setName] = useState(workspace.name);
   const [color, setColor] = useState(workspace.color);
@@ -406,9 +410,9 @@ function WorkspacePeopleDialog({
       <DialogPopup className="sm:max-w-lg" data-workspace-people-dialog>
         <DialogHeader>
           <DialogTitle>
-            <span className="flex items-center gap-2">
+            <span className="flex min-w-0 items-center gap-2">
               <WorkspaceMark name={workspace.name} color={workspace.color} />
-              {workspace.name}
+              <span className="min-w-0 wrap-anywhere">{workspace.name}</span>
             </span>
           </DialogTitle>
           <DialogDescription>
@@ -508,10 +512,16 @@ function WorkspacePeopleDialog({
               Delete workspace
             </Button>
           ) : null}
-          <Button variant="outline" onClick={() => void leave()} data-leave-workspace>
-            <LogOutIcon />
-            Leave workspace
-          </Button>
+          {lastOwner ? (
+            <p className="text-sm text-muted-foreground sm:self-center">
+              To leave, make someone else an owner first, or delete the workspace.
+            </p>
+          ) : (
+            <Button variant="outline" onClick={() => void leave()} data-leave-workspace>
+              <LogOutIcon />
+              Leave workspace
+            </Button>
+          )}
         </DialogFooter>
       </DialogPopup>
     </Dialog>
@@ -555,7 +565,7 @@ function MemberRow({
             sameName ? paintSwatchClassName(memberColor(member.memberId)) : "bg-muted",
           )}
         >
-          {member.name.trim().charAt(0).toUpperCase()}
+          {initialOf(member.name)}
         </span>
       ) : (
         <img

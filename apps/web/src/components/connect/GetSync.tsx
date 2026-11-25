@@ -6,6 +6,7 @@ import { SYNC_INSTALLS, SYNC_OS_NAMES, SYNC_OSES, type SyncOs } from "~/syncDown
 
 import { splitLinkClassName } from "../brand/SplitScreen";
 import { Button } from "../ui/button";
+import { toastManager } from "../ui/toast";
 
 /**
  * Tinkjam Sync for the chosen computer as the one button: its download, or its install command to
@@ -22,7 +23,17 @@ export function SyncInstallAction({
   readonly size?: "pill" | "default";
 }) {
   const install = SYNC_INSTALLS[os];
-  const { copyToClipboard, isCopied } = useCopyToClipboard({ timeout: 2000, target: "command" });
+  const { copyToClipboard, isCopied } = useCopyToClipboard({
+    timeout: 2000,
+    target: "command",
+    onError: () =>
+      toastManager.add({
+        type: "error",
+        title: "Could not copy the install command",
+        description:
+          "Your browser did not allow it. Select the command below and copy it yourself.",
+      }),
+  });
   return (
     <div
       className={cn(
@@ -89,9 +100,11 @@ const PASTE_STEP: Readonly<Record<SyncOs, string>> = {
 export function SyncSteps({ os }: { readonly os: SyncOs }) {
   const install = SYNC_INSTALLS[os];
   const steps = [
-    install.method === "file" ? "Install Tinkjam Sync" : PASTE_STEP[os],
-    "Open it and press Connect",
-    "Approve the computer",
+    install.method === "file" ? "Download Tinkjam Sync and open the file" : PASTE_STEP[os],
+    install.method === "command" && os === "linux"
+      ? "Open the link it prints"
+      : "Open it and press Connect",
+    "Approve this computer",
   ];
   return (
     <ol className="flex flex-col border-b border-border">
@@ -108,6 +121,12 @@ export function SyncSteps({ os }: { readonly os: SyncOs }) {
           </span>
           <span className="flex min-w-0 flex-col gap-1.5 pt-0.5">
             <span className="font-semibold">{step}</span>
+            {index === 0 && install.method === "file" && os === "windows" ? (
+              <span className="text-ui-sm text-muted-foreground">
+                Windows does not recognise Tinkjam Sync yet, so it says it protected your PC. Choose
+                More info, then Run anyway.
+              </span>
+            ) : null}
             {index === 0 && install.method === "command" ? (
               <code
                 className="font-mono text-ui-sm wrap-anywhere text-muted-foreground select-all"
