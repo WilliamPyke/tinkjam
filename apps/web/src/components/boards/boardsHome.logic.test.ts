@@ -158,11 +158,14 @@ describe("listHomeBoards", () => {
       threads: [],
       joined: joinedBoardSources({
         local,
-        listed: [account("here", false), account("elsewhere", true)],
+        listed: [{ ...account("here", false), title: "Renamed" }, account("elsewhere", true)],
       }),
       teams: [],
       isOwnEnvironment: () => true,
     });
+    expect(
+      boards.find((board) => board.kind === "joined" && board.shareId === "here")?.title,
+    ).toBe("Renamed");
     expect(
       boards.map((board) =>
         board.kind === "joined" ? [board.shareId, board.shared, board.remote, board.maker] : null,
@@ -179,11 +182,15 @@ describe("listHomeBoards", () => {
         { ...local[0]!, preview: "1:here" },
         { ...local[1]!, preview: "1:machine" },
       ],
-      listed: [{ ...account("here", false), preview: "1:host" }, account("elsewhere", true)],
+      listed: [
+        { ...account("here", false), preview: "1:host" },
+        { ...account("machine", false), preview: "" },
+        account("elsewhere", true),
+      ],
     }).map((board) => [board.shareId, board.preview]);
     expect(previews).toEqual([
       ["here", "1:host"],
-      ["machine", "1:machine"],
+      ["machine", ""],
       ["elsewhere", undefined],
     ]);
   });
@@ -192,14 +199,27 @@ describe("listHomeBoards", () => {
     const joined = withWorkspaceBoards(
       [
         { shareId: "mine", threadId: "t-mine", title: "Mine", joinedAt: NOW_ISO, cloud: true },
-        { shareId: "team-here", threadId: "t-th", title: "Here", joinedAt: NOW_ISO, cloud: true },
+        {
+          shareId: "team-here",
+          threadId: "t-th",
+          title: "Here",
+          joinedAt: NOW_ISO,
+          cloud: true,
+          preview: "1:local",
+        },
       ],
       [
         {
           id: "ws-acme",
           name: "Acme",
           boards: [
-            { shareId: "team-here", threadId: "t-th", title: "Here", addedAt: NOW_ISO },
+            {
+              shareId: "team-here",
+              threadId: "t-th",
+              title: "Renamed here",
+              addedAt: NOW_ISO,
+              preview: "",
+            },
             { shareId: "team-new", threadId: "t-tn", title: "Roadmap", addedAt: NOW_ISO },
           ],
         },
@@ -221,14 +241,15 @@ describe("listHomeBoards", () => {
         board.kind === "joined" ? [board.title, board.workspaceName, board.remote] : [board.title],
       );
     expect(shown("ws-acme")).toEqual([
-      ["Here", "Acme", false],
+      ["Renamed here", "Acme", false],
       ["Roadmap", "Acme", true],
     ]);
     expect(shown("personal")).toEqual([["Mine", null, false], ["On my computer"]]);
     expect(shown("all")).toHaveLength(4);
     expect(shown("ws-other")).toEqual([]);
+    expect(joined.find((board) => board.shareId === "team-here")?.preview).toBe("");
     // Search finds boards by their workspace's name too.
-    expect(shown("all", "acme").map(([title]) => title)).toEqual(["Here", "Roadmap"]);
+    expect(shown("all", "acme").map(([title]) => title)).toEqual(["Renamed here", "Roadmap"]);
   });
 });
 

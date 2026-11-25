@@ -71,9 +71,10 @@ export function joinedBoardSources(input: {
       ? share
       : {
           ...share,
+          title: board.title,
           shared: !board.maker,
           maker: board.maker || share.maker === true,
-          preview: board.preview || share.preview,
+          preview: board.preview ?? share.preview,
         };
   });
   const here = new Set(input.local.map((share) => share.shareId));
@@ -117,11 +118,19 @@ export function withWorkspaceBoards(
   if (workspaces === null || workspaces.length === 0) return joined;
   const inWorkspace = new Map<
     string,
-    { readonly workspace: WorkspaceBoardsSource; readonly preview: string | undefined }
+    {
+      readonly workspace: WorkspaceBoardsSource;
+      readonly title: string;
+      readonly preview: string | undefined;
+    }
   >();
   for (const workspace of workspaces) {
     for (const board of workspace.boards) {
-      inWorkspace.set(board.shareId, { workspace, preview: board.preview });
+      inWorkspace.set(board.shareId, {
+        workspace,
+        title: board.title,
+        preview: board.preview,
+      });
     }
   }
   const tagged = joined.map((share) => {
@@ -130,10 +139,11 @@ export function withWorkspaceBoards(
       ? share
       : {
           ...share,
+          title: listed.title,
           workspaceId: listed.workspace.id,
           workspaceName: listed.workspace.name,
           workspaceColor: listed.workspace.color,
-          preview: listed.preview || share.preview,
+          preview: listed.preview ?? share.preview,
         };
   });
   const listed = new Set(joined.map((share) => share.shareId));
