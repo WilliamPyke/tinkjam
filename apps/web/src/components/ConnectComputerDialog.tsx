@@ -22,6 +22,7 @@ import { SyncInstallAction, SyncSteps, WaitingForSync } from "./connect/GetSync"
 import {
   type AgentState,
   type BringAgentComputer,
+  agentSignInHint,
   computerAgentStates,
 } from "./guest/bringAgent.logic";
 import {
@@ -287,6 +288,7 @@ function ConnectedScreen({
     .map((agent) => artAgentFor(agent.driver))
     .filter((agent): agent is ArtAgent => agent !== null);
   const firstReady = agents.find((agent) => agent.state === "ready");
+  const signedOutAgent = agents.find((agent) => agent.state === "signed-out");
   return (
     <SplitScreen
       corner={flow.corner}
@@ -363,6 +365,11 @@ function ConnectedScreen({
           })}
         </ul>
       )}
+      {firstReady === undefined && signedOutAgent !== undefined ? (
+        <p className="mt-4 text-sm text-muted-foreground">
+          {agentSignInHint(signedOutAgent.driver, signedOutAgent.name)}
+        </p>
+      ) : null}
       {providers.length > 0 && agents.every((agent) => agent.state === "not-installed") ? (
         <p className="mt-4 text-sm text-muted-foreground">
           To bring an agent, install{" "}
