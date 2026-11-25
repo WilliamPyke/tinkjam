@@ -5,8 +5,7 @@ type Point = { x: number; y: number };
 
 class Stopped extends Error {}
 
-/** False when the board's parts are missing and there is nothing to draw. */
-export function startHeroDemo(board: HTMLElement, onDone: () => void): boolean {
+export function startHeroDemo(board: HTMLElement): void {
   const find = <T extends Element>(selector: string) => board.querySelector<T>(selector);
   const linker = find<HTMLButtonElement>("[data-linker]");
   const dot = find<HTMLElement>("[data-linker-dot]");
@@ -40,7 +39,7 @@ export function startHeroDemo(board: HTMLElement, onDone: () => void): boolean {
     !lineFigma ||
     !lineOut
   ) {
-    return false;
+    return;
   }
 
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
@@ -207,7 +206,6 @@ export function startHeroDemo(board: HTMLElement, onDone: () => void): boolean {
     board.dataset.demo = "done";
     replay.hidden = false;
     if (document.activeElement === linker) replay.focus();
-    onDone();
   };
 
   const start = async (drawIn: boolean) => {
@@ -288,5 +286,4 @@ export function startHeroDemo(board: HTMLElement, onDone: () => void): boolean {
     if (event.detail === 0) void start(true);
   });
   replay.addEventListener("click", reset);
-  return true;
 }

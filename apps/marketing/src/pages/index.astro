@@ -32,10 +32,6 @@ const samples = SAMPLE_BOARDS.map((board) => ({
 ---
 
 <Layout navOver>
-  <script is:inline>
-    // Without scripts the whole page shows at once.
-    document.documentElement.classList.add("gate");
-  </script>
   <section class="hero">
     <div class="hero__stage">
       <h1 class="headline" data-headline>
@@ -220,7 +216,6 @@ const samples = SAMPLE_BOARDS.map((board) => ({
         <p class="intro__fine">Free while in beta. No account needed.</p>
       </div>
     </div>
-    <button class="hero__skip" type="button" data-skip>Skip</button>
   </section>
 
   <dialog class="samples" aria-labelledby="samples-title" data-samples>
@@ -374,49 +369,7 @@ const samples = SAMPLE_BOARDS.map((board) => ({
 <script>
   import { startHeroDemo } from "../lib/heroDemo";
 
-  const root = document.documentElement;
-  const reveal = (scroll: boolean) => {
-    if (!root.classList.replace("gate", "revealed") || !scroll) return;
-    // On a phone the rest arrives under the board, so it is brought up into view.
-    if (matchMedia("(max-width: 959px)").matches) {
-      const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
-      document
-        .querySelector("[data-headline]")
-        ?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
-    }
-  };
   const board = document.querySelector<HTMLElement>("[data-board]");
-  if (!board || !startHeroDemo(board, () => reveal(true))) reveal(false);
-  document.querySelector("[data-skip]")?.addEventListener("click", () => reveal(false));
-
-  // Before the line is drawn, scrolling moves around the board as it does on a real one.
-  const stage = document.querySelector<HTMLElement>(".hero__stage");
-  if (board && stage) {
-    const pan = { x: 0, y: 0 };
-    const within = (value: number, low: number, high: number) =>
-      Math.min(Math.max(value, low), high);
-    stage.parentElement?.addEventListener(
-      "wheel",
-      (event) => {
-        const open = root.classList.contains("gate") && board.dataset.demo === undefined;
-        if (!open || !matchMedia("(min-width: 960px)").matches) return;
-        event.preventDefault();
-        const unit = stage.offsetWidth / 1440;
-        const across = event.shiftKey ? event.deltaY : event.deltaX;
-        pan.x = within(pan.x - across, -80 * unit, 260 * unit);
-        pan.y = within(pan.y - (event.shiftKey ? 0 : event.deltaY), -380 * unit, 60 * unit);
-        stage.style.translate = `${pan.x}px ${pan.y}px`;
-      },
-      { passive: false },
-    );
-    // The camera takes over from wherever the board was left.
-    const settle = () => {
-      if (board.dataset.demo === undefined && root.classList.contains("gate")) return;
-      pan.x = pan.y = 0;
-      stage.style.translate = "";
-    };
-    new MutationObserver(settle).observe(board, { attributeFilter: ["data-demo"] });
-    new MutationObserver(settle).observe(root, { attributeFilter: ["class"] });
-  }
+  if (board) startHeroDemo(board);
 </script>
 </Layout>
