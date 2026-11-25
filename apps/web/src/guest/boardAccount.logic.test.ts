@@ -409,4 +409,25 @@ describe("board account requests around sign-out", () => {
       expect(shares.readGuestShares()).toEqual([]);
     });
   });
+
+  it("keeps the newest session when a board is reopened twice", () => {
+    vi.useFakeTimers();
+    return accountHarness().then(({ shares }) => {
+      const share = (token: string) => ({
+        host: "boards.example.test",
+        shareId,
+        threadId: ThreadId.make(`board-${shareId}`),
+        token,
+        title: "Account board",
+        joinedAt: new Date(0).toISOString(),
+        accountId: ACCOUNT.userId,
+      });
+      shares.reopenGuestShare(share("older-token"));
+      shares.reopenGuestShare(share("newer-token"));
+
+      vi.advanceTimersByTime(300);
+
+      expect(shares.findGuestShare(shareId)?.token).toBe("newer-token");
+    });
+  });
 });

@@ -157,16 +157,26 @@ export const reopeningSharesAtom = Atom.make<ReadonlySet<string>>(new Set<string
 );
 // Long enough for the connection to the board to close before the new one opens.
 const REOPEN_GAP_MS = 300;
+const reopeningWrites = new Map<string, number>();
+let nextReopeningWrite = 0;
 
 /**
  * Keeps `share` in place of the one with its id and connects to it again, so a session that
  * could only look (a view link) becomes the account's seat without reloading the page.
  */
 export function reopenGuestShare(share: JoinedGuestShare) {
+  const write = ++nextReopeningWrite;
+  reopeningWrites.set(share.shareId, write);
   appAtomRegistry.update(reopeningSharesAtom, (current) => new Set([...current, share.shareId]));
   writeGuestShares(readGuestShares().filter((existing) => existing.shareId !== share.shareId));
   setTimeout(() => {
-    if (!appAtomRegistry.get(reopeningSharesAtom).has(share.shareId)) return;
+    if (
+      reopeningWrites.get(share.shareId) !== write ||
+      !appAtomRegistry.get(reopeningSharesAtom).has(share.shareId)
+    ) {
+      return;
+    }
+    reopeningWrites.delete(share.shareId);
     rememberGuestShare(share);
     appAtomRegistry.update(
       reopeningSharesAtom,
@@ -177,6 +187,7 @@ export function reopenGuestShare(share: JoinedGuestShare) {
 
 /** Drops every remembered reopening, as when the account they belonged to leaves this browser. */
 export function cancelReopeningShares() {
+  reopeningWrites.clear();
   appAtomRegistry.set(reopeningSharesAtom, new Set());
 }
 
@@ -287,6 +298,7 @@ function noteBoardPreview(shareId: string, view: GuestShareView) {
  * no longer opens, which the share's page then shows instead of "not valid".
  */
 export function forgetGuestShare(shareId: string, endedDetail?: string) {
+  reopeningWrites.delete(shareId);
   appAtomRegistry.update(
     reopeningSharesAtom,
     (current) => new Set([...current].filter((reopening) => reopening !== shareId)),
