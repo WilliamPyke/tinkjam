@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/react";
+import { useAuth } from "../clerk/clerkHooks";
 import { Link } from "@tanstack/react-router";
 import { GUEST_NAME_MAX_LENGTH, managedCapabilityDenial } from "@t3tools/contracts";
 import { XIcon } from "lucide-react";

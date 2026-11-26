@@ -1,4 +1,4 @@
-import { useAuth, useClerk, useUser } from "@clerk/react";
+import { useAuth, useClerk, useUser } from "../clerk/clerkHooks";
 import { readConnectAuthorizeRequest } from "@t3tools/shared/connectAuth";
 import { type ReactNode, useEffect, useState } from "react";
 
@@ -85,7 +85,7 @@ export function ConnectCliAuthorizeSurface() {
     }
     // On a development sign-in instance, Clerk's own pages are on another site that cannot see
     // this page's sign-in, and would ask for it again; this carries it there. Nothing elsewhere.
-    window.location.assign(clerk.buildUrlWithAuth(authorizeUrl));
+    window.location.assign(clerk?.buildUrlWithAuth(authorizeUrl) ?? authorizeUrl);
   };
   const account = user?.primaryEmailAddress?.emailAddress ?? user?.fullName ?? null;
 
@@ -181,7 +181,7 @@ export function ConnectCliAuthorizeSurface() {
               // The address only differs by its fragment, so going to it reloads nothing by itself.
               onClick={() =>
                 void clerk
-                  .signOut({ redirectUrl: window.location.href })
+                  ?.signOut({ redirectUrl: window.location.href })
                   .finally(() => window.location.reload())
               }
             >

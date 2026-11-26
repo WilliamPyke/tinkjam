@@ -1,26 +1,23 @@
 import { ClerkProvider } from "@clerk/react";
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps } from "react";
 
 import { ManagedRelayAuthProvider } from "../../cloud/managedAuth";
 import { expectBoardAccountChange } from "../../guest/boardAccount";
 import { staysInApp } from "./authRedirect";
 import { clearSignInPageRequestOnLeave } from "./signInPageRequest";
 import { BoardAccountBridge } from "./BoardAccountBridge";
+import { ClerkHooksProvider } from "./ClerkHooksProvider";
 import { clerkAppearance, clerkLocalization } from "./clerkAppearance";
+import type { ManagedAuthShellProps } from "./lazyClerk";
 
 type ClerkRouterFn = NonNullable<ComponentProps<typeof ClerkProvider>["routerPush"]>;
 
-/** Lazy-load Clerk so cloudless local mode never downloads it. */
+/** Lazy-load Clerk so cloudless local mode, and anyone who never signed in, never downloads it. */
 export default function BrowserManagedAuthShell({
   publishableKey,
   navigate,
   children,
-}: {
-  readonly publishableKey: string;
-  /** Moves to a page of this app without loading it again. */
-  readonly navigate: (to: string, replace: boolean) => Promise<void>;
-  readonly children: ReactNode;
-}) {
+}: ManagedAuthShellProps) {
   // Without these Clerk loads the page again after every sign-in and sign-out, which blanks the
   // screen and empties whatever form the person was in.
   const move =
@@ -48,7 +45,9 @@ export default function BrowserManagedAuthShell({
       routerPush={move(false)}
       routerReplace={move(true)}
     >
-      <ManagedRelayAuthProvider>{children}</ManagedRelayAuthProvider>
+      <ManagedRelayAuthProvider>
+        <ClerkHooksProvider>{children}</ClerkHooksProvider>
+      </ManagedRelayAuthProvider>
       <BoardAccountBridge />
     </ClerkProvider>
   );

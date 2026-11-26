@@ -1,4 +1,4 @@
-import { useClerk, useUser } from "@clerk/react";
+import { useClerk, useUser } from "../clerk/clerkHooks";
 import { useNavigate } from "@tanstack/react-router";
 import { LogInIcon, LogOutIcon, SettingsIcon, UserRoundIcon, WrenchIcon } from "lucide-react";
 
@@ -151,7 +151,7 @@ function AccountMenu({
           <UserRoundIcon />
           Your account
         </MenuItem>
-        <MenuItem onClick={() => clerk.openUserProfile()}>
+        <MenuItem onClick={() => clerk?.openUserProfile()}>
           <SettingsIcon />
           Sign-in and security
         </MenuItem>
@@ -170,7 +170,7 @@ function AccountMenu({
           </span>
         </MenuItem>
         <MenuSeparator />
-        <MenuItem onClick={() => void clerk.signOut()}>
+        <MenuItem onClick={() => void clerk?.signOut()}>
           <LogOutIcon />
           Sign out
         </MenuItem>

@@ -63,7 +63,7 @@ vi.mock(import("../../cloud/publicConfig"), async (original) => ({
   ...(await original()),
   hasCloudPublicConfig: () => state.cloud,
 }));
-vi.mock(import("@clerk/react"), async (original) => ({
+vi.mock(import("../clerk/clerkHooks"), async (original) => ({
   ...(await original()),
   useAuth: (() => state.auth) as never,
 }));

@@ -1,4 +1,4 @@
-import { useAuth, useClerk } from "@clerk/react";
+import { useAuth, useClerk } from "./clerkHooks";
 import { ServerIcon, SmartphoneIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { createPortal } from "react-dom";
@@ -37,7 +37,7 @@ export function useT3ConnectAccountPage(): {
   const open = (page: T3ConnectAccountPageUrl = "t3-connect") => {
     const setTarget = (key: string, element: HTMLDivElement | undefined) =>
       setTargets((current) => ({ ...current, [key]: element }));
-    clerk.openUserProfile({
+    clerk?.openUserProfile({
       __experimental_startPath: `/${page}`,
       customPages: T3_CONNECT_ACCOUNT_PAGES.map((page) => ({
         label: page.label,

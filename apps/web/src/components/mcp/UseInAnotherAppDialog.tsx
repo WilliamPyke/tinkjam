@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/react";
+import { useAuth } from "../clerk/clerkHooks";
 import { useAtomValue } from "@effect/atom-react";
 import { offersLinkedEnvironments } from "@t3tools/client-runtime/link-request";
 import {

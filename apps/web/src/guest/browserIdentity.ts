@@ -78,6 +78,9 @@ function setIdentity(next: BrowserIdentity) {
 
 const fit = (name: string) => name.trim().slice(0, GUEST_NAME_MAX_LENGTH).trim();
 
+/** Whether an account was signed in on this browser when sign-in last said who was. */
+export const wasSignedInHere = () => appAtomRegistry.get(identityAtom).current !== null;
+
 /** The name typed here while signed out, which only a signed-out person goes by. */
 export const readSignedOutName = () => appAtomRegistry.get(identityAtom).name;
 

@@ -4,8 +4,8 @@ import { useBoardAccount } from "~/guest/boardAccount";
 import { detectSyncOs } from "~/syncDownloads";
 
 import { BrandArtPanel } from "../brand/BrandArtPanel";
+import { SignInArtCards } from "../brand/SignInArtCards";
 import { SplitHeading, SplitScreen, splitLinkClassName } from "../brand/SplitScreen";
-import { SignInArtCards } from "../clerk/SignInPage";
 import { ConnectComputerFlow, StepEyebrow } from "../ConnectComputerDialog";
 import { Button } from "../ui/button";
 import { BoardsAccount } from "./BoardsAccount";

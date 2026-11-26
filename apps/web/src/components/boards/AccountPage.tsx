@@ -1,5 +1,5 @@
 import { useAtomValue } from "@effect/atom-react";
-import { useClerk, useUser } from "@clerk/react";
+import { useClerk, useUser } from "../clerk/clerkHooks";
 import { GUEST_NAME_MAX_LENGTH } from "@t3tools/contracts";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeftIcon, LogInIcon, LogOutIcon, ShieldCheckIcon } from "lucide-react";
@@ -150,14 +150,14 @@ function SignedInAccount({
         detail="Your picture shows beside your name on your boards and in your workspaces."
       >
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => clerk.openUserProfile()}>
+          <Button variant="outline" onClick={() => clerk?.openUserProfile()}>
             <ShieldCheckIcon />
             Manage sign-in and picture
           </Button>
           <Button
             variant="outline"
             onClick={() => {
-              void clerk.signOut().then(() => navigate({ to: "/", replace: true }));
+              void clerk?.signOut().then(() => navigate({ to: "/", replace: true }));
             }}
             data-account-sign-out
           >

@@ -1,8 +1,9 @@
-import { useClerk } from "@clerk/react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { isElectron } from "../../env";
 import { type ClerkSignInProps, resolveClerkSignInProps } from "./authRedirect";
+import { useClerk } from "./clerkHooks";
+import { requestClerk } from "./lazyClerk";
 import { keepSignInPageRequest } from "./signInPageRequest";
 
 /**
@@ -16,9 +17,10 @@ export function useOpenSignIn() {
   return () => {
     const props: ClerkSignInProps = resolveClerkSignInProps(window.location.href, isElectron);
     if (isElectron) {
-      clerk.openSignIn({ ...props, withSignUp: true });
+      clerk?.openSignIn({ ...props, withSignUp: true });
       return;
     }
+    void requestClerk();
     keepSignInPageRequest({ ...props, from: window.location.href, withSignUp: true });
     void navigate({ to: "/sign-in/$", params: { _splat: "" } });
   };

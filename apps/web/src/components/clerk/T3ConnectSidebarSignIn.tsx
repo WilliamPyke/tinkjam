@@ -1,4 +1,5 @@
-import { UserButton, useAuth } from "@clerk/react";
+import { UserButton } from "@clerk/react";
+import { useAuth } from "./clerkHooks";
 import { LogInIcon } from "lucide-react";
 
 import { hasCloudPublicConfig } from "../../cloud/publicConfig";
