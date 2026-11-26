@@ -18,6 +18,7 @@ import {
   XIcon,
 } from "lucide-react";
 import {
+  type CSSProperties,
   type PointerEvent,
   type ReactNode,
   useEffect,
@@ -493,7 +494,19 @@ export function CommentThreadPanel({
       style={
         spot === null
           ? undefined
-          : { left: spot.left, top: spot.top, bottom: spot.bottom, maxHeight: spot.maxHeight }
+          : ({
+              left: spot.left,
+              top: spot.top,
+              "--comment-panel-keyboard-lift":
+                spot.bottom === undefined
+                  ? "var(--software-keyboard-inset, 0px)"
+                  : `max(0px, calc(var(--software-keyboard-inset, 0px) - ${spot.bottom}px))`,
+              bottom:
+                spot.bottom === undefined
+                  ? undefined
+                  : `calc(${spot.bottom}px + var(--comment-panel-keyboard-lift))`,
+              maxHeight: `max(0px, calc(${spot.maxHeight}px - var(--comment-panel-keyboard-lift)))`,
+            } as CSSProperties)
       }
       onPointerDown={(event) => event.stopPropagation()}
       onKeyDown={(event) => {

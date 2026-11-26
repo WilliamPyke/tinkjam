@@ -13,6 +13,9 @@ import { needsClerkAtStartup } from "./components/clerk/lazyClerk.logic";
 import { configureManagedAuth, ManagedAuthRoot, requestClerk } from "./components/clerk/lazyClerk";
 import { wasSignedInHere } from "./guest/browserIdentity";
 import { reloadingForChunkLoadError } from "./lib/chunkReloadGuard";
+import { installSoftwareKeyboardAssist } from "./lib/softwareKeyboard";
+
+installSoftwareKeyboardAssist(window, document);
 
 const router = startAppServices();
 

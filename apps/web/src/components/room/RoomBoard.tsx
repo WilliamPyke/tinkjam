@@ -1506,7 +1506,8 @@ export function RoomBoard({
       area === null ||
       !(field instanceof HTMLElement) ||
       surface?.contains(field) !== true ||
-      !field.matches("textarea, input")
+      !field.matches("textarea, input") ||
+      field.closest("[data-board-overlay]") !== null
     ) {
       return;
     }

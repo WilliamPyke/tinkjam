@@ -912,7 +912,10 @@ function PlanFrame({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+    <div
+      className="relative z-10 flex min-h-0 flex-1 flex-col"
+      style={{ paddingBottom: "var(--software-keyboard-inset, 0px)" }}
+    >
       {toolbar}
       {children}
     </div>
