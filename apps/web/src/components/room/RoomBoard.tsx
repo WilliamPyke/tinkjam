@@ -639,6 +639,14 @@ function withFlag(flag: { current: boolean }, run: () => void) {
 const useToolsAlongBottom = () =>
   useClientSettings((settings) => settings.boardToolsPlacement === "bottom");
 
+// In a row a finger's extra width would cover the next tool; in a column, its extra height.
+const BOARD_TOUCH_ROW = "[&_button]:pointer-coarse:after:min-w-auto";
+const BOARD_TOUCH_COLUMN = "[&_button]:pointer-coarse:after:min-h-auto";
+const BOARD_TOUCH_COLUMN_OR_ROW = cn(
+  `@xl/board:${BOARD_TOUCH_COLUMN}`,
+  `@max-xl/board:${BOARD_TOUCH_ROW}`,
+);
+
 /** A tool on the board's rail: an icon, named on hover and to screen readers. */
 function BoardTool({
   label,
@@ -1321,6 +1329,7 @@ export function RoomBoard({
     /** The section whose empty space it opened on, by note id; its frame takes no pointer. */
     readonly section: string | undefined;
     readonly canPaste: boolean;
+    readonly collisionPadding: ComponentProps<typeof BoardContextMenu>["collisionPadding"];
   } | null>(null);
   const [linking, setLinking] = useState<Linking | null>(null);
   // The Line tool: picking a card, then another, draws a line between them.
@@ -4719,6 +4728,9 @@ export function RoomBoard({
     }
     setSelectedEdge(null);
     const at = pointerOnBoard({ clientX: x, clientY: y }) ?? viewCentre();
+    const guide = document
+      .querySelector<HTMLElement>('[data-board-guide="open"]')
+      ?.getBoundingClientRect();
     setContextMenu({
       x,
       y,
@@ -4726,6 +4738,15 @@ export function RoomBoard({
       ref: on,
       section: on === null ? boardSectionHolding(drawnSections(), [at])?.note.id : undefined,
       canPaste: false,
+      collisionPadding:
+        guide === undefined
+          ? undefined
+          : {
+              top: 5,
+              left: 5,
+              right: 5,
+              bottom: Math.max(5, window.innerHeight - guide.top + 8),
+            },
     });
     void clipboardReadable().then((canPaste) => {
       if (!canPaste) return;
@@ -5765,6 +5786,9 @@ export function RoomBoard({
             <BoardFloat
               className={cn(
                 "pointer-events-auto max-h-full max-w-full gap-0.5 overflow-y-auto rounded-2xl p-1.5 @max-xl/board:flex-row @max-xl/board:overflow-x-auto @max-xl/board:overflow-y-visible @max-sm/board:gap-0 @max-sm/board:px-0.5",
+                toolsAlongBottom || linkDraft !== null
+                  ? BOARD_TOUCH_ROW
+                  : BOARD_TOUCH_COLUMN_OR_ROW,
                 linkDraft === null && "flex-col",
                 toolsAlongBottom && "flex-row overflow-x-auto overflow-y-visible",
               )}
@@ -6125,7 +6149,10 @@ export function RoomBoard({
                 />
               </div>
             ) : null}
-            <BoardFloat data-board-chrome="bottom" className="h-9 gap-0.5 rounded-full px-1">
+            <BoardFloat
+              data-board-chrome="bottom"
+              className={cn("h-9 gap-0.5 rounded-full px-1", BOARD_TOUCH_ROW)}
+            >
               <Button
                 size="icon-xs"
                 variant="ghost"
@@ -7509,6 +7536,7 @@ export function RoomBoard({
                   at={contextMenu}
                   card={menuParts.card}
                   groups={menuParts.groups}
+                  collisionPadding={contextMenu.collisionPadding}
                   onClose={() => {
                     setContextMenu(null);
                     const added = typeInAfterMenu.current;
@@ -7799,7 +7827,7 @@ function ItemHandles({
               key={grip.name}
               className={cn(
                 frame ? FRAME_GRIP_REACH : GRIP_REACH,
-                // A card's corners stay above what it shows; a section's stay behind the cards.
+                // A card's corners stay above what it shows, without rising over a card above it.
                 !frame && grip.edges.x !== undefined && grip.edges.y !== undefined && "z-10",
                 grip.className,
               )}

@@ -1,6 +1,6 @@
 import type { RoomBoardNoteColor, RoomBoardReactionEmoji } from "@t3tools/contracts";
 import { EllipsisIcon } from "lucide-react";
-import { Fragment, type PointerEvent, useState } from "react";
+import { Fragment, type ComponentProps, type PointerEvent, useState } from "react";
 
 import {
   Menu,
@@ -134,11 +134,13 @@ export function BoardContextMenu({
   at,
   card,
   groups,
+  collisionPadding,
   onClose,
 }: {
   readonly at: { readonly x: number; readonly y: number };
   readonly card: CardMenu | undefined;
   readonly groups: ReadonlyArray<ReadonlyArray<CardAction>>;
+  readonly collisionPadding?: ComponentProps<typeof MenuPopup>["collisionPadding"];
   /**
    * Once the menu has closed, so focus given then stays: while it is open it takes focus back. It
    * puts focus back itself; the menu leaves it alone.
@@ -164,6 +166,7 @@ export function BoardContextMenu({
         align="start"
         side="bottom"
         sideOffset={0}
+        collisionPadding={collisionPadding}
         finalFocus={false}
       >
         {parts.map((part, index) => (
