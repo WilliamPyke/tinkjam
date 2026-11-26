@@ -92,6 +92,9 @@ export const BOARD_MIN_ZOOM = 0.2;
 export const BOARD_MAX_ZOOM = 2;
 export const INITIAL_BOARD_VIEW: BoardView = { x: 0, y: 0, zoom: 1 };
 
+export const boardTouchFirst = () =>
+  typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+
 export const BOARD_CARD_WIDTH = 320;
 const CARD_ROW_HEIGHT = 240;
 const CARD_GAP = 40;

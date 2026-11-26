@@ -40,7 +40,7 @@ import { Button } from "../ui/button";
 import { toastManager } from "../ui/toast";
 import { boardCanFramePage } from "./boardEmbed.logic";
 import { boardFrameVerdict, boardOwnHosts, useBoardFrameCheck } from "./boardFrameCheck";
-import type { BoardSize } from "./roomBoard.logic";
+import { type BoardSize, boardTouchFirst } from "./roomBoard.logic";
 
 const stopPointer = (event: PointerEvent) => event.stopPropagation();
 
@@ -153,6 +153,7 @@ export function BoardPageCover({
   /** Whether the label shows only under the pointer. */
   readonly quiet: boolean;
 }) {
+  const pointerLabel = boardTouchFirst() ? label.replace(/^Click\b/, "Tap") : label;
   return (
     <div
       data-board-embed-cover
@@ -164,7 +165,7 @@ export function BoardPageCover({
           quiet && "opacity-0 group-hover/embed:opacity-100",
         )}
       >
-        {label}
+        {pointerLabel}
       </span>
     </div>
   );

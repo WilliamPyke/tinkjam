@@ -1991,8 +1991,11 @@ export function RoomBoard({
     const pending = typingSaves.current.get(key) ?? { pause: null, cap: null, saved: false };
     if (pending.pause !== null) clearTimeout(pending.pause);
     pending.pause = setTimeout(() => saveTyping(target), TYPING_SAVE_MS);
-    // Steady typing still saves every few seconds.
-    pending.cap ??= setTimeout(() => saveTyping(target), TYPING_SAVE_MAX_MS);
+    // Steady typing still saves every few seconds. Not `??=`: the React Compiler skips this
+    // whole component when it meets one.
+    if (pending.cap === null) {
+      pending.cap = setTimeout(() => saveTyping(target), TYPING_SAVE_MAX_MS);
+    }
     typingSaves.current.set(key, pending);
   };
   // `after` names the queue a change waits in: a line to a new card goes once the card is there.
