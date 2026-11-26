@@ -6242,7 +6242,7 @@ export function RoomBoard({
             // Keys act on the board during and after a gesture: Escape, Delete, the arrows.
             const linkBar = linkFieldRef.current;
             const leftLinkBar = linkBar !== null && document.activeElement !== linkBar;
-            event.currentTarget.focus({ preventScroll: true });
+            event.currentTarget.focus({ preventScroll: true, focusVisible: false });
             // With the link bar open, a press on the empty board keeps a typed link in its field;
             // with none typed, the first press only leaves the field and a second closes the bar.
             if (
