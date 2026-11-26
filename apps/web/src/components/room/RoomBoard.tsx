@@ -281,6 +281,7 @@ import {
   resizeBoardRect,
   resolveBoard,
   settleBoardEdits,
+  boardEditsUnsent,
   roomCodeStatus,
   roomFetchCommand,
   settleBoardValue,
@@ -1307,7 +1308,7 @@ export function RoomBoard({
   const settledEdits = settleBoardEdits(board, edits);
   if (settledEdits !== edits) setEdits(settledEdits);
   const shown = resolveBoard(board, settledEdits);
-  const unsent = Object.keys(settledEdits).length > 0;
+  const unsent = boardEditsUnsent(board, settledEdits);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keeps the page from reloading for a new deploy while edits here are not yet on the board
   useEffect(() => (unsent ? holdChunkReload() : undefined), [unsent]);
   const edges = shown.edges ?? [];

@@ -1402,6 +1402,16 @@ export function settleBoardEdits(board: RoomBoard, edits: BoardEdits): BoardEdit
 }
 
 /**
+ * Whether an edit here is not on the room's board yet: one still held, or one the room's copy does
+ * not show. A let-go edit the room already matches, as a card dropped where it was, stays kept.
+ */
+export const boardEditsUnsent = (board: RoomBoard, edits: BoardEdits): boolean =>
+  Object.values(edits).some(
+    (edit) =>
+      edit.held || valueKey(edit.value ?? undefined) !== valueKey(roomCopy(board, edit.target)),
+  );
+
+/**
  * Records an edit, and forgets the ones the room's copy has moved past. Held while the drag or
  * the typing goes on; let go, it stands in for the room's copy until the server answers.
  */

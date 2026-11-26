@@ -176,6 +176,7 @@ import {
   roomFetchCommand,
   screenToBoard,
   settleBoardEdits,
+  boardEditsUnsent,
   settleBoardValue,
   visibleBoardRect,
   openingBoardView,
@@ -693,6 +694,16 @@ describe("resolveBoard", () => {
 
     const dropped = settleBoardValue({ x: 40.4, y: 0 });
     const sent = putBoardEdit(room(0), dragging, thread, dropped, false);
+    expect(boardEditsUnsent(room(0), dragging)).toBe(true);
+    expect(boardEditsUnsent(room(0), sent)).toBe(true);
+    // A card dropped back where it was is already on the board, though the edit stays.
+    const back = putBoardEdit(room(0), NO_BOARD_EDITS, thread, { x: 0, y: 0 }, false);
+    expect(settleBoardEdits(room(0), back)).toBe(back);
+    expect(boardEditsUnsent(room(0), back)).toBe(false);
+    const gone = { kind: "note", id: "gone" } as const;
+    expect(
+      boardEditsUnsent(room(0), putBoardEdit(room(0), NO_BOARD_EDITS, gone, null, false)),
+    ).toBe(false);
     expect(boardChangeOf(thread, dropped)).toEqual({
       type: "card.move",
       cardId: "thread",
