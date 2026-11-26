@@ -186,7 +186,14 @@ export function needsAnOwner(change: RoomBoardChange): boolean {
   );
 }
 
-export const freeGuestName = (guests: ReadonlyArray<CloudGuest>, wanted: string) => {
+/** One line of what people can see: a title or a name every agent on the board reads too. */
+export const plainLine = (text: string): string =>
+  sanitizeLinkedPrompt(text).text.replace(/\s+/g, " ").trim();
+
+const GUEST_FALLBACK_NAME = "Guest";
+
+export const freeGuestName = (guests: ReadonlyArray<CloudGuest>, asked: string) => {
+  const wanted = plainLine(asked) || GUEST_FALLBACK_NAME;
   const base = wanted.slice(0, GUEST_NAME_MAX_LENGTH - 3);
   const taken = new Set(guests.map((guest) => guest.name.toLowerCase()));
   let name = wanted;
@@ -207,10 +214,10 @@ export function createRoom(input: {
   return {
     shareId: input.shareId,
     threadId: input.threadId,
-    title: input.title ?? DEFAULT_BOARD_TITLE,
+    title: plainLine(input.title ?? "") || DEFAULT_BOARD_TITLE,
     inviteHash: input.inviteHash,
     ...(input.editLink === undefined ? {} : { editLink: input.editLink }),
-    guests: [{ ...input.maker, joinedAt: input.now }],
+    guests: [{ ...input.maker, name: freeGuestName([], input.maker.name), joinedAt: input.now }],
     maker: input.maker.id,
     createdAt: input.now,
     updatedAt: input.now,
@@ -451,8 +458,10 @@ export const guestBySession = (room: CloudRoom | null, sessionHash: string) =>
       guest.accountSessions?.includes(sessionHash) === true,
   );
 
-export const renameRoom = (room: CloudRoom, title: string, now: string): CloudRoom =>
-  room.title === title ? room : { ...room, title, updatedAt: now };
+export const renameRoom = (room: CloudRoom, asked: string, now: string): CloudRoom => {
+  const title = plainLine(asked);
+  return title === "" || room.title === title ? room : { ...room, title, updatedAt: now };
+};
 
 const NO_MEMBERS: ReadonlySet<string> = new Set();
 

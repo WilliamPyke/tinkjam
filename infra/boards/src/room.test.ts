@@ -6,7 +6,9 @@ import {
   CLOUD_BOARD_PEOPLE_REMOVE_ROUTE,
   CLOUD_BOARD_PEOPLE_ROLE_ROUTE,
   CLOUD_BOARD_SHARING_ROUTE,
+  CLOUD_BOARD_TITLE_ROUTE,
   GUEST_BOARD_ROUTE,
+  GUEST_HANDOFF_ROUTE,
   GuestId,
   GuestShareId,
   GuestStreamEvent,
@@ -211,6 +213,70 @@ describe("cloud room", () => {
     const renamed = renameRoom(newRoom(), "Launch plan", NOW);
     expect(viewFor(renamed, renamed.guests[0]!).title).toBe("Launch plan");
     expect(renameRoom(renamed, "Launch plan", NOW)).toBe(renamed);
+  });
+
+  it("keeps characters nobody can see out of the names and titles agents read", () => {
+    const made = createRoom({
+      shareId: GuestShareId.make("share-one-0000"),
+      threadId: ThreadId.make("board-share-one-0000"),
+      title: "Launch\u{E0041}\u{E0042} plan​",
+      inviteHash: "invite-hash",
+      maker: { id: maker, name: "Ada⁠\u{E0049}", sessionHash: "maker-session" },
+      now: NOW,
+    });
+    expect([made.title, made.guests[0]?.name]).toEqual(["Launch plan", "Ada"]);
+    const joined = Result.getOrThrow(join(made, "guest-two", "Grace\u{E0058}﻿"));
+    expect(joined.guests[1]?.name).toBe("Grace");
+    expect(renameRoom(joined, "Q3\n\u{E0041}roadmap", NOW).title).toBe("Q3 roadmap");
+    expect(renameRoom(joined, "​\u{E0041}", NOW)).toBe(joined);
+  });
+
+  it.each([
+    { route: CLOUD_BOARD_TITLE_ROUTE, limit: 30 },
+    { route: GUEST_HANDOFF_ROUTE, limit: 20 },
+  ])("refuses $route past its rate instead of rewriting the board", async ({ route, limit }) => {
+    const token = makeSecret("share-one-0000");
+    const sessionHash = await hashSecret(token);
+    const made = newRoom();
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      recent: Map<string, ReadonlyArray<number>>;
+      streams: Set<never>;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      handle(request: Request): Promise<Response>;
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+    };
+    object.room = { ...made, guests: made.guests.map((guest) => ({ ...guest, sessionHash })) };
+    object.deleted = false;
+    object.recent = new Map();
+    object.streams = new Set();
+    object.previewTimer = null;
+    let writes = 0;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => {
+          writes += 1;
+        },
+        delete: async () => undefined,
+      },
+    };
+    object.keepTaskIndex = async () => undefined;
+    const statuses: Array<number> = [];
+    for (let at = 0; at <= limit; at++) {
+      const response = await object.handle(
+        new Request(`https://boards${route}`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${token}` },
+          body: JSON.stringify({ title: `Plan ${at}` }),
+        }),
+      );
+      statuses.push(response.status);
+    }
+    expect(statuses.at(-1)).toBe(429);
+    expect(writes).toBe(limit);
   });
 
   it("lets in as many people as a cloud board holds", () => {

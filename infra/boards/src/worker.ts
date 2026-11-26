@@ -659,6 +659,9 @@ const UPDATES_RATE_LIMIT = 20;
 const BOARD_AGENT_RATE_LIMIT = 30;
 const ACTIVITY_RATE_LIMIT = 90;
 const BOARD_CHANGE_RATE_LIMIT = 120;
+// Each rewrites the whole board and sends it to every open page; people do these by hand.
+const TITLE_RATE_LIMIT = 30;
+const HANDOFF_RATE_LIMIT = 20;
 const roomPosted = () =>
   new Response(null, {
     status: 204,
@@ -922,6 +925,9 @@ export class BoardRoom extends DurableObject<Env> {
       case CLOUD_BOARD_TITLE_ROUTE: {
         const body = decodeTitle(await request.text());
         if (Option.isNone(body)) return failureResponse(roomFailure("bad_request"));
+        if (!allowRequest(this.recent, `title:${guest.id}`, TITLE_RATE_LIMIT, Date.now())) {
+          return failureResponse(roomFailure("too_fast"));
+        }
         const before = this.room ?? room;
         const renamed = renameRoom(before, body.value.title, nowIso());
         await this.save(renamed);
@@ -938,6 +944,9 @@ export class BoardRoom extends DurableObject<Env> {
         return noContent();
       }
       case GUEST_HANDOFF_ROUTE: {
+        if (!allowRequest(this.recent, `handoff:${guest.id}`, HANDOFF_RATE_LIMIT, Date.now())) {
+          return failureResponse(roomFailure("too_fast"));
+        }
         const token = makeSecret(room.shareId);
         const hash = await hashSecret(token);
         await this.save(withHandoff(this.room ?? room, guest.id, hash, Date.now()));
