@@ -21,6 +21,7 @@ import { SYNC_INSTALLS, detectSyncOs, type SyncOs } from "~/syncDownloads";
 
 import { useT3ConnectAuthPrompt } from "../clerk/useT3ConnectAuthPrompt";
 import { SyncInstallAction } from "../connect/GetSync";
+import { syncStepCopy } from "../connect/syncSteps";
 import { Button } from "../ui/button";
 import { Collapsible, CollapsiblePanel } from "../ui/collapsible";
 import {
@@ -478,7 +479,7 @@ export function ConnectComputerRoutes({
 }) {
   const [os, setOs] = useState<SyncOs | null>(detectSyncOs);
   const signIn = withAccount && !signedIn;
-  const connect = "Your browser opens by itself. Sign in if it asks, then approve the computer.";
+  const steps = os === null ? [] : syncStepCopy(os, SYNC_INSTALLS[os]);
   return (
     <div className="flex flex-col gap-3" data-bring-agent-steps>
       <section className="flex flex-col gap-3 rounded-2xl border border-border bg-panel p-4">
@@ -494,74 +495,20 @@ export function ConnectComputerRoutes({
         ) : (
           <>
             <SyncInstallAction os={os} onChoose={setOs} size="default" />
-            {os === "mac" ? (
-              <>
-                <ol className="flex flex-col gap-2.5 text-sm">
-                  <Step number={1}>
-                    Open Terminal: press Command and Space, type Terminal, press Return.
-                  </Step>
-                  <Step number={2}>
-                    Paste the install command and press Return.
-                    <CommandLine os={os} />
-                    <StepNote>
-                      One time only. It asks for no password and changes no settings: it downloads
-                      Tinkjam Sync, checks the file is intact, puts it in your Applications folder
-                      and opens it.
-                    </StepNote>
-                  </Step>
-                  <Step number={3}>{connect}</Step>
-                  {signIn ? (
-                    <Step number={4}>
-                      <SignInHere />
-                    </Step>
-                  ) : null}
-                </ol>
-                <p className="text-xs text-muted-foreground">
-                  Why Terminal? Apple has not checked Tinkjam Sync yet (it is not notarized), so
-                  macOS would refuse to open a normal download. Once installed it sits in your menu
-                  bar, starts with your Mac and keeps itself up to date.
-                </p>
-              </>
-            ) : os === "windows" ? (
-              <>
-                <ol className="flex flex-col gap-2.5 text-sm">
-                  <Step number={1}>
-                    Download Tinkjam Sync and open the file.
-                    <StepNote>
-                      Windows does not recognise Tinkjam Sync yet, so it says it protected your PC.
-                      Choose More info, then Run anyway.
-                    </StepNote>
-                  </Step>
-                  <Step number={2}>{connect}</Step>
-                  {signIn ? (
-                    <Step number={3}>
-                      <SignInHere />
-                    </Step>
-                  ) : null}
-                </ol>
-                <p className="text-xs text-muted-foreground">
-                  Once installed it sits in your system tray, starts with your computer and keeps
-                  itself up to date.
-                </p>
-              </>
-            ) : (
-              <ol className="flex flex-col gap-2.5 text-sm">
-                <Step number={1}>
-                  Open a terminal, paste the install command and press Enter. It needs Node.js 22.16
-                  or newer.
-                  <CommandLine os={os} />
+            <ol className="flex flex-col gap-2.5 text-sm">
+              {steps.map((step, index) => (
+                <Step number={index + 1} key={step.text}>
+                  {step.text}
+                  {step.note === undefined ? null : <StepNote>{step.note}</StepNote>}
+                  {index === 0 ? <CommandLine os={os} /> : null}
                 </Step>
-                <Step number={2}>
-                  Open the link it prints and approve the computer. It then runs in the background
-                  and starts when you log in.
+              ))}
+              {signIn ? (
+                <Step number={steps.length + 1}>
+                  <SignInHere />
                 </Step>
-                {signIn ? (
-                  <Step number={3}>
-                    <SignInHere />
-                  </Step>
-                ) : null}
-              </ol>
-            )}
+              ) : null}
+            </ol>
             <AgentRoute />
           </>
         )}

@@ -7,6 +7,7 @@ import { SYNC_INSTALLS, SYNC_OS_NAMES, SYNC_OSES, type SyncOs } from "~/syncDown
 import { splitLinkClassName } from "../brand/SplitScreen";
 import { Button } from "../ui/button";
 import { toastManager } from "../ui/toast";
+import { syncStepCopy } from "./syncSteps";
 
 /**
  * Tinkjam Sync for the chosen computer as the one button: its download, or its install command to
@@ -90,26 +91,14 @@ export function SyncInstallAction({
   );
 }
 
-const PASTE_STEP: Readonly<Record<SyncOs, string>> = {
-  mac: "Paste it into Terminal and press Return",
-  windows: "Paste it into a terminal and press Enter",
-  linux: "Paste it into a terminal and press Enter",
-};
-
-/** The three steps for the chosen computer, the first marked as where to start. */
+/** The steps for the chosen computer, the first marked as where to start. */
 export function SyncSteps({ os }: { readonly os: SyncOs }) {
   const install = SYNC_INSTALLS[os];
-  const steps = [
-    install.method === "file" ? "Download Tinkjam Sync and open the file" : PASTE_STEP[os],
-    install.method === "command" && os === "linux"
-      ? "Open the link it prints"
-      : "Open it and press Connect",
-    "Approve this computer",
-  ];
+  const steps = syncStepCopy(os, install);
   return (
     <ol className="flex flex-col border-b border-border">
       {steps.map((step, index) => (
-        <li key={step} className="flex gap-3.5 border-t border-border py-4 text-foreground">
+        <li key={step.text} className="flex gap-3.5 border-t border-border py-4 text-foreground">
           <span
             aria-hidden
             className={cn(
@@ -120,13 +109,10 @@ export function SyncSteps({ os }: { readonly os: SyncOs }) {
             {index + 1}
           </span>
           <span className="flex min-w-0 flex-col gap-1.5 pt-0.5">
-            <span className="font-semibold">{step}</span>
-            {index === 0 && install.method === "file" && os === "windows" ? (
-              <span className="text-ui-sm text-muted-foreground">
-                Windows does not recognise Tinkjam Sync yet, so it says it protected your PC. Choose
-                More info, then Run anyway.
-              </span>
-            ) : null}
+            <span className="font-semibold">{step.text}</span>
+            {step.note === undefined ? null : (
+              <span className="text-ui-sm text-muted-foreground">{step.note}</span>
+            )}
             {index === 0 && install.method === "command" ? (
               <code
                 className="font-mono text-ui-sm wrap-anywhere text-muted-foreground select-all"
@@ -143,7 +129,7 @@ export function SyncSteps({ os }: { readonly os: SyncOs }) {
 }
 
 /**
- * The page is looking for the computer, so nobody reloads it after pressing Connect. The dot is
+ * The page is looking for the computer, so nobody reloads it after approving it. The dot is
  * the app's stepped status pulse, and it holds still under reduced motion.
  */
 export function WaitingForSync() {

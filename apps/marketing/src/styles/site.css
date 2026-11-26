@@ -1331,10 +1331,18 @@ a {
   overflow-wrap: anywhere;
   user-select: all;
 }
-.prose .sync__how {
-  margin-top: 10px;
+.prose .sync__steps {
+  margin-top: 18px;
+  padding-left: 1.2em;
+}
+.prose .sync__steps li + li {
+  margin-top: 8px;
+}
+.sync__note {
+  display: block;
+  margin-top: 3px;
   color: var(--quiet);
-  font-size: 15px;
+  font-size: 14px;
 }
 .prose .sync__phone {
   margin-top: 24px;

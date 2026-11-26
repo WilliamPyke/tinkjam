@@ -67,46 +67,68 @@ export const CHECKSUMS_PUBLISHED: boolean = true;
 
 type SyncMethod =
   | { kind: "files"; files: ReadonlyArray<{ label: string; href: string }> }
-  | { kind: "command"; command: string; instruction: string };
+  | { kind: "command"; command: string };
+
+type SyncOs = "mac" | "windows" | "linux";
+type SyncStep = { text: string; note?: string };
+
+const APPROVAL_STEP: SyncStep = {
+  text: "Your browser opens by itself. Sign in if it asks, then press Approve this computer.",
+};
+const COMMAND_STEP: Readonly<Record<SyncOs, SyncStep>> = {
+  mac: {
+    text: "Open Terminal, paste the install command and press Return",
+    note: "Press Command and Space, type Terminal, press Return.",
+  },
+  windows: { text: "Paste it into a terminal and press Enter" },
+  linux: { text: "Open a terminal, paste the install command and press Enter" },
+};
+const FILE_STEP: Readonly<Record<SyncOs, SyncStep>> = {
+  mac: { text: "Download Tinkjam Sync and open the file" },
+  windows: {
+    text: "Download Tinkjam Sync and open the file",
+    note: "Windows does not recognise Tinkjam Sync yet, so it says it protected your PC. Choose More info, then Run anyway.",
+  },
+  linux: {
+    text: "Download Tinkjam Sync. Open the AppImage, or install the package and open Tinkjam Sync.",
+  },
+};
+
+function syncSteps(os: SyncOs, method: SyncMethod): ReadonlyArray<SyncStep> {
+  return [method.kind === "command" ? COMMAND_STEP[os] : FILE_STEP[os], APPROVAL_STEP];
+}
+
+const MAC_METHOD: SyncMethod = MAC_NOTARIZED
+  ? { kind: "files", files: [{ label: "Download for Mac", href: MAC_DMG_DOWNLOAD }] }
+  : { kind: "command", command: MAC_INSTALL_COMMAND };
+const WINDOWS_METHOD: SyncMethod = {
+  kind: "files",
+  files: [{ label: "Download for Windows", href: WINDOWS_DOWNLOAD }],
+};
+const LINUX_METHOD: SyncMethod = LINUX_PUBLISHED
+  ? {
+      kind: "files",
+      files: LINUX_DOWNLOADS.map((file) => ({
+        label: `Download for Linux: ${file.label}`,
+        href: file.href,
+      })),
+    }
+  : { kind: "command", command: LINUX_INSTALL_COMMAND };
 
 export const SYNC_SYSTEMS: ReadonlyArray<{
-  os: "mac" | "windows" | "linux";
+  os: SyncOs;
   name: string;
   method: SyncMethod;
+  steps: ReadonlyArray<SyncStep>;
 }> = [
-  {
-    os: "mac",
-    name: "Mac",
-    method: MAC_NOTARIZED
-      ? { kind: "files", files: [{ label: "Download for Mac", href: MAC_DMG_DOWNLOAD }] }
-      : {
-          kind: "command",
-          command: MAC_INSTALL_COMMAND,
-          instruction: "Paste it into Terminal and press Return",
-        },
-  },
+  { os: "mac", name: "Mac", method: MAC_METHOD, steps: syncSteps("mac", MAC_METHOD) },
   {
     os: "windows",
     name: "Windows",
-    method: { kind: "files", files: [{ label: "Download for Windows", href: WINDOWS_DOWNLOAD }] },
+    method: WINDOWS_METHOD,
+    steps: syncSteps("windows", WINDOWS_METHOD),
   },
-  {
-    os: "linux",
-    name: "Linux",
-    method: LINUX_PUBLISHED
-      ? {
-          kind: "files",
-          files: LINUX_DOWNLOADS.map((file) => ({
-            label: `Download for Linux: ${file.label}`,
-            href: file.href,
-          })),
-        }
-      : {
-          kind: "command",
-          command: LINUX_INSTALL_COMMAND,
-          instruction: "Paste it into a terminal and press Enter",
-        },
-  },
+  { os: "linux", name: "Linux", method: LINUX_METHOD, steps: syncSteps("linux", LINUX_METHOD) },
 ];
 
 // Tinkjam is a fork of T3 Code, which is MIT licensed; the legal page credits it.

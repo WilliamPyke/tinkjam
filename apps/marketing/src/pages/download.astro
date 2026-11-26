@@ -46,9 +46,16 @@ import { CHECKSUMS_PUBLISHED, CHECKSUMS_URL, SYNC_SOURCE_URL, SYNC_SYSTEMS } fro
                 <code class="sync__line" tabindex="0">
                   {system.method.command}
                 </code>
-                <p class="sync__how">{system.method.instruction}</p>
               </div>
             )}
+            <ol class="sync__steps">
+              {system.steps.map((step) => (
+                <li>
+                  {step.text}
+                  {step.note === undefined ? null : <span class="sync__note">{step.note}</span>}
+                </li>
+              ))}
+            </ol>
           </section>
         ))
       }

@@ -2,6 +2,8 @@
 // beside the homepage (the apps are in the tinkjam-sync repository). When an OS gets files a browser
 // download can open (a notarized Mac build, Linux packages), switch its entry to `method: "file"`.
 const DOWNLOADS = "https://tinkjam.com/downloads";
+// Keep in step with SYNC_VERSION in apps/marketing/src/lib/site.ts.
+const LINUX_VERSION = "1.0.5";
 
 export type SyncOs = "mac" | "windows" | "linux";
 
@@ -25,13 +27,22 @@ export const SYNC_OS_NAMES: Readonly<Record<SyncOs, string>> = {
 export const SYNC_INSTALLS: Readonly<Record<SyncOs, SyncInstall>> = {
   // Signed ad hoc, so macOS stops a copy downloaded in a browser; a download made by curl is
   // not checked.
-  mac: { method: "command", command: "curl -fsSL https://tinkjam.com/downloads/install.sh | sh" },
+  mac: { method: "command", command: "curl -fsSL https://tinkjam.com/downloads/install.sh | bash" },
   windows: {
     method: "file",
     files: [{ kind: "Installer", href: `${DOWNLOADS}/TinkjamSyncSetup.exe` }],
   },
-  // --install keeps it running in the background and starts it at log-in.
-  linux: { method: "command", command: "npx -y https://tinkjam.com/sync.tgz --install" },
+  linux: {
+    method: "file",
+    files: [
+      {
+        kind: "AppImage (beta)",
+        href: `${DOWNLOADS}/tinkjam-sync-v${LINUX_VERSION}-linux-x86_64.AppImage`,
+      },
+      { kind: ".deb (beta)", href: `${DOWNLOADS}/tinkjam-sync-v${LINUX_VERSION}-linux-x86_64.deb` },
+      { kind: ".rpm (beta)", href: `${DOWNLOADS}/tinkjam-sync-v${LINUX_VERSION}-linux-x86_64.rpm` },
+    ],
+  },
 };
 
 export const SYNC_OSES: ReadonlyArray<SyncOs> = ["mac", "windows", "linux"];
