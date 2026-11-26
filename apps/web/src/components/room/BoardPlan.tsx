@@ -317,6 +317,7 @@ export function BoardPlan({
     return () => window.clearTimeout(timer);
   }, []);
   const all = BOARD_PLAN_COLUMNS.flatMap(({ status }) => columns[status]);
+  const columnsShown = layout === "columns" && (all.length > 0 || adding !== null);
   // Tasks someone else took off, or a filter hides, leave the picked ones.
   const picked: ReadonlySet<string> =
     pickedIds.size === 0
@@ -421,6 +422,39 @@ export function BoardPlan({
     window.addEventListener("keydown", quickAdd);
     return () => window.removeEventListener("keydown", quickAdd);
   }, [quickAdd]);
+
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- horizontal wheel fallback needs a non-passive browser listener to prevent vertical scrolling
+  useEffect(() => {
+    if (!columnsShown) return;
+    const scroller = scrollerRef.current;
+    if (scroller === null) return;
+    const sideways = (event: WheelEvent) => {
+      if (event.defaultPrevented || event.ctrlKey) return;
+      if (event.deltaY === 0 || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+      if (scroller.scrollWidth <= scroller.clientWidth) return;
+      const list =
+        event.target instanceof Element ? event.target.closest("[data-plan-list]") : null;
+      if (list instanceof HTMLElement) {
+        const room =
+          event.deltaY > 0
+            ? list.scrollHeight - list.clientHeight - list.scrollTop
+            : list.scrollTop;
+        if (room > 1) return;
+      }
+      const amount =
+        event.deltaY *
+        (event.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? 16
+          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? scroller.clientWidth
+            : 1);
+      const before = scroller.scrollLeft;
+      scroller.scrollLeft += amount;
+      if (scroller.scrollLeft !== before) event.preventDefault();
+    };
+    scroller.addEventListener("wheel", sideways, { passive: false });
+    return () => scroller.removeEventListener("wheel", sideways);
+  }, [columnsShown]);
 
   const placeGhost = (element: HTMLDivElement | null) => {
     if (element === null) return;
@@ -1130,7 +1164,7 @@ function SortMenu({
             }}
           >
             {SORTS.map((one) => (
-              <MenuRadioItem key={one.sort} value={one.sort}>
+              <MenuRadioItem key={one.sort} value={one.sort} closeOnClick>
                 {one.title}
               </MenuRadioItem>
             ))}
@@ -1205,7 +1239,11 @@ function PlanAdd({
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const text = draft.trim();
-    if (text === "" || cannotAdd !== null) return;
+    if (text === "") {
+      setDraft("");
+      return;
+    }
+    if (cannotAdd !== null) return;
     onAdd(text);
     setDraft("");
   };

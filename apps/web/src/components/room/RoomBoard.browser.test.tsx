@@ -1232,6 +1232,97 @@ describe("RoomBoard keys and pointer", () => {
     );
   });
 
+  it("closes a Plan column's sort menu after a sort is chosen", async () => {
+    await using _viewport = await boardSizedViewport();
+    const board = renderBoard([{ id: "t", text: "Ship", x: 300, y: 300, kind: "task" }]);
+    await using screen = await board.screen;
+    await userEvent.click(
+      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Plan" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Sort To do" }));
+    const priority = page.getByRole("menuitemradio", { name: "Priority" });
+    await expect.element(priority).toBeVisible();
+    await userEvent.click(priority);
+    await expect.element(page.getByRole("menuitemradio")).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Board" }),
+    );
+  });
+
+  it("leaves a whitespace-only task field empty and focused without adding it", async () => {
+    await using _viewport = await boardSizedViewport();
+    const board = renderBoard([{ id: "t", text: "Ship", x: 300, y: 300, kind: "task" }]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    await userEvent.click(
+      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Plan" }),
+    );
+    await userEvent.click(
+      screen.getByRole("region", { name: "To do" }).getByRole("button", { name: "Add a task" }),
+    );
+    const field = screen.getByRole("textbox", { name: "New task in To do" });
+    await userEvent.type(field, "   {Enter}");
+    await expect.element(field).toHaveValue("");
+    await expect.element(field).toHaveFocus();
+    expect(onChange).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Board" }),
+    );
+  });
+
+  it("turns a vertical wheel sideways where Plan columns overflow, but not in a task list that can scroll", async () => {
+    await using _viewport = await boardSizedViewport();
+    const board = renderBoard(
+      Array.from({ length: 14 }, (_, index) => ({
+        id: `t${index}`,
+        text: `Ship ${index}`,
+        x: 300,
+        y: 300,
+        kind: "task" as const,
+      })),
+    );
+    await using screen = await board.screen;
+    await userEvent.click(
+      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Plan" }),
+    );
+    screen.container.style.width = "620px";
+    const column = screen.getByRole("region", { name: "To do" }).element();
+    const scroller = column.parentElement;
+    const header = column.querySelector("header");
+    const list = column.querySelector("[data-plan-list]");
+    if (!(scroller instanceof HTMLElement) || header === null || !(list instanceof HTMLElement)) {
+      throw new Error("The Plan did not draw its columns");
+    }
+    await vi.waitFor(() => expect(scroller.scrollWidth).toBeGreaterThan(scroller.clientWidth));
+    const wheelAt = (element: Element) => {
+      const rect = element.getBoundingClientRect();
+      const event = new WheelEvent("wheel", {
+        deltaY: 120,
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2,
+        bubbles: true,
+        cancelable: true,
+      });
+      element.dispatchEvent(event);
+      return event;
+    };
+    wheelAt(header);
+    expect(scroller.scrollLeft).toBeGreaterThan(0);
+
+    await vi.waitFor(() => expect(list.scrollHeight).toBeGreaterThan(list.clientHeight));
+    const sideways = scroller.scrollLeft;
+    const scrollingList = wheelAt(list);
+    expect(scrollingList.defaultPrevented).toBe(false);
+    expect(scroller.scrollLeft).toBe(sideways);
+
+    list.scrollTop = list.scrollHeight;
+    wheelAt(list);
+    expect(scroller.scrollLeft).toBeGreaterThan(sideways);
+    await userEvent.click(
+      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Board" }),
+    );
+  });
+
   it("puts a note added from the toolbar by key into the section last clicked, and a Section where clicked, clear of other sections", async () => {
     const board = renderBoard([
       // Below the thread's own card and the places kept for guests' cards.
