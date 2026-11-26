@@ -209,3 +209,15 @@ export function guestFilesProblem(
     ? "This file cannot be attached. Images must be PNG, JPEG, GIF, or WebP."
     : null;
 }
+
+/**
+ * Whether a board change the host did not take may go again: the host was busy or broken, or
+ * nothing answered (`null`). Any other answer refused the change, and sending it again would not
+ * change that.
+ */
+export const boardChangeFailureIsTemporary = (status: number | null): boolean =>
+  status === null || status === 408 || status === 429 || status >= 500;
+
+/** How long a board change waits before its next try: 1, 2 and 4 seconds, then every 10. */
+export const boardChangeRetryDelayMs = (tries: number): number =>
+  tries < 3 ? 1_000 * 2 ** tries : 10_000;

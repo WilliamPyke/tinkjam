@@ -16,7 +16,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 
 import "~/index.css";
 
-import { render } from "../../../test/render";
+import { fakeTimers, render } from "../../../test/render";
 import { forgetGuestShare, guestRoomAtom, rememberGuestShare } from "../../guest/guestShares";
 import { AppAtomRegistryProvider, appAtomRegistry } from "../../rpc/atomRegistry";
 import { makeThreadProjectionFixture } from "../../test-fixtures";
@@ -232,14 +232,44 @@ describe("postBoardChange", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
+  it("sends a change again while the host fails, until it lands", async () => {
+    using _timers = fakeTimers();
+    using fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(null, { status: 500 }))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue(new Response(null, { status: 200 }));
+    const sent = postBoardChange(endpoint, { type: "card.move", cardId: "c", x: 1, y: 2 });
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(2_000);
+    await expect(sent).resolves.toBe(true);
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+    expect(new Set(fetchSpy.mock.calls.map(([, init]) => init?.body)).size).toBe(1);
+  });
+
+  it("does not send a refused change again", async () => {
+    using fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 403 }));
+    await expect(
+      postBoardChange(endpoint, { type: "card.move", cardId: "c", x: 1, y: 2 }),
+    ).resolves.toBe(false);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
   it("does not send a toggle again, which could land twice", async () => {
     using _online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
     using fetchSpy = vi
       .spyOn(globalThis, "fetch")
-      .mockRejectedValue(new TypeError("Failed to fetch"));
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue(new Response(null, { status: 500 }));
     await expect(
       postBoardChange(endpoint, { type: "note.react", noteId: "n", emoji: "👍" }),
     ).resolves.toBe(false);
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    await expect(
+      postBoardChange(endpoint, { type: "artifact.restore", noteId: "n" }),
+    ).resolves.toBe(false);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 });

@@ -13,6 +13,8 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { makeThreadProjectionFixture } from "../../test-fixtures";
 import {
+  boardChangeFailureIsTemporary,
+  boardChangeRetryDelayMs,
   guestBoardOpenStep,
   guestEntryStep,
   guestFilesProblem,
@@ -328,5 +330,22 @@ describe("guestFilesProblem", () => {
     expect(guestFilesProblem([file("image/png", 10 * 1024 * 1024 + 1)])).toMatch(/10 MB/);
     expect(guestFilesProblem([file("image/svg+xml")])).toMatch(/PNG, JPEG, GIF, or WebP/);
     expect(guestFilesProblem([file("text/plain", 0)])).toMatch(/cannot be attached/);
+  });
+});
+
+describe("boardChangeFailureIsTemporary", () => {
+  it("tries again only when the host was busy, broken or out of reach", () => {
+    for (const status of [null, 408, 429, 500, 502, 503, 504]) {
+      expect(boardChangeFailureIsTemporary(status)).toBe(true);
+    }
+    for (const status of [400, 401, 403, 404, 409, 410, 413, 422]) {
+      expect(boardChangeFailureIsTemporary(status)).toBe(false);
+    }
+  });
+
+  it("waits longer each time, up to every 10 seconds", () => {
+    expect([0, 1, 2, 3, 9].map(boardChangeRetryDelayMs)).toEqual([
+      1_000, 2_000, 4_000, 10_000, 10_000,
+    ]);
   });
 });

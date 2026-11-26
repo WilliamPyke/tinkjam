@@ -1,4 +1,4 @@
-import { WifiOffIcon } from "lucide-react";
+import { WifiOffIcon, type LucideIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 function subscribe(onChange: () => void): () => void {
@@ -12,23 +12,39 @@ function subscribe(onChange: () => void): () => void {
 
 const readOnline = () => navigator.onLine;
 
+export const useOnline = () => useSyncExternalStore(subscribe, readOnline, () => true);
+
+/** A quiet note pinned to the top of the page about what this device cannot reach. */
+export function ConnectionNote({
+  icon: Icon,
+  children,
+}: {
+  readonly icon: LucideIcon;
+  readonly children: string;
+}) {
+  return (
+    <div
+      role="status"
+      className="pointer-events-none fixed inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-50 flex justify-center px-4"
+    >
+      <p className="flex items-center gap-2 rounded-full border border-border bg-popover px-3 py-1.5 text-xs text-popover-foreground shadow-sm">
+        <Icon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+        {children}
+      </p>
+    </div>
+  );
+}
+
 /**
  * A quiet note while this device has no network: nothing on a board can reach anyone until it
  * is back. It says only what the browser knows, and goes away by itself.
  */
 export function OfflineNote() {
-  const online = useSyncExternalStore(subscribe, readOnline, () => true);
+  const online = useOnline();
   if (online) return null;
   return (
-    <div
-      role="status"
-      className="pointer-events-none fixed inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-50 flex justify-center px-4"
-      data-offline-note
-    >
-      <p className="flex items-center gap-2 rounded-full border border-border bg-popover px-3 py-1.5 text-xs text-popover-foreground shadow-sm">
-        <WifiOffIcon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-        You're offline. Tinkjam reconnects when your connection is back.
-      </p>
-    </div>
+    <ConnectionNote icon={WifiOffIcon}>
+      You're offline. Tinkjam reconnects when your connection is back.
+    </ConnectionNote>
   );
 }

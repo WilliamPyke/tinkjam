@@ -176,11 +176,14 @@ import { GuestHtmlRender } from "./GuestHtmlRender";
 import { openGuestFile, useGuestFiles } from "./guestFiles";
 import { linkEndsLabel } from "../chat/guestLinkTiming";
 import {
+  boardChangeFailureIsTemporary,
+  boardChangeRetryDelayMs,
   guestFilesProblem,
   guestShareIdOfEnvironment,
   nextAwaitingRowIds,
   unplacedGuestMessages,
 } from "./guestStream.logic";
+import { BoardSyncNote, holdBoardChange } from "./BoardSyncNote";
 import { guestTurnItemSource } from "./guestTurnItemSource";
 import { ownAgentFailureMessage } from "./bringAgent.logic";
 import { useJoinBoardOnComputer } from "./joinBoardOnComputer";
@@ -247,11 +250,11 @@ async function postGuestAction<A>(
   }
 }
 
-/** Sends one change to the room's board. Resolves to whether the owner's server took it. */
-export async function postBoardChange(
+/** The host's answer to one board change, or null when nothing answered. */
+async function sendBoardChange(
   endpoint: GuestShareEndpoint,
   change: RoomBoardChange,
-): Promise<boolean> {
+): Promise<number | null> {
   try {
     const response = await guestShareRequest(endpoint, GUEST_BOARD_ROUTE, {
       init: {
@@ -260,14 +263,46 @@ export async function postBoardChange(
         body: JSON.stringify(change),
       },
     });
-    return response.ok;
+    return response.status;
   } catch {
-    // Made offline, a change waits for the connection; a toggle sent twice would undo itself.
-    if (navigator.onLine || change.type === "note.react" || change.type === "artifact.restore") {
-      return false;
+    return null;
+  }
+}
+
+const boardChangeRetry = (tries: number) =>
+  new Promise<void>((resolve) => {
+    if (!navigator.onLine) {
+      window.addEventListener("online", () => resolve(), { once: true });
+      return;
     }
-    await new Promise((resolve) => window.addEventListener("online", resolve, { once: true }));
-    return postBoardChange(endpoint, change);
+    setTimeout(resolve, boardChangeRetryDelayMs(tries));
+  });
+
+/**
+ * Sends one change to the room's board. Resolves to whether the owner's server took it. A host
+ * that is down or busy gets the same change again until it answers, so the board's queue keeps
+ * later changes to the same card behind it; a refusal resolves false at once.
+ */
+export async function postBoardChange(
+  endpoint: GuestShareEndpoint,
+  change: RoomBoardChange,
+): Promise<boolean> {
+  let settle: (() => void) | null = null;
+  try {
+    for (let tries = 0; ; tries += 1) {
+      const status = await sendBoardChange(endpoint, change);
+      if (status !== null && status >= 200 && status < 300) return true;
+      if (!boardChangeFailureIsTemporary(status)) return false;
+      // A toggle sent twice would undo itself, and a failed answer does not say it did not land.
+      if (change.type === "note.react" || change.type === "artifact.restore") {
+        toastManager.add({ type: "error", title: "That change was not saved. Try again." });
+        return false;
+      }
+      if (settle === null) settle = holdBoardChange();
+      await boardChangeRetry(tries);
+    }
+  } finally {
+    settle?.();
   }
 }
 
@@ -1049,6 +1084,7 @@ function GuestThreadSession({
   return (
     <RoomLiveContext value={live}>
       <BoardLanded />
+      <BoardSyncNote live={thread.status === "live"} />
       <GuestBoardLive shareId={share.shareId} running={running} live={live} />
       <BoardSplit
         open={sidePanel !== null || (!cloud && panelOpen)}
