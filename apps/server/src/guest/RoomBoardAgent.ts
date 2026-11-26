@@ -14,7 +14,7 @@ import {
   type SharedThreadJoinError,
   type ThreadId,
 } from "@t3tools/contracts";
-import { sanitizeLinkedPrompt } from "@t3tools/shared/promptLinks";
+import { plainLine, sanitizeLinkedPrompt } from "@t3tools/shared/promptLinks";
 import { roomBoxOn } from "@t3tools/shared/guestRoom";
 import { EMPTY_ROOM_BOARD, applyRoomBoardChange } from "@t3tools/shared/roomBoard";
 import {
@@ -123,6 +123,18 @@ export class RoomBoardAgent extends Context.Service<
   }
 >()("t3/guest/RoomBoardAgent") {}
 
+const roomAgentTitle = (title: string): string => plainLine(title) || "New thread";
+
+const plainPersonNameOf =
+  (nameOf: (guestId: GuestId | undefined) => string | undefined) =>
+  (guestId: GuestId | undefined): string | undefined => {
+    const name = nameOf(guestId);
+    if (name === undefined) return undefined;
+    const plain = plainLine(name);
+    if (plain !== "") return plain;
+    return guestId === undefined ? undefined : "Guest";
+  };
+
 const make = Effect.gen(function* () {
   const orchestrator = yield* Orchestrator.OrchestratorV2;
   const boxes = yield* RoomBoxes.RoomBoxes;
@@ -141,10 +153,13 @@ const make = Effect.gen(function* () {
 
   /** Who a task on the room's board can be for: its owner and its guests. */
   const peopleOf = Effect.fn("RoomBoardAgent.peopleOf")(function* (room: ThreadRoom) {
-    const owner = roomPersonName(room, yield* ownerName)(undefined) ?? "the owner";
+    const nameOf = plainPersonNameOf(roomPersonName(room, yield* ownerName));
     return [
-      { guestId: null, name: owner },
-      ...(room.guests ?? []).map((guest) => ({ guestId: guest.id, name: guest.name })),
+      { guestId: null, name: nameOf(undefined) ?? "the owner" },
+      ...(room.guests ?? []).map((guest) => ({
+        guestId: guest.id,
+        name: nameOf(guest.id) ?? "Guest",
+      })),
     ];
   });
 
@@ -192,7 +207,7 @@ const make = Effect.gen(function* () {
       const room = threadRoomOf(thread);
       return {
         roomThreadId: thread.id,
-        roomTitle: thread.title,
+        roomTitle: roomAgentTitle(thread.title),
         room,
         boxId: ROOM_BOARD_ROOM_BOX,
         author: null,
@@ -218,7 +233,7 @@ const make = Effect.gen(function* () {
     if (room.id !== box.share.id) return yield* fail("board_gone");
     return {
       roomThreadId: roomThread.id,
-      roomTitle: roomThread.title,
+      roomTitle: roomAgentTitle(roomThread.title),
       room,
       boxId: box.boxId,
       author: null,
@@ -242,7 +257,7 @@ const make = Effect.gen(function* () {
       .trim();
     return {
       roomThreadId: thread.id,
-      roomTitle: thread.title,
+      roomTitle: roomAgentTitle(thread.title),
       room,
       boxId: box.boxId,
       author: box.guestId,
@@ -367,7 +382,10 @@ const make = Effect.gen(function* () {
     const away = yield* elsewhere(caller);
     if (away !== null) return yield* links.readBoard(away.threadId).pipe(Effect.mapError(fromLink));
     const target = yield* targetOf(caller);
-    return roomBoardAgentView(target, roomPersonName(target.room, yield* ownerName));
+    return roomBoardAgentView(
+      target,
+      plainPersonNameOf(roomPersonName(target.room, yield* ownerName)),
+    );
   });
 
   const add = Effect.fn("RoomBoardAgent.add")(function* (

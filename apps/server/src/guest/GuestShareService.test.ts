@@ -419,10 +419,11 @@ it.effect("lets each browser join an invite as its own guest until the owner sto
   Effect.gen(function* () {
     const { orchestrator, guestShares, credential } = yield* shareThread;
     const { token: session } = yield* guestShares.redeem({ credential, name: "Sam" });
-    const eve = yield* guestShares.redeem({ credential, name: "Eve" });
+    const eve = yield* guestShares.redeem({ credential, name: "Eve\u{E0058}\uFEFF" });
     assert.notEqual(eve.token, session);
     // A name already on the link never keeps anyone out, say Sam from another browser.
     yield* guestShares.redeem({ credential, name: "sam" });
+    yield* guestShares.redeem({ credential, name: "\u200B\u{E0041}" });
     // Each guest's page names them, lists everyone, and shows what the others asked.
     yield* guestShares.submit(session, { shareId: eve.shareId, text: "Sam's question" }, []);
     yield* (yield* ServerSettings.ServerSettingsService).updateSettings({
@@ -436,7 +437,7 @@ it.effect("lets each browser join an invite as its own guest until the owner sto
     assert.equal(eveView.view.ownerName, "Will");
     assert.deepEqual(
       eveView.view.guests.map((guest) => guest.name),
-      ["Sam", "Eve", "sam 2"],
+      ["Sam", "Eve", "sam 2", "Guest"],
     );
     const [asked] = eveView.view.messages;
     assert.equal(asked?.text, "Sam's question");

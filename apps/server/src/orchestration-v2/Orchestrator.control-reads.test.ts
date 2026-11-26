@@ -424,8 +424,32 @@ it.effect(
         type: "thread.metadata.update",
         commandId: CommandId.make("rename-control"),
         threadId,
-        title: "After",
+        title: "  Aft\u{E0042}er\n  the launch\u200B  ",
       });
+      assert.equal((yield* projections.getThread(threadId)).title, "After the launch");
+      yield* orchestrator.dispatch({
+        type: "thread.metadata.update",
+        commandId: CommandId.make("rename-control-hidden-only"),
+        threadId,
+        title: "\u200B\u{E0041}",
+      });
+      assert.equal((yield* projections.getThread(threadId)).title, "After the launch");
+      const hiddenTitleThreadId = ThreadId.make("thread:hidden-title");
+      yield* orchestrator.dispatch({
+        type: "thread.create",
+        commandId: CommandId.make("create-hidden-title"),
+        threadId: hiddenTitleThreadId,
+        projectId: ProjectId.make("project:control-dispatch"),
+        title: "\u200B\u{E0041}",
+        modelSelection,
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        branch: null,
+        worktreePath: null,
+        createdBy: "user",
+        creationSource: "web",
+      });
+      assert.equal((yield* projections.getThread(hiddenTitleThreadId)).title, "New thread");
       yield* orchestrator.dispatch({
         type: "thread.runtime-mode.set",
         commandId: CommandId.make("mode-control"),
@@ -619,7 +643,7 @@ it.effect(
         worktreePath: "/new-repo",
       });
       const thread = yield* projections.getThread(threadId);
-      assert.equal(thread.title, "After");
+      assert.equal(thread.title, "After the launch");
       assert.equal(thread.modelSelection.model, "gpt-6");
       assert.equal(thread.runtimeMode, "approval-required");
       assert.deepEqual(

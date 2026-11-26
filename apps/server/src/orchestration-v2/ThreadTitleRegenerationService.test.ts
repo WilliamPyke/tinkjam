@@ -396,7 +396,7 @@ describe("ThreadTitleRegenerationService", () => {
   it.effect("lands the regenerated title from the conversation digest", () =>
     Effect.gen(function* () {
       const harness = makeHarness({
-        generateTitle: () => Effect.succeed({ title: "Fresh title" }),
+        generateTitle: () => Effect.succeed({ title: "Fresh\u{E0041}\n  title\u200B" }),
       });
       const fs = yield* FileSystem.FileSystem;
       const existingWorktree = yield* fs.makeTempDirectoryScoped({ prefix: "title-worktree-" });

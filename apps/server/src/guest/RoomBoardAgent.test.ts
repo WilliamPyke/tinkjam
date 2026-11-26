@@ -275,6 +275,26 @@ it.effect("lets a box's agent read its board and add cards beside its box, as it
       const [inner, outer] = [rect(note), rect(sectionNote)];
       assert.isTrue(inner.y + inner.h <= outer.y + outer.h, `${note.text} below its section`);
     }
+
+    const currentRoom = threads[roomThreadId]!;
+    const share = currentRoom.guestShare!;
+    threads[roomThreadId] = {
+      ...currentRoom,
+      title: "  Launch\u{E0043}\n  plan\u200B  ",
+      guestShare: {
+        ...share,
+        guests: share.guests?.map((guest) =>
+          guest.id === sam ? { ...guest, name: "  Sa\u{E004D}m\u200B  " } : guest,
+        ),
+      },
+    };
+    const cleaned = yield* agent.read(boxThreadId);
+    assert.strictEqual(cleaned.cards.find((card) => card.id === "thread")?.text, "Launch plan");
+    assert.deepEqual(
+      cleaned.people?.map((person) => person.name),
+      ["the owner", "Sam", "Ana"],
+    );
+    assert.strictEqual(cleaned.cards.find((card) => card.id === "note:sam")?.by, "Sam");
   }).pipe(Effect.provide(layerWith(threads)));
 });
 

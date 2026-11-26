@@ -20,7 +20,7 @@ import {
   type ThreadId,
 } from "@t3tools/contracts";
 import { roomBoardAfterChange, roomWithoutGuest } from "@t3tools/shared/guestRoom";
-import { sanitizeLinkedPrompt } from "@t3tools/shared/promptLinks";
+import { plainLine, sanitizeLinkedPrompt } from "@t3tools/shared/promptLinks";
 import { EMPTY_ROOM_BOARD, ROOM_BOARD_FULL, type RoomBoardScope } from "@t3tools/shared/roomBoard";
 import * as Result from "effect/Result";
 
@@ -185,10 +185,6 @@ export function needsAnOwner(change: RoomBoardChange): boolean {
         change.assignee.guestId === undefined))
   );
 }
-
-/** One line of what people can see: a title or a name every agent on the board reads too. */
-export const plainLine = (text: string): string =>
-  sanitizeLinkedPrompt(text).text.replace(/\s+/g, " ").trim();
 
 const GUEST_FALLBACK_NAME = "Guest";
 

@@ -71,7 +71,7 @@ import {
 import { chatMarkdownImageSources } from "@t3tools/shared/markdownPipeline";
 import { guestActivityFromRequest, guestTurnFromRequest } from "@t3tools/shared/guestRoom";
 import { buildGuestLink, buildShortGuestLink } from "@t3tools/shared/guestLinks";
-import { sanitizeLinkedPrompt } from "@t3tools/shared/promptLinks";
+import { plainLine, sanitizeLinkedPrompt } from "@t3tools/shared/promptLinks";
 import { ownDomainOrigins } from "@t3tools/shared/ownDomains";
 import { roomArtifactSource, roomBoardNoteOfRef, roomWindowBoxId } from "@t3tools/shared/roomBoard";
 import { htmlRenderFromToolItem } from "@t3tools/shared/toolOutput";
@@ -332,7 +332,8 @@ const inactive = new GuestShareAccessError({ reason: "inactive" });
  * guest who left keeps their name and cards, and nobody can prove they are them, so a second
  * "Sam" joins as "Sam 2" instead of being turned away.
  */
-const freeGuestName = (share: ThreadGuestShare, wanted: string) => {
+const freeGuestName = (share: ThreadGuestShare, asked: string) => {
+  const wanted = plainLine(asked) || "Guest";
   const base = wanted.slice(0, GUEST_NAME_MAX_LENGTH - 3);
   const taken = new Set(share.guests?.map((guest) => guest.name.toLowerCase()) ?? []);
   let name = wanted;
@@ -341,16 +342,8 @@ const freeGuestName = (share: ThreadGuestShare, wanted: string) => {
 };
 
 // A member's account name lands in the agent's attribution line: one plain line.
-const LINE_BREAKING = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
 const memberGuestName = (share: ThreadGuestShare, accountName: string) =>
-  freeGuestName(
-    share,
-    accountName
-      .replace(LINE_BREAKING, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, GUEST_NAME_MAX_LENGTH) || "Member",
-  );
+  freeGuestName(share, plainLine(accountName).slice(0, GUEST_NAME_MAX_LENGTH));
 
 export class GuestShareService extends Context.Service<
   GuestShareService,
