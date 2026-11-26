@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
+import { holdBoardChange } from "../components/guest/BoardSyncNote";
 import { holdChunkReload, reloadForChunkLoadError } from "./chunkReloadGuard";
 
 function createStorageStub(): Storage {
@@ -42,6 +43,17 @@ describe("reloadForChunkLoadError", () => {
 
     expect(reloadForChunkLoadError(() => storage, reload, AT)).toBe(false);
     release();
+    release();
+    expect(reloadForChunkLoadError(() => storage, reload, AT)).toBe(true);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reload while a board change is waiting to reach the host", () => {
+    const storage = createStorageStub();
+    const reload = vi.fn();
+    const release = holdBoardChange();
+
+    expect(reloadForChunkLoadError(() => storage, reload, AT)).toBe(false);
     release();
     expect(reloadForChunkLoadError(() => storage, reload, AT)).toBe(true);
     expect(reload).toHaveBeenCalledTimes(1);

@@ -242,8 +242,14 @@ describe("postBoardChange", () => {
     const sent = postBoardChange(endpoint, { type: "card.move", cardId: "c", x: 1, y: 2 });
     await vi.advanceTimersByTimeAsync(1_000);
     expect(fetchSpy).toHaveBeenCalledTimes(2);
+    const waitingUnload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(waitingUnload);
+    expect(waitingUnload.defaultPrevented).toBe(true);
     await vi.advanceTimersByTimeAsync(2_000);
     await expect(sent).resolves.toBe(true);
+    const settledUnload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(settledUnload);
+    expect(settledUnload.defaultPrevented).toBe(false);
     expect(fetchSpy).toHaveBeenCalledTimes(3);
     expect(new Set(fetchSpy.mock.calls.map(([, init]) => init?.body)).size).toBe(1);
   });

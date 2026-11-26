@@ -1,10 +1,21 @@
 import { CloudAlertIcon, RefreshCwIcon } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
+import { holdChunkReload } from "~/lib/chunkReloadGuard";
+
 import { ConnectionNote, useOnline } from "../shell/OfflineNote";
 
 let waitingChanges = 0;
 const listeners = new Set<() => void>();
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", (event) => {
+    if (waitingChanges === 0) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
+}
+
 const notify = () => {
   for (const listener of listeners) listener();
 };
@@ -17,12 +28,14 @@ const readWaiting = () => waitingChanges;
 /** Counts one board change as not saved yet. The returned function counts it as settled. */
 export function holdBoardChange(): () => void {
   waitingChanges += 1;
+  const releaseChunkReload = holdChunkReload();
   notify();
   let settled = false;
   return () => {
     if (settled) return;
     settled = true;
     waitingChanges -= 1;
+    releaseChunkReload();
     notify();
   };
 }
