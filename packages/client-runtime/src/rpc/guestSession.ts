@@ -202,8 +202,10 @@ const DATA_PREFIX = "data: ";
 /**
  * How long a share's stream may take to send its first event. An owner's host that answers the
  * session check but never starts the stream would otherwise leave the guest connecting forever.
+ * Longer than both hosts' 20 second heartbeat: a browser or proxy can hold the end of the opening
+ * events until the host's next write, and giving up first would reopen into the same hold.
  */
-export const GUEST_STREAM_FIRST_EVENT_TIMEOUT = "15 seconds";
+export const GUEST_STREAM_FIRST_EVENT_TIMEOUT = "30 seconds";
 
 /** The stream, failing as a dropped connection when its first element takes longer than `wait`. */
 const firstWithin =

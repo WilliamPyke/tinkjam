@@ -28,6 +28,17 @@ vi.mock(import("~/state/threads"), async (original) => ({
   ...(await original()),
   useEnvironmentThread: (() => thread.state) as never,
 }));
+const environment = vi.hoisted(() => ({ phase: null as string | null }));
+vi.mock(import("~/state/environments"), async (original) => {
+  const real = await original();
+  return {
+    ...real,
+    useEnvironment: ((environmentId: never) =>
+      environment.phase === null
+        ? real.useEnvironment(environmentId)
+        : { connection: { phase: environment.phase } }) as never,
+  };
+});
 
 const SHARE_ID = "share-1";
 const THREAD_ID = ThreadId.make("thread-test");
@@ -108,6 +119,7 @@ function settledTurn(): OrchestrationV2ThreadProjection {
 }
 
 function setup(): Disposable {
+  environment.phase = null;
   thread.state = {
     data: Option.some(settledTurn()),
     status: "live",
@@ -177,6 +189,29 @@ describe("GuestThreadRoute", () => {
         ),
       ),
     );
+  });
+
+  it("keeps offering Try again once the board had to retry, while it still has not opened", async () => {
+    using _share = setup();
+    thread.state = { ...(thread.state as object), data: Option.none(), status: "pending" };
+    appAtomRegistry.set(guestRoomAtom(SHARE_ID), { online: [], view: null, running: [] });
+    environment.phase = "reconnecting";
+    const route = () => (
+      <AppAtomRegistryProvider>
+        <SidebarProvider>
+          <GuestThreadRoute
+            threadRef={{ environmentId: guestEnvironmentId(SHARE_ID), threadId: THREAD_ID }}
+          />
+        </SidebarProvider>
+      </AppAtomRegistryProvider>
+    );
+    await using screen = await render(route());
+    await expect.element(screen.getByRole("button", { name: "Try again" })).toBeVisible();
+
+    // Connected again, and the board's stream is still silent.
+    environment.phase = "connected";
+    await screen.rerender(route());
+    await expect.element(screen.getByRole("button", { name: "Try again" })).toBeVisible();
   });
 });
 

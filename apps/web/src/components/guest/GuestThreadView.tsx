@@ -475,6 +475,7 @@ function GuestThreadSession({
   // Mounting the thread opens the share's stream, which also says who is in the room.
   const thread = useEnvironmentThread(threadRef.environmentId, threadRef.threadId);
   const retrying = useEnvironment(threadRef.environmentId)?.connection.phase === "reconnecting";
+  const [struggling, setStruggling] = useState(false);
   const projection = Option.getOrNull(thread.data);
   const pendingRequests = useAtomValue(environmentThreadDetails.pendingRequestsAtom(threadRef));
   const loadEarlier = useAtomCommand(threadEnvironment.loadEarlierHistory, {
@@ -625,21 +626,23 @@ function GuestThreadSession({
       });
     }
   });
+  // Once the board has had to retry, the wait keeps saying so until it opens.
+  if (retrying && !struggling) setStruggling(true);
   if (view === null || projection === null) {
     // The plain wait is the mark alone; only trouble gets words.
-    if (!retrying && Option.isNone(thread.error)) {
+    if (!struggling && Option.isNone(thread.error)) {
       return <TinkjamLoading cover={isLandingOnBoard()} label="Opening the board" />;
     }
     return (
       <GuestNotice
         title={
-          retrying
+          struggling
             ? "Retrying..."
             : Option.isSome(thread.error)
               ? "Could not load this thread"
               : "Connecting..."
         }
-        {...(retrying
+        {...(struggling
           ? {
               detail: isCloudShare(share)
                 ? "The board service has not answered yet. Trying again."
@@ -648,7 +651,13 @@ function GuestThreadSession({
           : Option.isSome(thread.error)
             ? { detail: thread.error.value }
             : {})}
-      />
+      >
+        {struggling ? (
+          <Button type="button" onClick={() => window.location.reload()}>
+            Try again
+          </Button>
+        ) : null}
+      </GuestNotice>
     );
   }
   const historyControls: MessagesTimelineHistoryControls | undefined = shouldShowLoadEarlierControl(

@@ -391,7 +391,7 @@ export function CloudBoardSharing({
   );
 
   return (
-    <span className="flex min-w-0 items-center gap-1">
+    <span className="flex min-w-0 items-center justify-end gap-1">
       <AccessChangeDialog
         open={askOpen}
         change={asking}
@@ -417,7 +417,7 @@ export function CloudBoardSharing({
           {isCopied ? <CheckIcon /> : <LinkIcon />}
           {/* Read out at every width; a narrow board shows the mark alone. Both words keep their
               place, so the button keeps its width when it says Copied. */}
-          <span className="grid @max-[66rem]/board:sr-only">
+          <span className="grid @max-[84rem]/board:sr-only">
             <span className={cn("col-start-1 row-start-1", isCopied && "invisible")}>
               Copy invite link
             </span>

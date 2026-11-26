@@ -5682,7 +5682,7 @@ export function RoomBoard({
                 <>
                   <div
                     className={cn(
-                      "flex min-w-0 items-center gap-2 @max-xl/board:gap-1",
+                      "flex min-w-0 items-center justify-end gap-2 overflow-hidden @max-xl/board:gap-1",
                       sharingFolds ? "@max-[62rem]/board:hidden" : "@max-xl/board:hidden",
                     )}
                   >

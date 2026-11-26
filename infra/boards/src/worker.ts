@@ -1780,6 +1780,10 @@ export class BoardRoom extends DurableObject<Env> {
     }
     if (!wasOnline) this.broadcast(this.presence(), stream);
     this.heartbeat ??= setInterval(() => this.ping(), HEARTBEAT_MS);
+    // WebKit holds back the end of a long first event until the stream is written to again.
+    setTimeout(() => {
+      if (this.streams.has(stream)) this.send(stream, ": open\n\n");
+    }, 1_000);
     return new Response(readable, {
       headers: {
         "content-type": "text/event-stream",

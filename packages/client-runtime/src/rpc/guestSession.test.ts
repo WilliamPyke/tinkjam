@@ -266,6 +266,44 @@ it.effect("keeps a share while its owner's host is only unreachable", () => {
   );
 });
 
+it.effect("waits for a first event held back until the host's next heartbeat", () => {
+  // A browser or proxy can hold the end of the opening events until the host writes again,
+  // which both hosts do every 20 seconds (infra/boards/src/worker.ts, apps/server/src/guest/http.ts).
+  let release: (response: Response) => void = () => {};
+  const owner = host((path) =>
+    path === "/api/guest/stream"
+      ? new Promise<Response>((resolve) => {
+          release = resolve;
+        })
+      : new Response(null, { status: 204 }),
+  );
+  return owner.run(
+    Effect.gen(function* () {
+      const { session } = yield* connectGuestSession(prepared("guest-token"), TARGET);
+      yield* session.ready;
+      const reading = yield* Stream.runCollect(
+        call(session.client, ORCHESTRATION_V2_WS_METHODS.subscribeThread, {
+          threadId: TARGET.threadId,
+        }) as Stream.Stream<{ readonly kind: string }, Refusal>,
+      ).pipe(Effect.exit, Effect.forkChild({ startImmediately: true }));
+      yield* TestClock.adjust("20 seconds");
+      release(
+        eventStream([
+          { type: "view", view: VIEW },
+          { type: "thread", item: { kind: "synchronized" } },
+          { type: "ended" },
+        ]),
+      );
+      const read = yield* Fiber.join(reading);
+      expect(Exit.isSuccess(read) && read.value.map((item) => item.kind)).toEqual([
+        "synchronized",
+        "synchronized",
+      ]);
+      expect(owner.titles).toEqual(["Renamed"]);
+    }),
+  );
+});
+
 it.effect("gives up on a stream that never starts, so the connection retries", () => {
   // The host answers the session check but never starts the stream's response.
   const owner = host((path) =>
