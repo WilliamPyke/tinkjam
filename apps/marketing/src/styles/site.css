@@ -1737,6 +1737,9 @@ a {
     position: relative;
     inset: auto;
   }
+  .board > .sr-only {
+    position: absolute;
+  }
   .board .cursor,
   .figma,
   .comment,
@@ -1814,6 +1817,29 @@ a {
   .replay {
     align-self: center;
   }
+  /* The request and Codex's replies share one cell, so the card keeps its height while it works. */
+  .codex__body {
+    display: grid;
+  }
+  .codex__ask,
+  .codex .codex__says {
+    grid-area: 2 / 1;
+  }
+  .codex[data-state] .codex__ask {
+    display: flex;
+  }
+  .codex[data-state] .codex__says {
+    display: block;
+    visibility: hidden;
+  }
+  .codex[data-state="working"] .codex__ask,
+  .codex[data-state="done"] .codex__ask {
+    visibility: hidden;
+  }
+  .codex[data-state="working"] .codex__says,
+  .codex[data-state="done"] .codex__says {
+    visibility: visible;
+  }
   .panels {
     grid-template-columns: 1fr;
     gap: 18px;
@@ -1850,7 +1876,11 @@ a {
     max-width: 720px;
   }
   .note {
+    grid-area: 1 / 1;
     margin: 0 auto;
+  }
+  .codex {
+    grid-area: 3 / 1;
   }
   .landing {
     grid-column: 2;
@@ -1859,11 +1889,82 @@ a {
   }
   /* As tall as its row, so the guide reaches Codex however tall the landing page makes it. */
   .linker {
+    grid-area: 2 / 1;
     align-self: stretch;
     justify-self: center;
     height: auto;
     min-height: 88px;
     margin-top: -36px;
+  }
+  .replay {
+    grid-area: 2 / 1;
+    justify-self: start;
+    left: calc(50% + 22px);
+  }
+}
+
+/* Phones: the note and the landing page side by side, Codex under them, all on one screen. */
+@media (max-width: 599px) {
+  .board {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto 30px auto;
+    gap: 14px 12px;
+    align-items: end;
+    max-width: 420px;
+    margin-top: 36px;
+  }
+  .note {
+    grid-area: 1 / 1;
+    width: auto;
+    margin: 0;
+    padding: 12px 12px 12px 14px;
+    font-size: 14px;
+    transform: rotate(-2deg);
+  }
+  .note__by {
+    margin-top: 8px;
+    font-size: 11px;
+  }
+  .landing {
+    grid-area: 1 / 2;
+    width: auto;
+    transform: rotate(1.5deg);
+  }
+  .landing .bcard__head {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+  .landing .chip--live {
+    position: absolute;
+    right: 8px;
+    top: -10px;
+  }
+  /* Half size; text inside stays at 9px or more, where WebKit's minimum font size would kick in. */
+  .landing__body {
+    zoom: 0.5;
+  }
+  .landing .site__arrow,
+  .landing .site__button {
+    font-size: 18px;
+  }
+  .landing .site__button {
+    width: 108px;
+    height: 32px;
+  }
+  .linker {
+    grid-area: 2 / 1;
+    justify-self: center;
+    height: 72px;
+    margin: -28px 0 -14px;
+  }
+  .replay {
+    grid-area: 2 / 1 / 3 / 3;
+    justify-self: start;
+    left: calc(25% + 19px);
+  }
+  .codex {
+    grid-area: 3 / 1 / 4 / 3;
   }
 }
 
