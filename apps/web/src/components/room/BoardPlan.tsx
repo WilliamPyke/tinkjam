@@ -592,8 +592,12 @@ export function BoardPlan({
     if (next.open) setEditing(task.id);
   };
   const moveTo = (task: RoomBoardNote, to: RoomTaskStatus) => {
-    if (picked.has(task.id) && picked.size > 1) return onMoveAll(picked, to);
-    onMove(task.id, to, columns[to].filter((other) => other.id !== task.id).length);
+    if (picked.has(task.id) && picked.size > 1) onMoveAll(picked, to);
+    else onMove(task.id, to, columns[to].filter((other) => other.id !== task.id).length);
+    // In another column the task is drawn anew, so its menu cannot hand focus back to it.
+    window.setTimeout(() => {
+      if (document.activeElement === document.body) planActionsButton(task.id)?.focus();
+    }, 0);
   };
   const cardOf = (task: RoomBoardNote) => ({
     task,

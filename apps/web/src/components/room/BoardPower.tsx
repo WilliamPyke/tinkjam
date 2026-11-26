@@ -30,7 +30,7 @@ import {
   ZoomInIcon,
   ZoomOutIcon,
 } from "lucide-react";
-import { type ReactNode, type RefObject, useEffect, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 
 import { openCommandPalette } from "~/commandPaletteBus";
 import { writeTextToClipboard } from "~/hooks/useCopyToClipboard";
@@ -173,6 +173,19 @@ export function useBoardPower(props: BoardPowerProps): {
 } {
   const { surfaceRef } = props;
   const [sheetOpen, setSheetOpen] = useState(false);
+  // What had focus when the shortcuts opened, which gets it back when they close.
+  const sheetOpener = useRef<Element | null>(null);
+  const openSheet = () => {
+    sheetOpener.current = document.activeElement;
+    setSheetOpen(true);
+  };
+  const sheetFinalFocus = () => {
+    const opener = sheetOpener.current;
+    if (opener instanceof HTMLElement && opener.isConnected && opener !== document.body) {
+      return opener;
+    }
+    return props.onBoard ? surfaceRef.current : true;
+  };
   const [hand, setHand] = useState(false);
 
   const itemOf = (ref: string) =>
@@ -558,7 +571,7 @@ export function useBoardPower(props: BoardPowerProps): {
         keywords: ["keys", "help"],
         shortcut: "?",
         icon: icon(KeyboardIcon),
-        run: () => setSheetOpen(true),
+        run: openSheet,
       },
     ];
     const finds: Array<BoardCommand> = [
@@ -676,7 +689,7 @@ export function useBoardPower(props: BoardPowerProps): {
       const typing = target instanceof Element && target.closest(OWN_KEYS) !== null;
       if (boardKeyAction(event) !== "shortcuts" || typing) return;
       event.preventDefault();
-      setSheetOpen(true);
+      openSheet();
       return;
     }
     const onSurface = target === surface;
@@ -739,7 +752,7 @@ export function useBoardPower(props: BoardPowerProps): {
       case "group":
         return run(props.selection.size > 0 ? props.onGroup : undefined);
       case "shortcuts":
-        return run(() => setSheetOpen(true));
+        return run(openSheet);
       case "next-card":
       case "previous-card": {
         // Tab steps through cards only from the board with a card selected; else it moves focus.
@@ -806,7 +819,7 @@ export function useBoardPower(props: BoardPowerProps): {
           Command menu
           <MenuShortcut>{label({ key: "K", mod: true })}</MenuShortcut>
         </MenuItem>
-        <MenuItem onClick={() => setSheetOpen(true)}>
+        <MenuItem onClick={openSheet}>
           <KeyboardIcon />
           Keyboard shortcuts
           <MenuShortcut>?</MenuShortcut>
@@ -825,7 +838,11 @@ export function useBoardPower(props: BoardPowerProps): {
           </BoardFloat>
         </div>
       ) : null}
-      <BoardShortcutsSheet open={sheetOpen} onOpenChange={setSheetOpen} />
+      <BoardShortcutsSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        finalFocus={sheetFinalFocus}
+      />
     </>
   );
   return { menu, overlay };
@@ -835,9 +852,11 @@ export function useBoardPower(props: BoardPowerProps): {
 function BoardShortcutsSheet({
   open,
   onOpenChange,
+  finalFocus,
 }: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
+  readonly finalFocus: () => HTMLElement | boolean | null;
 }) {
   const [query, setQuery] = useState("");
   const groups = boardShortcutsMatching(BOARD_SHORTCUTS, query, mac());
@@ -849,7 +868,7 @@ function BoardShortcutsSheet({
         onOpenChange(next);
       }}
     >
-      <DialogPopup className="sm:max-w-lg">
+      <DialogPopup className="sm:max-w-lg" finalFocus={finalFocus}>
         <DialogHeader>
           <DialogTitle>Keyboard shortcuts</DialogTitle>
           <DialogDescription>Keys work whenever you are not typing.</DialogDescription>

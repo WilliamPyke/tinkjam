@@ -127,6 +127,38 @@ describe("RoomBoard comments", () => {
       to: "note:box",
     });
   });
+
+  it("comments by keyboard: Enter on a card with the Comment tool, or on the board itself", async () => {
+    const board = renderBoard([{ id: "box", text: "Review", x: 500, y: 0, kind: "thread" }]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const surface = screen.getByRole("application", { name: "Room board" }).element();
+    const comment = screen.getByRole("button", { name: "Comment", exact: true });
+    const hint = screen.getByRole("status").filter({ hasText: /card or the board to comment/ });
+    const field = screen.getByRole("textbox", { name: "Comment", exact: true });
+    const inBox = screen.container.querySelector<HTMLElement>(
+      '[data-board-item="note:box"] button:not([data-board-link])',
+    );
+    if (!(surface instanceof HTMLElement) || inBox === null) throw new Error("No board or box");
+
+    await userEvent.click(comment);
+    await expect.element(hint).toBeVisible();
+    inBox.focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(hint).not.toBeInTheDocument();
+    await expect.element(field).toHaveFocus();
+    await userEvent.keyboard("On the card{Enter}");
+    await vi.waitFor(() => expect(onChange).toHaveBeenCalledTimes(2));
+    expect(onChange.mock.calls[1]?.[0]).toMatchObject({ type: "edge.put", to: "note:box" });
+
+    await userEvent.click(comment);
+    surface.focus();
+    await userEvent.keyboard(" ");
+    await expect.element(field).toHaveFocus();
+    await userEvent.keyboard("On the board{Enter}");
+    await vi.waitFor(() => expect(onChange).toHaveBeenCalledTimes(3));
+    expect(onChange.mock.calls[2]?.[0]).toMatchObject({ type: "note.put", text: "On the board" });
+  });
 });
 
 describe("RoomBoard view", () => {
@@ -1161,9 +1193,41 @@ describe("RoomBoard keys and pointer", () => {
     await userEvent.click(view("List"));
     await expect.element(screen.getByText("1 selected")).not.toBeInTheDocument();
     await userEvent.keyboard("?");
-    await expect.element(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
+    const shortcuts = page.getByRole("dialog", { name: "Keyboard shortcuts" });
+    await expect.element(shortcuts).toBeVisible();
     await userEvent.keyboard("{Escape}");
+    await expect.element(view("List")).toHaveFocus();
     await userEvent.click(view("Board"));
+    const surface = screen.getByRole("application", { name: "Room board" });
+    await userEvent.click(surface, { position: { x: 900, y: 600 } });
+    await userEvent.keyboard("?");
+    await expect.element(shortcuts).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    await expect.element(surface).toHaveFocus();
+  });
+
+  it("keeps focus on a task moved from its actions menu in the Plan", async () => {
+    await using _viewport = await boardSizedViewport();
+    const board = renderBoard([{ id: "t", text: "Ship", x: 300, y: 300, kind: "task" }]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    await userEvent.click(
+      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Plan" }),
+    );
+    const actions = screen.getByRole("button", { name: "Actions for Ship" });
+    actions.element().focus();
+    await userEvent.keyboard("{Enter}");
+    const doing = page.getByRole("menuitem", { name: "In progress" });
+    await expect.element(doing).toBeVisible();
+    doing.element().focus();
+    await userEvent.keyboard("{Enter}");
+    await vi.waitFor(() =>
+      expect(puts(onChange).at(-1)).toMatchObject({ noteId: "t", status: "doing" }),
+    );
+    await expect.element(actions).toHaveFocus();
+    await userEvent.click(
+      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Board" }),
+    );
   });
 
   it("puts a note added from the toolbar by key into the section last clicked, and a Section where clicked, clear of other sections", async () => {
@@ -1433,6 +1497,48 @@ describe("RoomBoard lines", () => {
       },
     });
     await expect.element(screen.getByRole("button", { name: "Delete line" })).toBeVisible();
+  });
+
+  it("draws a line by keyboard: Enter or Space on cards with the Line tool, or Enter on a card's grip", async () => {
+    const board = renderBoard([
+      { id: "a", text: "First", x: 0, y: -200 },
+      { id: "b", text: "Second", x: 300, y: -200 },
+    ]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const controlIn = (id: string, selector: string) => {
+      const element = screen.container.querySelector<HTMLElement>(
+        `[data-board-item="note:${id}"] ${selector}`,
+      );
+      if (element === null) throw new Error(`Note ${id} has no ${selector}`);
+      return element;
+    };
+    const lines = () =>
+      onChange.mock.calls.flatMap(([change]) => (change.type === "edge.put" ? [change] : []));
+    const surface = screen.getByRole("application", { name: "Room board" }).element();
+    if (!(surface instanceof HTMLElement)) throw new Error("No board");
+    const second = screen.getByText(/the card it points to/);
+
+    surface.focus();
+    await userEvent.keyboard("l");
+    await expect.element(screen.getByText(/the line starts from/)).toBeVisible();
+    controlIn("a", "button:not([data-board-link])").focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(second).toBeVisible();
+    controlIn("b", "button:not([data-board-link])").focus();
+    await userEvent.keyboard(" ");
+    await vi.waitFor(() => expect(lines()).toHaveLength(1));
+    expect(lines()[0]).toMatchObject({ from: "note:a", to: "note:b" });
+    await expect.element(second).not.toBeInTheDocument();
+
+    controlIn("b", "[data-board-link]").focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(second).toBeVisible();
+    controlIn("a", "[data-board-link]").focus();
+    await userEvent.keyboard("{Enter}");
+    await vi.waitFor(() => expect(lines()).toHaveLength(2));
+    expect(lines()[1]).toMatchObject({ from: "note:b", to: "note:a" });
+    expect(onChange.mock.calls.every(([change]) => change.type === "edge.put")).toBe(true);
   });
 
   it("keeps focus on the board after closing or deleting a line from its menu", async () => {

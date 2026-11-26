@@ -72,6 +72,7 @@ import {
   type ClipboardEvent,
   type ComponentProps,
   type DragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent,
   type PointerEvent,
   type ReactNode,
@@ -4246,19 +4247,27 @@ export function RoomBoard({
   const pickLineEnd = (event: MouseEvent<HTMLElement>) => {
     const target = linkTargetAt(event.clientX, event.clientY, linking?.from ?? null);
     const at = pointerOnBoard(event);
-    if (target === null || at === null || !canEdit) {
+    if (target === null || at === null) {
+      stopLinking();
+      setLineTool(false);
+      return;
+    }
+    pickLineCard(target.ref, at, { x: event.clientX, y: event.clientY });
+  };
+  const pickLineCard = (ref: string, at: BoardPoint, press: BoardPoint) => {
+    if (!canEdit) {
       stopLinking();
       setLineTool(false);
       return;
     }
     if (linking === null) {
-      const box = boxes.get(target.ref);
+      const box = boxes.get(ref);
       if (box === undefined) return;
       markLinkTarget(null);
-      setLinking({ from: target.ref, box, to: at, press: { x: event.clientX, y: event.clientY } });
+      setLinking({ from: ref, box, to: at, press });
       return;
     }
-    addEdge(linking.from, target.ref);
+    addEdge(linking.from, ref);
     stopLinking();
     setLineTool(false);
     surfaceRef.current?.focus({ preventScroll: true });
@@ -4302,16 +4311,53 @@ export function RoomBoard({
     if (armedTool !== null && at !== null) addToolCard(armedTool, at);
   };
   // On click, not on press: the press's own focus change would take the caret out of the field.
-  const placeComment = (event: MouseEvent<HTMLElement>) => {
+  const placeComment = (event: MouseEvent<HTMLElement>) =>
+    placeCommentAt(pointerOnBoard(event), dataAt(event.clientX, event.clientY, "boardItem"));
+  const placeCommentAt = (at: BoardPoint | null, under: string | null) => {
     setPlacingComment(false);
-    const at = pointerOnBoard(event);
     if (at === null || !canEdit || full) return;
     const half = (BOARD_PIN_SIZE * pinScale) / 2;
     const id = randomUUID();
-    const under = dataAt(event.clientX, event.clientY, "boardItem");
     const on = under === null || isSectionRef(under) ? null : under;
     setDraftComment({ id, on, ...settleBoardValue({ x: at.x - half, y: at.y - half }) });
     setOpenComment(id);
+  };
+  // Enter or Space on a card, or a control in it, picks the card for the Line or Comment tool as a
+  // click does, and on a line grip starts a line from its card. On the board itself, the Comment
+  // tool comments in the middle of the view. Whether it took the key.
+  const pickByKey = (event: ReactKeyboardEvent<HTMLElement>) => {
+    const target = event.target;
+    if ((event.key !== "Enter" && event.key !== " ") || event.repeat) return false;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
+    if (!(target instanceof Element) || !event.currentTarget.contains(target)) return false;
+    if (!isBoardKey(target)) return false;
+    const item = target.closest<HTMLElement>("[data-board-item]");
+    const ref = item?.dataset.boardItem;
+    const box = ref === undefined ? undefined : boxes.get(ref);
+    const grip = canEdit && target.closest("[data-board-link]") !== null;
+    if (placingComment) {
+      const area = boardAreaOf(surfaceRef.current);
+      if (box !== undefined && ref !== undefined) {
+        placeCommentAt({ x: box.x + box.width, y: box.y }, ref);
+      } else if (target === event.currentTarget && area !== null) {
+        const seen = visibleBoardRect(view, area);
+        placeCommentAt({ x: seen.x + seen.width / 2, y: seen.y + seen.height / 2 }, null);
+      } else return false;
+    } else if (lineTool || grip) {
+      if (item === null || box === undefined || ref === undefined) return false;
+      if (!lineTool) {
+        setPlacingComment(false);
+        setArmedTool(null);
+        setLineTool(true);
+      }
+      const drawn = item.getBoundingClientRect();
+      const press = { x: drawn.left + drawn.width / 2, y: drawn.top + drawn.height / 2 };
+      const out = { x: box.x + box.width + 48, y: box.y + box.height / 2 };
+      if (linking?.from !== ref) pickLineCard(ref, out, press);
+    } else return false;
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
   };
   const dragPin = (note: RoomBoardNote, dx: number, dy: number) =>
     dragBy({ kind: "note", id: note.id }, note, dx, dy, false);
@@ -6165,7 +6211,7 @@ export function RoomBoard({
           // focusing a card at the edge cannot scroll the board out from under the pointer.
           tabIndex={0}
           className={cn(
-            "relative min-h-0 flex-1 cursor-grab touch-none overflow-clip bg-board-canvas outline-none active:cursor-grabbing",
+            "relative min-h-0 flex-1 cursor-grab touch-none overflow-clip bg-board-canvas outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:cursor-grabbing",
             // A resting finger never selects text or opens the browser's callout; a card it picked
             // up lifts a little.
             "data-[board-resting]:select-none data-[board-resting]:[-webkit-touch-callout:none] [&_[data-board-resting]]:select-none [&_[data-board-resting]]:[-webkit-touch-callout:none] [&_[data-board-lifted]]:shadow-lg [&_[data-board-lifted]]:outline-2 [&_[data-board-lifted]]:-outline-offset-2 [&_[data-board-lifted]]:outline-primary/60",
@@ -6296,6 +6342,7 @@ export function RoomBoard({
           }}
           // Escape leaves a note's text with the note selected; the note gives the board focus.
           onKeyDownCapture={(event) => {
+            if (pickByKey(event)) return;
             const ref =
               event.key === "Escape" && event.target instanceof Element
                 ? event.target
@@ -7401,7 +7448,7 @@ export function RoomBoard({
             </BoardToolHint>
           ) : null}
           {placingComment ? (
-            <BoardToolHint onCancel={() => setPlacingComment(false)}>
+            <BoardToolHint role="status" onCancel={() => setPlacingComment(false)}>
               {touchFirst() ? "Tap" : "Click"} a card or the board to comment.
             </BoardToolHint>
           ) : null}
