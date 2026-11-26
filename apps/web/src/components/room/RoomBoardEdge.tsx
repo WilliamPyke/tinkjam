@@ -1,4 +1,14 @@
-import { type PointerEvent, memo, useLayoutEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type PointerEvent,
+  type ReactNode,
+  createContext,
+  memo,
+  use,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 
 import { useStableCallback } from "~/hooks/useStableCallback";
@@ -10,6 +20,9 @@ import {
   type BoardSide,
   boardConnector,
   boardConnectorSides,
+  boardGripScale,
+  boardLineScale,
+  boardTouchScale,
 } from "./roomBoard.logic";
 import { type BoardLiveDrag, useBoardLineEnd } from "./roomBoardLive";
 
@@ -28,6 +41,25 @@ const liveEnd = (box: BoardBox, live: BoardLiveDrag | undefined): BoardBox =>
 
 /** A stroke width in board pixels, thickened as the board zooms out; see `boardLineScale`. */
 export const boardStroke = (width: number) => `calc(${width}px * var(--board-line-scale, 1))`;
+
+// Set only on the parts that read them: set on the whole board, they restyled every card on each
+// frame of a zoom. The zoom is held clamped to where the scales change, so past it nothing renders.
+export const BoardScaleContext = createContext(1);
+export const boardScaleZoom = (zoom: number) => Math.min(2, Math.max(0.25, zoom));
+export const boardScaleStyle = (zoom: number) =>
+  ({
+    "--board-touch-scale": boardTouchScale(zoom),
+    "--board-line-scale": boardLineScale(zoom),
+    "--board-grip-scale": boardGripScale(zoom),
+  }) as CSSProperties;
+
+export function BoardScaled({ children }: { readonly children: ReactNode }) {
+  return (
+    <div className="contents" style={boardScaleStyle(use(BoardScaleContext))}>
+      {children}
+    </div>
+  );
+}
 
 const sameBox = (a: BoardBox, b: BoardBox) =>
   a === b || (a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height);

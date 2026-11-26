@@ -4,7 +4,7 @@ import {
   type RoomBoardNoteColor,
 } from "@t3tools/contracts";
 import { XIcon } from "lucide-react";
-import { type PointerEvent, type ReactNode, useState } from "react";
+import { type PointerEvent, type ReactNode, use, useState } from "react";
 
 import { cn } from "~/lib/utils";
 
@@ -14,7 +14,7 @@ import {
   BOARD_SELECTED_CHROME_CLASS,
 } from "./BoardChrome";
 import { BOARD_SECTION_SIZE, boardEditKey } from "./roomBoard.logic";
-import { boardStroke } from "./RoomBoardEdge";
+import { BoardScaleContext, boardScaleStyle, boardStroke } from "./RoomBoardEdge";
 import { boardLiveRect, boardLiveStyle, boardLiveText, useBoardLiveDrag } from "./roomBoardLive";
 import { dragHandlers, leaveText } from "./roomBoardPointer";
 import { useBoardSelected } from "./RoomBoardSelection";
@@ -86,6 +86,7 @@ export function BoardSection({
       })
     : undefined;
   const marked = selected ? "" : undefined;
+  const scales = boardScaleStyle(use(BoardScaleContext));
   return (
     <div
       className={cn(
@@ -99,6 +100,7 @@ export function BoardSection({
           ),
       )}
       style={{
+        ...scales,
         left: note.x,
         top: note.y,
         width: live?.w ?? size.w,

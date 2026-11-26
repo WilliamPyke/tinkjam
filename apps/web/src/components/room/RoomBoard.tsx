@@ -196,7 +196,6 @@ import {
   boardCommentLineTo,
   boardConnector,
   type BoardSide,
-  boardLineScale,
   boardMaxSide,
   boardPointedSpot,
   boardCursorAt,
@@ -266,8 +265,6 @@ import {
   dropBoardEdit,
   dropHeldBoardEdits,
   fitBoardOnSurface,
-  boardTouchScale,
-  boardGripScale,
   type BoardResizeEdges,
   boardTypingRect,
   openingBoardView,
@@ -405,6 +402,10 @@ import {
 import {
   type BoardLineObstacle,
   BoardEdgeLine,
+  BoardScaleContext,
+  BoardScaled,
+  boardScaleStyle,
+  boardScaleZoom,
   boardStroke,
   lastBoardLineShape,
   rememberBoardLineShape,
@@ -5239,6 +5240,8 @@ export function RoomBoard({
   );
 
   const edgeArea = drawingArea([...boxes.values()]);
+  const scaleZoom = boardScaleZoom(view.zoom);
+  const scales = boardScaleStyle(scaleZoom);
   const lineSlots = boardLineSlots(
     edges.flatMap((edge) => {
       const from = boxes.get(edge.from);
@@ -6523,610 +6526,614 @@ export function RoomBoard({
           }}
         >
           <BoardSelectionContext value={selected}>
-            <div
-              ref={linesRef}
-              {...lineHover}
-              className={cn(
-                // Cards are placed and sized in board pixels, so spacing inside the world is
-                // pinned to pixels: a person's text size changes the words, never the geometry.
-                "group/lines absolute top-0 left-0 origin-top-left [--spacing:4px]",
-                following !== null && "transition-transform duration-200 ease-out",
-              )}
-              style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}
-            >
-              {shown.notes.map((note) => {
-                if (note.section !== true) return null;
-                const target = { kind: "note", id: note.id } as const;
-                const own = canEdit && isRoomCardOwnedBy(note, viewer);
-                return (
-                  <BoardSection
-                    key={note.id}
-                    note={note}
-                    canRename={own}
-                    canDelete={own}
-                    canMove={canEdit}
-                    onMove={(dx, dy) => dragBy(target, note, dx, dy)}
-                    onDrop={() => dropItem(target)}
-                    handles={
-                      <ItemHandles
-                        from={noteRef(note.id)}
-                        link={link}
-                        frame
-                        onResize={
-                          canEdit
-                            ? (edges, from, dx, dy) => resizeNote(note, edges, from, dx, dy)
-                            : undefined
-                        }
-                        onEnd={() => release(() => letGo(target))}
-                      />
-                    }
-                    onText={(text) => writeNote(note, text)}
-                    onBlur={() => release(() => letGo(target))}
-                    onRevert={() => revertText(target)}
-                    onDelete={() => deleteNotes([note.id])}
-                    onPickColor={
-                      canEdit && cards === undefined
-                        ? (color) => changeNote(note, (current) => ({ ...current, color }))
-                        : undefined
-                    }
-                  />
-                );
-              })}
-              <svg
-                aria-hidden
-                className="pointer-events-none absolute overflow-visible"
-                style={{ left: edgeArea.x, top: edgeArea.y }}
-                width={edgeArea.width}
-                height={edgeArea.height}
+            <BoardScaleContext value={scaleZoom}>
+              <div
+                ref={linesRef}
+                {...lineHover}
+                className={cn(
+                  // Cards are placed and sized in board pixels, so spacing inside the world is
+                  // pinned to pixels: a person's text size changes the words, never the geometry.
+                  "group/lines absolute top-0 left-0 origin-top-left [--spacing:4px]",
+                  following !== null && "transition-transform duration-200 ease-out",
+                )}
+                style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}
               >
-                <defs>
-                  {EDGE_STROKES.map(([state, color]) => (
-                    <marker
-                      key={state}
-                      id={`${markerId}-${state}`}
-                      viewBox="0 0 10 10"
-                      refX="9"
-                      refY="5"
-                      markerWidth="4.5"
-                      markerHeight="4.5"
-                      orient="auto"
-                    >
-                      <path d="M0 0 L10 5 L0 10 z" fill={color} />
-                    </marker>
-                  ))}
-                  {BOARD_PERSON_COLORS.map((color, index) => (
-                    <marker
-                      key={color}
-                      id={`${markerId}-person-${index}`}
-                      viewBox="0 0 10 10"
-                      refX="9"
-                      refY="5"
-                      markerWidth="4.5"
-                      markerHeight="4.5"
-                      orient="auto"
-                    >
-                      <path d="M0 0 L10 5 L0 10 z" fill={color} />
-                    </marker>
-                  ))}
-                </defs>
-                <g transform={`translate(${-edgeArea.x} ${-edgeArea.y})`}>
-                  {agents.map(({ guest }) => {
-                    const from = boxes.get(cardRef(guestCardId(guest)));
-                    const to = boxes.get(cardRef(agentCardId(guest)));
-                    if (from === undefined || to === undefined) return null;
-                    return (
-                      <path
-                        key={guest.id}
-                        d={boardConnector(from, to).path}
-                        fill="none"
-                        stroke="var(--color-muted-foreground)"
-                        strokeOpacity={0.6}
-                        style={{ strokeWidth: boardStroke(2) }}
-                        strokeDasharray="4 5"
-                      />
-                    );
-                  })}
-                  {edges.map((edge) => {
-                    const from = boxes.get(edge.from);
-                    const to = boxes.get(edge.to);
-                    if (from === undefined || to === undefined) return null;
-                    const selected = selectedEdge === edge.id;
-                    const state: EdgeStroke = selected ? "selected" : edgeRole(edge.id);
-                    const slots = lineSlots.get(edge.id);
-                    return (
-                      <BoardEdgeLine
-                        key={edge.id}
-                        id={edge.id}
-                        fromRef={edge.from}
-                        toRef={edge.to}
-                        from={from}
-                        to={to}
-                        fromSlot={slots?.from ?? 0.5}
-                        toSlot={slots?.to ?? 0.5}
-                        color={
-                          state === "artifact" ? lineColor(edge.from) : EDGE_STROKE_COLORS[state]
-                        }
-                        width={EDGE_STROKE_WIDTHS[state]}
-                        dashed={state === "sent"}
-                        shape={edge.shape ?? "curve"}
-                        obstacles={edge.shape === "elbow" ? lineObstacles : undefined}
-                        marker={
-                          state === "artifact"
-                            ? `url(#${markerId}-person-${BOARD_PERSON_COLORS.indexOf(lineColor(edge.from))})`
-                            : `url(#${markerId}-${state})`
-                        }
-                        selectable={canEdit}
-                        onSelect={selectEdge}
-                        over={edgesOver}
-                      />
-                    );
-                  })}
-                  {linking === null ? null : (
-                    // Moved on the page as the pointer goes; see `drawLinkTo`.
-                    <path
-                      ref={linkPath}
-                      d={
-                        boardLine(lastBoardLineShape(lineBoard), linking.box, {
-                          ...linking.to,
-                          width: 0,
-                          height: 0,
-                        }).path
-                      }
-                      fill="none"
-                      stroke="var(--color-primary)"
-                      style={{ strokeWidth: boardStroke(2.5) }}
-                      strokeDasharray="6 5"
-                      markerEnd={`url(#${markerId}-selected)`}
-                    />
-                  )}
-                </g>
-              </svg>
-              <BoardSnapGuides store={snapStore} zoom={view.zoom} />
-              {cards?.map((card) => (
-                <BoardCard
-                  key={card.id}
-                  at={positions[card.id]!}
-                  title={card.title}
-                  kind={card.kind}
-                  dashed={card.dashed === true}
-                  id={card.id}
-                  size={sizes[card.id]}
-                  link={link}
-                  resize={resize}
-                  onMove={dragBy}
-                  onDrop={dropItem}
-                >
-                  {card.children}
-                </BoardCard>
-              ))}
-              {roomParts !== null ? (
-                <BoardCard
-                  at={positions[ROOM_BOARD_THREAD_CARD]!}
-                  title={title}
-                  kind={
-                    hasProgress
-                      ? "thread"
-                      : needsApproval
-                        ? "needs approval"
-                        : agentWorking
-                          ? "agent working"
-                          : "thread"
-                  }
-                  id={ROOM_BOARD_THREAD_CARD}
-                  size={sizes[ROOM_BOARD_THREAD_CARD]}
-                  dropTarget={onUseNote === undefined ? undefined : THREAD_DROP}
-                  dropLabel={dropTarget?.on === THREAD_DROP ? dropTarget.label : undefined}
-                  link={link}
-                  resize={resize}
-                  onMove={dragBy}
-                  onDrop={dropItem}
-                  footer={roomParts.prompt}
-                  onOpen={onOpenThread}
-                  steadyFor={
-                    roomBox === undefined
-                      ? undefined
-                      : { boxId: roomBox.id, begun: messages.length > 0 || agentWorking }
-                  }
-                >
-                  {roomParts.body}
-                  <RoomCode
-                    code={ownerCode}
-                    onOpenPullRequest={onOpenPullRequest}
-                    openingPullRequest={openingPullRequest}
-                  />
-                  {!hasProgress && needsApproval ? null : (
-                    <div>
-                      <Button size="xs" variant="outline" onClick={onOpenThread}>
-                        <MessagesSquareIcon />
-                        Open thread
-                      </Button>
-                    </div>
-                  )}
-                </BoardCard>
-              ) : null}
-              {guestCards.map((guest) => {
-                const id = guestCardId(guest);
-                const here = online.includes(guest.id);
-                return (
-                  <BoardCard
-                    key={id}
-                    at={positions[id]!}
-                    title={guest.name}
-                    kind={here ? "viewing now" : "away"}
-                    color={boardCursorColor(guests, guest.id)}
-                    dashed
-                    id={id}
-                    size={sizes[id]}
-                    action={
-                      here && guest.id !== viewer ? followButton(guest.id, guest.name) : undefined
-                    }
-                    link={link}
-                    resize={resize}
-                    onMove={dragBy}
-                    onDrop={dropItem}
-                  >
-                    <GuestDetails
-                      guest={guest}
-                      messages={room?.messages ?? NO_GUEST_MESSAGES}
-                      boxes={threadBoxes}
-                      viewer={viewer}
-                    />
-                  </BoardCard>
-                );
-              })}
-              {agents.map((agent) => {
-                const { guest, turns, running: now } = agent;
-                const id = agentCardId(guest);
-                const latest = turns.at(-1);
-                const own = canGive && guest.id === viewer;
-                return (
-                  <BoardCard
-                    key={id}
-                    at={positions[id]!}
-                    title={guest.id === viewer ? "Your agent" : `${guest.name}'s agent`}
-                    color={boardCursorColor(guests, guest.id)}
-                    kind={
-                      now !== undefined
-                        ? "working"
-                        : `${turns.length} turn${turns.length === 1 ? "" : "s"}`
-                    }
-                    id={id}
-                    size={sizes[id]}
-                    dropTarget={own ? OWN_AGENT_DROP : undefined}
-                    dropLabel={
-                      own && dropTarget?.on === OWN_AGENT_DROP ? dropTarget.label : undefined
-                    }
-                    link={link}
-                    resize={resize}
-                    onMove={dragBy}
-                    onDrop={dropItem}
-                  >
-                    <p className="text-2xs text-muted-foreground">Runs on their machine</p>
-                    {now !== undefined ? (
-                      <p
-                        role="status"
-                        className="text-xs font-medium text-primary first-letter:uppercase"
-                      >
-                        {boardAgentName(people, guest.id)} is working
-                      </p>
-                    ) : latest !== undefined ? (
-                      <>
-                        {latest.prompt ? (
-                          <p className="line-clamp-2 border-s-2 border-foreground/15 ps-2 text-xs text-muted-foreground [overflow-wrap:anywhere]">
-                            {latest.prompt}
-                          </p>
-                        ) : null}
-                        <p className="line-clamp-6 text-xs [overflow-wrap:anywhere]">
-                          {roomBoxExcerpt(latest.reply, ROOM_BOX_REPLY_MAX_LENGTH)}
-                        </p>
-                      </>
-                    ) : null}
-                    <RoomCode code={boardAgentCode(agent)} />
-                  </BoardCard>
-                );
-              })}
-              {shown.notes.map((note) => {
-                if (note.kind === "comment" || note.section === true) return null;
-                // A live view shows, restores and edits the artifact it follows.
-                const artifactSource =
-                  note.viewOf === undefined ? undefined : roomArtifactSource(shown, note.id);
-                const artifactOf = artifactSource ?? note;
-                const threadBox = { id: note.id, guestId: note.guestId, title: note.text.trim() };
-                // Like "New artifact", and only for whoever can prompt the box.
-                const canPage =
-                  onPromptBox !== undefined &&
-                  canEdit &&
-                  !full &&
-                  !artifactsFull &&
-                  canPromptBoardBox(threadBox, viewer) &&
-                  contexts.get(note.id)?.artifact === null;
-                const box =
-                  note.kind === "thread" && cards === undefined
-                    ? boxParts(
-                        threadBox,
-                        <BoxTurns
-                          boxId={note.id}
-                          turns={note.thread?.turns ?? []}
-                          people={people}
-                          onPageToArtifact={
-                            canPage ? (title) => void pageToArtifact(note.id, title) : undefined
-                          }
-                        />,
-                      )
-                    : undefined;
-                return (
-                  <BoardNote
-                    key={note.id}
-                    note={note}
-                    people={people}
-                    guests={guests}
-                    canEdit={canEdit}
-                    link={link}
-                    quote={boardNoteQuote(note, messages)}
-                    onResize={canEdit ? resizeNote : undefined}
-                    embed={
-                      note.kind === "link"
-                        ? {
-                            live: liveEmbeds.has(note.id),
-                            active: embedInUse === note.id && liveEmbeds.has(note.id),
-                            zoomedOut: view.zoom < BOARD_EMBED_MIN_ZOOM,
-                            onUse: () => openEmbed(note.id),
-                            onRelease: () => setEmbedInUse(null),
-                          }
-                        : note.kind === "artifact"
-                          ? {
-                              live: true,
-                              active: embedInUse === note.id,
-                              onUse: () => {
-                                if (view.zoom < BOARD_EMBED_MIN_ZOOM) zoomToCard(noteRef(note.id));
-                                setEmbedInUse(note.id);
-                              },
-                              onRelease: () => setEmbedInUse(null),
-                            }
-                          : undefined
-                    }
-                    markNumber={marks.numbers.get(note.id)}
-                    artifactMarks={
-                      note.kind === "artifact" && canEdit && onChange !== undefined
-                        ? {
-                            pins: marks.pins.get(artifactOf.id) ?? NO_MARK_PINS,
-                            onAdd: (mark, words) => markArtifact(note, artifactOf, mark, words),
-                          }
-                        : undefined
-                    }
-                    artifactLinks={
-                      note.kind === "artifact"
-                        ? {
-                            spot: pageSpots.get(note.id),
-                            unmade:
-                              note.viewOf === undefined &&
-                              note.artifact === undefined &&
-                              edges.some(
-                                (edge) =>
-                                  edge.to === noteRef(note.id) &&
-                                  roomBoardNoteOfRef(shown, edge.from)?.kind === "artifact",
-                              ),
-                            onOpenBeside:
-                              canEdit && onChange !== undefined
-                                ? (link) => openLinkBeside(note, link)
-                                : undefined,
-                          }
-                        : undefined
-                    }
-                    onAddNext={
-                      canEdit && !full && followsOn(note)
-                        ? () => addAndType(() => addNextNote(note))
-                        : undefined
-                    }
-                    onMove={dragNote}
-                    onDrop={dropNote}
-                    onBlur={(target) => {
-                      if (justAdded.current === target.id) justAdded.current = null;
-                      release(() => letGo(target));
-                    }}
-                    onRevert={revertText}
-                    onEscape={(target) => {
-                      const note = shown.notes.find((each) => each.id === target.id);
-                      if (justAdded.current !== target.id || note?.text !== "") return;
-                      justAdded.current = null;
-                      send(target, null);
-                    }}
-                    onText={writeNote}
-                    onTick={tickTask}
-                    onPasteLink={full ? undefined : pasteLinkInto}
-                    onDelete={(target) => deleteNotes([target.id])}
-                    onOpenReply={onOpenReply}
-                    worker={running.find((agent) => agent.taskId === note.id)}
-                    taskRun={
-                      note.kind === "task" && note.run !== undefined ? (
-                        <TaskRunChip
-                          run={note.run}
-                          done={note.done === true}
-                          boxName={boxName(note.run.boxId)}
-                          color={boardCursorColor(
-                            guests,
-                            threadBoxes.find((box) => box.id === note.run?.boxId)?.guestId,
-                          )}
-                          waiting={boxWaiting(note.run.boxId)}
-                          end={boxRunEnd?.(note.run.boxId)}
-                          onShowBox={() => note.run !== undefined && showBox(note.run.boxId)}
-                          onStop={stopBox?.(note.run.boxId)}
-                          onClear={
-                            canEdit && onChange !== undefined
-                              ? () =>
-                                  void queueChange(noteRef(note.id), () =>
-                                    onChange({ type: "task.run", noteId: note.id, boxId: null }),
-                                  )
+                {shown.notes.map((note) => {
+                  if (note.section !== true) return null;
+                  const target = { kind: "note", id: note.id } as const;
+                  const own = canEdit && isRoomCardOwnedBy(note, viewer);
+                  return (
+                    <BoardSection
+                      key={note.id}
+                      note={note}
+                      canRename={own}
+                      canDelete={own}
+                      canMove={canEdit}
+                      onMove={(dx, dy) => dragBy(target, note, dx, dy)}
+                      onDrop={() => dropItem(target)}
+                      handles={
+                        <ItemHandles
+                          from={noteRef(note.id)}
+                          link={link}
+                          frame
+                          onResize={
+                            canEdit
+                              ? (edges, from, dx, dy) => resizeNote(note, edges, from, dx, dy)
                               : undefined
                           }
+                          onEnd={() => release(() => letGo(target))}
                         />
-                      ) : null
-                    }
-                    onUse={messageOf(note)}
-                    onGive={giveOf(note)}
-                    artifactSource={artifactSource}
-                    onKeepArtifact={keepOf(note, artifactSource)}
-                    artifactAuthor={
-                      artifactOf.artifact === undefined
-                        ? undefined
-                        : boardArtifactAuthor(artifactOf.artifact, people)
-                    }
-                    artifactWriting={
-                      note.kind === "artifact"
-                        ? boardArtifactWriting(
-                            artifactOf.id,
-                            running,
-                            hasProgress ? null : ownerWritingArtifactId,
-                            people,
-                          )
-                        : null
-                    }
-                    artifactVersionNote={
-                      note.kind === "artifact"
-                        ? boardArtifactVersionNote(shown, note, replyTargets.has(note.id))
-                        : null
-                    }
-                    boxName={boxName}
-                    onRestore={restoreOf(artifactOf)}
-                    onAttachAgent={attachAgentOf(note)}
-                    bringIn={bringIn.partOf(note)}
-                    onWrite={writeOf(artifactOf)}
-                    onAsk={
-                      note.kind === "artifact" && askTargets.length > 0
-                        ? () => askAboutArtifact(note)
-                        : undefined
-                    }
-                    onPickColor={pickColor}
-                    onFramePage={framePage}
-                    onReact={reactTo}
-                    changedLabel={catchUpLabels.get(note.id)}
-                    agentWork={agentWorkOf(note.id)}
-                    agentStatus={noteStatusChip(note)}
-                    agentDone={noteStatusOf(note)?.state === "done"}
-                    compact={view.zoom < COMPACT_CARD_ZOOM}
-                    menuOf={noteMenu}
-                    box={
-                      box === undefined
-                        ? undefined
-                        : {
-                            label: `${boardBoxAgentLabel(note, people, note.thread?.turns.at(-1))}${boxOffline(note) ? ` · ${boxOfflineNote(note)}` : ""}`,
-                            body: box.body,
-                            footer: box.prompt,
-                            onOpen: box.onOpen,
-                          }
-                    }
-                    codeWindow={
-                      note.kind === "code"
-                        ? codeWindowOf(note)
-                        : note.kind === "pull-request"
-                          ? pullRequestWindowOf(note)
-                          : null
-                    }
-                  />
-                );
-              })}
-              {[...commentNotes, ...(draftNote === null ? [] : [draftNote])].map((note) =>
-                hiddenComment(note) ? null : (
-                  <CommentPin
-                    key={note.id}
-                    note={note}
-                    people={people}
-                    open={openComment === note.id}
-                    scale={pinScale}
-                    itemRef={noteRef(note.id)}
-                    handle={
-                      note === draftNote ? null : (
-                        <PinLinkHandle from={noteRef(note.id)} link={link} />
-                      )
-                    }
-                    movable={canEdit && note !== draftNote}
-                    onDrag={dragPin}
-                    onDrop={dropPin}
-                    onToggle={togglePin}
-                    unread={unread(note)}
-                  />
-                ),
-              )}
-              {edges.map((edge) => {
-                const from = boxes.get(edge.from);
-                const to = boxes.get(edge.to);
-                if (selectedEdge !== edge.id || from === undefined || to === undefined) return null;
-                const shape = edge.shape ?? "curve";
-                const { middle } = boardLine(
-                  shape,
-                  from,
-                  to,
-                  { slots: lineSlots.get(edge.id) },
-                  lineObstacles.filter((box) => box.ref !== edge.from && box.ref !== edge.to),
-                );
-                const spot = boardLineControlSpot(
-                  from,
-                  to,
-                  middle,
-                  view,
-                  surfaceSize ?? { width: 600, height: 400 },
-                );
-                return (
-                  <div
-                    key={edge.id}
-                    // Kept at least its own size as the board zooms out, so it stays readable and pressable.
-                    className="absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border border-border bg-popover p-1 shadow-sm [scale:var(--board-line-scale,1)]"
-                    style={{ left: spot.x, top: spot.y }}
-                    onPointerDown={stopPointer}
-                    // On the group, so the keys work from the shape buttons too.
-                    onKeyDown={(event) => {
-                      if (event.key === "Delete" || event.key === "Backspace") {
-                        event.stopPropagation();
-                        thenBoard(() => removeEdge(edge.id));
                       }
-                      if (event.key === "Escape") thenBoard(() => setSelectedEdge(null));
-                    }}
+                      onText={(text) => writeNote(note, text)}
+                      onBlur={() => release(() => letGo(target))}
+                      onRevert={() => revertText(target)}
+                      onDelete={() => deleteNotes([note.id])}
+                      onPickColor={
+                        canEdit && cards === undefined
+                          ? (color) => changeNote(note, (current) => ({ ...current, color }))
+                          : undefined
+                      }
+                    />
+                  );
+                })}
+                <svg
+                  aria-hidden
+                  className="pointer-events-none absolute overflow-visible"
+                  style={{ left: edgeArea.x, top: edgeArea.y, ...scales }}
+                  width={edgeArea.width}
+                  height={edgeArea.height}
+                >
+                  <defs>
+                    {EDGE_STROKES.map(([state, color]) => (
+                      <marker
+                        key={state}
+                        id={`${markerId}-${state}`}
+                        viewBox="0 0 10 10"
+                        refX="9"
+                        refY="5"
+                        markerWidth="4.5"
+                        markerHeight="4.5"
+                        orient="auto"
+                      >
+                        <path d="M0 0 L10 5 L0 10 z" fill={color} />
+                      </marker>
+                    ))}
+                    {BOARD_PERSON_COLORS.map((color, index) => (
+                      <marker
+                        key={color}
+                        id={`${markerId}-person-${index}`}
+                        viewBox="0 0 10 10"
+                        refX="9"
+                        refY="5"
+                        markerWidth="4.5"
+                        markerHeight="4.5"
+                        orient="auto"
+                      >
+                        <path d="M0 0 L10 5 L0 10 z" fill={color} />
+                      </marker>
+                    ))}
+                  </defs>
+                  <g transform={`translate(${-edgeArea.x} ${-edgeArea.y})`}>
+                    {agents.map(({ guest }) => {
+                      const from = boxes.get(cardRef(guestCardId(guest)));
+                      const to = boxes.get(cardRef(agentCardId(guest)));
+                      if (from === undefined || to === undefined) return null;
+                      return (
+                        <path
+                          key={guest.id}
+                          d={boardConnector(from, to).path}
+                          fill="none"
+                          stroke="var(--color-muted-foreground)"
+                          strokeOpacity={0.6}
+                          style={{ strokeWidth: boardStroke(2) }}
+                          strokeDasharray="4 5"
+                        />
+                      );
+                    })}
+                    {edges.map((edge) => {
+                      const from = boxes.get(edge.from);
+                      const to = boxes.get(edge.to);
+                      if (from === undefined || to === undefined) return null;
+                      const selected = selectedEdge === edge.id;
+                      const state: EdgeStroke = selected ? "selected" : edgeRole(edge.id);
+                      const slots = lineSlots.get(edge.id);
+                      return (
+                        <BoardEdgeLine
+                          key={edge.id}
+                          id={edge.id}
+                          fromRef={edge.from}
+                          toRef={edge.to}
+                          from={from}
+                          to={to}
+                          fromSlot={slots?.from ?? 0.5}
+                          toSlot={slots?.to ?? 0.5}
+                          color={
+                            state === "artifact" ? lineColor(edge.from) : EDGE_STROKE_COLORS[state]
+                          }
+                          width={EDGE_STROKE_WIDTHS[state]}
+                          dashed={state === "sent"}
+                          shape={edge.shape ?? "curve"}
+                          obstacles={edge.shape === "elbow" ? lineObstacles : undefined}
+                          marker={
+                            state === "artifact"
+                              ? `url(#${markerId}-person-${BOARD_PERSON_COLORS.indexOf(lineColor(edge.from))})`
+                              : `url(#${markerId}-${state})`
+                          }
+                          selectable={canEdit}
+                          onSelect={selectEdge}
+                          over={edgesOver}
+                        />
+                      );
+                    })}
+                    {linking === null ? null : (
+                      // Moved on the page as the pointer goes; see `drawLinkTo`.
+                      <path
+                        ref={linkPath}
+                        d={
+                          boardLine(lastBoardLineShape(lineBoard), linking.box, {
+                            ...linking.to,
+                            width: 0,
+                            height: 0,
+                          }).path
+                        }
+                        fill="none"
+                        stroke="var(--color-primary)"
+                        style={{ strokeWidth: boardStroke(2.5) }}
+                        strokeDasharray="6 5"
+                        markerEnd={`url(#${markerId}-selected)`}
+                      />
+                    )}
+                  </g>
+                </svg>
+                <BoardSnapGuides store={snapStore} zoom={view.zoom} />
+                {cards?.map((card) => (
+                  <BoardCard
+                    key={card.id}
+                    at={positions[card.id]!}
+                    title={card.title}
+                    kind={card.kind}
+                    dashed={card.dashed === true}
+                    id={card.id}
+                    size={sizes[card.id]}
+                    link={link}
+                    resize={resize}
+                    onMove={dragBy}
+                    onDrop={dropItem}
                   >
-                    <ToggleGroup
-                      aria-label="Line shape"
-                      value={[shape]}
-                      onValueChange={(next) => {
-                        const picked = next[0];
-                        if (picked === "curve" || picked === "elbow") shapeEdge(edge, picked);
+                    {card.children}
+                  </BoardCard>
+                ))}
+                {roomParts !== null ? (
+                  <BoardCard
+                    at={positions[ROOM_BOARD_THREAD_CARD]!}
+                    title={title}
+                    kind={
+                      hasProgress
+                        ? "thread"
+                        : needsApproval
+                          ? "needs approval"
+                          : agentWorking
+                            ? "agent working"
+                            : "thread"
+                    }
+                    id={ROOM_BOARD_THREAD_CARD}
+                    size={sizes[ROOM_BOARD_THREAD_CARD]}
+                    dropTarget={onUseNote === undefined ? undefined : THREAD_DROP}
+                    dropLabel={dropTarget?.on === THREAD_DROP ? dropTarget.label : undefined}
+                    link={link}
+                    resize={resize}
+                    onMove={dragBy}
+                    onDrop={dropItem}
+                    footer={roomParts.prompt}
+                    onOpen={onOpenThread}
+                    steadyFor={
+                      roomBox === undefined
+                        ? undefined
+                        : { boxId: roomBox.id, begun: messages.length > 0 || agentWorking }
+                    }
+                  >
+                    {roomParts.body}
+                    <RoomCode
+                      code={ownerCode}
+                      onOpenPullRequest={onOpenPullRequest}
+                      openingPullRequest={openingPullRequest}
+                    />
+                    {!hasProgress && needsApproval ? null : (
+                      <div>
+                        <Button size="xs" variant="outline" onClick={onOpenThread}>
+                          <MessagesSquareIcon />
+                          Open thread
+                        </Button>
+                      </div>
+                    )}
+                  </BoardCard>
+                ) : null}
+                {guestCards.map((guest) => {
+                  const id = guestCardId(guest);
+                  const here = online.includes(guest.id);
+                  return (
+                    <BoardCard
+                      key={id}
+                      at={positions[id]!}
+                      title={guest.name}
+                      kind={here ? "viewing now" : "away"}
+                      color={boardCursorColor(guests, guest.id)}
+                      dashed
+                      id={id}
+                      size={sizes[id]}
+                      action={
+                        here && guest.id !== viewer ? followButton(guest.id, guest.name) : undefined
+                      }
+                      link={link}
+                      resize={resize}
+                      onMove={dragBy}
+                      onDrop={dropItem}
+                    >
+                      <GuestDetails
+                        guest={guest}
+                        messages={room?.messages ?? NO_GUEST_MESSAGES}
+                        boxes={threadBoxes}
+                        viewer={viewer}
+                      />
+                    </BoardCard>
+                  );
+                })}
+                {agents.map((agent) => {
+                  const { guest, turns, running: now } = agent;
+                  const id = agentCardId(guest);
+                  const latest = turns.at(-1);
+                  const own = canGive && guest.id === viewer;
+                  return (
+                    <BoardCard
+                      key={id}
+                      at={positions[id]!}
+                      title={guest.id === viewer ? "Your agent" : `${guest.name}'s agent`}
+                      color={boardCursorColor(guests, guest.id)}
+                      kind={
+                        now !== undefined
+                          ? "working"
+                          : `${turns.length} turn${turns.length === 1 ? "" : "s"}`
+                      }
+                      id={id}
+                      size={sizes[id]}
+                      dropTarget={own ? OWN_AGENT_DROP : undefined}
+                      dropLabel={
+                        own && dropTarget?.on === OWN_AGENT_DROP ? dropTarget.label : undefined
+                      }
+                      link={link}
+                      resize={resize}
+                      onMove={dragBy}
+                      onDrop={dropItem}
+                    >
+                      <p className="text-2xs text-muted-foreground">Runs on their machine</p>
+                      {now !== undefined ? (
+                        <p
+                          role="status"
+                          className="text-xs font-medium text-primary first-letter:uppercase"
+                        >
+                          {boardAgentName(people, guest.id)} is working
+                        </p>
+                      ) : latest !== undefined ? (
+                        <>
+                          {latest.prompt ? (
+                            <p className="line-clamp-2 border-s-2 border-foreground/15 ps-2 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                              {latest.prompt}
+                            </p>
+                          ) : null}
+                          <p className="line-clamp-6 text-xs [overflow-wrap:anywhere]">
+                            {roomBoxExcerpt(latest.reply, ROOM_BOX_REPLY_MAX_LENGTH)}
+                          </p>
+                        </>
+                      ) : null}
+                      <RoomCode code={boardAgentCode(agent)} />
+                    </BoardCard>
+                  );
+                })}
+                {shown.notes.map((note) => {
+                  if (note.kind === "comment" || note.section === true) return null;
+                  // A live view shows, restores and edits the artifact it follows.
+                  const artifactSource =
+                    note.viewOf === undefined ? undefined : roomArtifactSource(shown, note.id);
+                  const artifactOf = artifactSource ?? note;
+                  const threadBox = { id: note.id, guestId: note.guestId, title: note.text.trim() };
+                  // Like "New artifact", and only for whoever can prompt the box.
+                  const canPage =
+                    onPromptBox !== undefined &&
+                    canEdit &&
+                    !full &&
+                    !artifactsFull &&
+                    canPromptBoardBox(threadBox, viewer) &&
+                    contexts.get(note.id)?.artifact === null;
+                  const box =
+                    note.kind === "thread" && cards === undefined
+                      ? boxParts(
+                          threadBox,
+                          <BoxTurns
+                            boxId={note.id}
+                            turns={note.thread?.turns ?? []}
+                            people={people}
+                            onPageToArtifact={
+                              canPage ? (title) => void pageToArtifact(note.id, title) : undefined
+                            }
+                          />,
+                        )
+                      : undefined;
+                  return (
+                    <BoardNote
+                      key={note.id}
+                      note={note}
+                      people={people}
+                      guests={guests}
+                      canEdit={canEdit}
+                      link={link}
+                      quote={boardNoteQuote(note, messages)}
+                      onResize={canEdit ? resizeNote : undefined}
+                      embed={
+                        note.kind === "link"
+                          ? {
+                              live: liveEmbeds.has(note.id),
+                              active: embedInUse === note.id && liveEmbeds.has(note.id),
+                              zoomedOut: view.zoom < BOARD_EMBED_MIN_ZOOM,
+                              onUse: () => openEmbed(note.id),
+                              onRelease: () => setEmbedInUse(null),
+                            }
+                          : note.kind === "artifact"
+                            ? {
+                                live: true,
+                                active: embedInUse === note.id,
+                                onUse: () => {
+                                  if (view.zoom < BOARD_EMBED_MIN_ZOOM)
+                                    zoomToCard(noteRef(note.id));
+                                  setEmbedInUse(note.id);
+                                },
+                                onRelease: () => setEmbedInUse(null),
+                              }
+                            : undefined
+                      }
+                      markNumber={marks.numbers.get(note.id)}
+                      artifactMarks={
+                        note.kind === "artifact" && canEdit && onChange !== undefined
+                          ? {
+                              pins: marks.pins.get(artifactOf.id) ?? NO_MARK_PINS,
+                              onAdd: (mark, words) => markArtifact(note, artifactOf, mark, words),
+                            }
+                          : undefined
+                      }
+                      artifactLinks={
+                        note.kind === "artifact"
+                          ? {
+                              spot: pageSpots.get(note.id),
+                              unmade:
+                                note.viewOf === undefined &&
+                                note.artifact === undefined &&
+                                edges.some(
+                                  (edge) =>
+                                    edge.to === noteRef(note.id) &&
+                                    roomBoardNoteOfRef(shown, edge.from)?.kind === "artifact",
+                                ),
+                              onOpenBeside:
+                                canEdit && onChange !== undefined
+                                  ? (link) => openLinkBeside(note, link)
+                                  : undefined,
+                            }
+                          : undefined
+                      }
+                      onAddNext={
+                        canEdit && !full && followsOn(note)
+                          ? () => addAndType(() => addNextNote(note))
+                          : undefined
+                      }
+                      onMove={dragNote}
+                      onDrop={dropNote}
+                      onBlur={(target) => {
+                        if (justAdded.current === target.id) justAdded.current = null;
+                        release(() => letGo(target));
+                      }}
+                      onRevert={revertText}
+                      onEscape={(target) => {
+                        const note = shown.notes.find((each) => each.id === target.id);
+                        if (justAdded.current !== target.id || note?.text !== "") return;
+                        justAdded.current = null;
+                        send(target, null);
+                      }}
+                      onText={writeNote}
+                      onTick={tickTask}
+                      onPasteLink={full ? undefined : pasteLinkInto}
+                      onDelete={(target) => deleteNotes([target.id])}
+                      onOpenReply={onOpenReply}
+                      worker={running.find((agent) => agent.taskId === note.id)}
+                      taskRun={
+                        note.kind === "task" && note.run !== undefined ? (
+                          <TaskRunChip
+                            run={note.run}
+                            done={note.done === true}
+                            boxName={boxName(note.run.boxId)}
+                            color={boardCursorColor(
+                              guests,
+                              threadBoxes.find((box) => box.id === note.run?.boxId)?.guestId,
+                            )}
+                            waiting={boxWaiting(note.run.boxId)}
+                            end={boxRunEnd?.(note.run.boxId)}
+                            onShowBox={() => note.run !== undefined && showBox(note.run.boxId)}
+                            onStop={stopBox?.(note.run.boxId)}
+                            onClear={
+                              canEdit && onChange !== undefined
+                                ? () =>
+                                    void queueChange(noteRef(note.id), () =>
+                                      onChange({ type: "task.run", noteId: note.id, boxId: null }),
+                                    )
+                                : undefined
+                            }
+                          />
+                        ) : null
+                      }
+                      onUse={messageOf(note)}
+                      onGive={giveOf(note)}
+                      artifactSource={artifactSource}
+                      onKeepArtifact={keepOf(note, artifactSource)}
+                      artifactAuthor={
+                        artifactOf.artifact === undefined
+                          ? undefined
+                          : boardArtifactAuthor(artifactOf.artifact, people)
+                      }
+                      artifactWriting={
+                        note.kind === "artifact"
+                          ? boardArtifactWriting(
+                              artifactOf.id,
+                              running,
+                              hasProgress ? null : ownerWritingArtifactId,
+                              people,
+                            )
+                          : null
+                      }
+                      artifactVersionNote={
+                        note.kind === "artifact"
+                          ? boardArtifactVersionNote(shown, note, replyTargets.has(note.id))
+                          : null
+                      }
+                      boxName={boxName}
+                      onRestore={restoreOf(artifactOf)}
+                      onAttachAgent={attachAgentOf(note)}
+                      bringIn={bringIn.partOf(note)}
+                      onWrite={writeOf(artifactOf)}
+                      onAsk={
+                        note.kind === "artifact" && askTargets.length > 0
+                          ? () => askAboutArtifact(note)
+                          : undefined
+                      }
+                      onPickColor={pickColor}
+                      onFramePage={framePage}
+                      onReact={reactTo}
+                      changedLabel={catchUpLabels.get(note.id)}
+                      agentWork={agentWorkOf(note.id)}
+                      agentStatus={noteStatusChip(note)}
+                      agentDone={noteStatusOf(note)?.state === "done"}
+                      compact={view.zoom < COMPACT_CARD_ZOOM}
+                      menuOf={noteMenu}
+                      box={
+                        box === undefined
+                          ? undefined
+                          : {
+                              label: `${boardBoxAgentLabel(note, people, note.thread?.turns.at(-1))}${boxOffline(note) ? ` · ${boxOfflineNote(note)}` : ""}`,
+                              body: box.body,
+                              footer: box.prompt,
+                              onOpen: box.onOpen,
+                            }
+                      }
+                      codeWindow={
+                        note.kind === "code"
+                          ? codeWindowOf(note)
+                          : note.kind === "pull-request"
+                            ? pullRequestWindowOf(note)
+                            : null
+                      }
+                    />
+                  );
+                })}
+                {[...commentNotes, ...(draftNote === null ? [] : [draftNote])].map((note) =>
+                  hiddenComment(note) ? null : (
+                    <CommentPin
+                      key={note.id}
+                      note={note}
+                      people={people}
+                      open={openComment === note.id}
+                      scale={pinScale}
+                      itemRef={noteRef(note.id)}
+                      handle={
+                        note === draftNote ? null : (
+                          <PinLinkHandle from={noteRef(note.id)} link={link} />
+                        )
+                      }
+                      movable={canEdit && note !== draftNote}
+                      onDrag={dragPin}
+                      onDrop={dropPin}
+                      onToggle={togglePin}
+                      unread={unread(note)}
+                    />
+                  ),
+                )}
+                {edges.map((edge) => {
+                  const from = boxes.get(edge.from);
+                  const to = boxes.get(edge.to);
+                  if (selectedEdge !== edge.id || from === undefined || to === undefined)
+                    return null;
+                  const shape = edge.shape ?? "curve";
+                  const { middle } = boardLine(
+                    shape,
+                    from,
+                    to,
+                    { slots: lineSlots.get(edge.id) },
+                    lineObstacles.filter((box) => box.ref !== edge.from && box.ref !== edge.to),
+                  );
+                  const spot = boardLineControlSpot(
+                    from,
+                    to,
+                    middle,
+                    view,
+                    surfaceSize ?? { width: 600, height: 400 },
+                  );
+                  return (
+                    <div
+                      key={edge.id}
+                      // Kept at least its own size as the board zooms out, so it stays readable and pressable.
+                      className="absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border border-border bg-popover p-1 shadow-sm [scale:var(--board-line-scale,1)]"
+                      style={{ left: spot.x, top: spot.y, ...scales }}
+                      onPointerDown={stopPointer}
+                      // On the group, so the keys work from the shape buttons too.
+                      onKeyDown={(event) => {
+                        if (event.key === "Delete" || event.key === "Backspace") {
+                          event.stopPropagation();
+                          thenBoard(() => removeEdge(edge.id));
+                        }
+                        if (event.key === "Escape") thenBoard(() => setSelectedEdge(null));
                       }}
                     >
-                      <Toggle value="curve">Curved</Toggle>
-                      <Toggle value="elbow">Elbow</Toggle>
-                    </ToggleGroup>
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            aria-label="Delete line"
-                            // Focused without scrolling: inside the moved board, the browser
-                            // would scroll the board's box to bring it into view.
-                            ref={focusInPlace}
-                            onPointerDown={stopPointer}
-                            onClick={() => thenBoard(() => removeEdge(edge.id))}
-                          />
-                        }
+                      <ToggleGroup
+                        aria-label="Line shape"
+                        value={[shape]}
+                        onValueChange={(next) => {
+                          const picked = next[0];
+                          if (picked === "curve" || picked === "elbow") shapeEdge(edge, picked);
+                        }}
                       >
-                        <Trash2Icon />
-                        <span className="hidden sm:inline">Delete</span>
-                      </TooltipTrigger>
-                      <TooltipPopup side="top">Delete line</TooltipPopup>
-                    </Tooltip>
-                  </div>
-                );
-              })}
-              <svg
-                aria-hidden
-                className="pointer-events-none absolute overflow-visible"
-                style={{ left: edgeArea.x, top: edgeArea.y }}
-                width={edgeArea.width}
-                height={edgeArea.height}
-              >
-                <g ref={setEdgesOver} transform={`translate(${-edgeArea.x} ${-edgeArea.y})`} />
-              </svg>
-              <BoardFollowContext value={follow}>{cursorLayer}</BoardFollowContext>
-            </div>
+                        <Toggle value="curve">Curved</Toggle>
+                        <Toggle value="elbow">Elbow</Toggle>
+                      </ToggleGroup>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              aria-label="Delete line"
+                              // Focused without scrolling: inside the moved board, the browser
+                              // would scroll the board's box to bring it into view.
+                              ref={focusInPlace}
+                              onPointerDown={stopPointer}
+                              onClick={() => thenBoard(() => removeEdge(edge.id))}
+                            />
+                          }
+                        >
+                          <Trash2Icon />
+                          <span className="hidden sm:inline">Delete</span>
+                        </TooltipTrigger>
+                        <TooltipPopup side="top">Delete line</TooltipPopup>
+                      </Tooltip>
+                    </div>
+                  );
+                })}
+                <svg
+                  aria-hidden
+                  className="pointer-events-none absolute overflow-visible"
+                  style={{ left: edgeArea.x, top: edgeArea.y, ...scales }}
+                  width={edgeArea.width}
+                  height={edgeArea.height}
+                >
+                  <g ref={setEdgesOver} transform={`translate(${-edgeArea.x} ${-edgeArea.y})`} />
+                </svg>
+                <BoardFollowContext value={follow}>{cursorLayer}</BoardFollowContext>
+              </div>
+            </BoardScaleContext>
           </BoardSelectionContext>
           {marquee.layer}
           {selected.size === 0 ? null : (
@@ -7555,9 +7562,6 @@ const boardGridStyle = (view: BoardView) => ({
   backgroundImage: "radial-gradient(var(--color-board-dot) 1px, transparent 1px)",
   backgroundSize: `${GRID * view.zoom}px ${GRID * view.zoom}px`,
   backgroundPosition: `${view.x}px ${view.y}px`,
-  "--board-touch-scale": boardTouchScale(view.zoom),
-  "--board-line-scale": boardLineScale(view.zoom),
-  "--board-grip-scale": boardGripScale(view.zoom),
 });
 
 type DragBy = (target: BoardTarget, from: BoardPoint, dx: number, dy: number) => void;
@@ -7726,9 +7730,9 @@ function ItemHandles({
       {link === undefined
         ? null
         : LINK_SIDES.map((side) => <LinkHandle key={side} from={from} link={link} side={side} />)}
-      {onResize === undefined
-        ? null
-        : RESIZE_GRIPS.map((grip) => (
+      {onResize === undefined ? null : (
+        <BoardScaled>
+          {RESIZE_GRIPS.map((grip) => (
             <ResizeHandle
               key={grip.name}
               className={cn(
@@ -7742,6 +7746,8 @@ function ItemHandles({
               onEnd={() => onEnd(grip.edges)}
             />
           ))}
+        </BoardScaled>
+      )}
     </>
   );
 }
@@ -7752,6 +7758,7 @@ function ItemHandles({
  */
 function TouchNoteControls({ children }: { readonly children: ReactNode }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const scales = boardScaleStyle(use(BoardScaleContext));
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- placed against the header where the browser drew it, after every render that may have panned the note
   useLayoutEffect(() => {
     const controls = ref.current;
@@ -7769,6 +7776,7 @@ function TouchNoteControls({ children }: { readonly children: ReactNode }) {
     <div
       ref={ref}
       className="absolute bottom-full left-0 z-20 hidden origin-bottom-left pb-2 [scale:var(--board-touch-scale,1)] pointer-coarse:flex data-below:top-full data-below:bottom-auto data-below:origin-top-left data-below:pt-2 data-below:pb-0"
+      style={scales}
       onPointerDown={stopPointer}
     >
       {children}
