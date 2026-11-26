@@ -116,6 +116,7 @@ export function BoardScrollTail({ className, children }: ComponentProps<"div">) 
 
 export type BoardChipTone =
   | "primary"
+  | "progress"
   | "success"
   | "warning"
   | "error"
@@ -127,6 +128,7 @@ const CHIP_TONES: Readonly<Record<BoardChipTone, string>> = {
   // Accent as text: the theme's primary, lifted toward the text colour in dark for contrast.
   primary:
     "bg-primary/12 text-primary dark:bg-primary/22 dark:text-[color-mix(in_srgb,var(--color-primary)_60%,var(--color-foreground))]",
+  progress: "bg-primary/12 text-accent-deep dark:bg-primary/22 dark:text-paint-blue-deep",
   success: "bg-success/12 text-success-foreground dark:bg-success/18",
   warning: "bg-warning/16 text-warning-foreground dark:bg-warning/20",
   error: "bg-error/12 text-error-foreground dark:bg-error/18",

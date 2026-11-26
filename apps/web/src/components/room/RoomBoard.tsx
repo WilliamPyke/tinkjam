@@ -8145,7 +8145,7 @@ function BoardNote({
               onCheckedChange={(done) => onTick(note, done)}
             />
             {roomTaskStatus(note) === "doing" ? (
-              <BoardChip tone="primary" className="ms-1.5">
+              <BoardChip tone="progress" className="ms-1.5">
                 In progress
               </BoardChip>
             ) : null}
@@ -8402,9 +8402,11 @@ function BoardNote({
         {note.kind === "task" &&
         (note.priority !== undefined || note.due !== undefined || note.assignee !== undefined) ? (
           <div className="flex min-w-0 flex-wrap items-center gap-1 px-3 pb-2">
-            {note.priority === undefined ? null : <TaskPriorityMark priority={note.priority} />}
+            {note.priority === undefined ? null : (
+              <TaskPriorityMark priority={note.priority} paper />
+            )}
             {note.due === undefined ? null : (
-              <TaskDueChip due={note.due} today={today} done={note.done === true} />
+              <TaskDueChip due={note.due} today={today} done={note.done === true} paper />
             )}
             {note.assignee === undefined ? null : (
               <span className="ms-auto">

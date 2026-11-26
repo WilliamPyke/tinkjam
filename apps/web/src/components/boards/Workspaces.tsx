@@ -104,7 +104,12 @@ export function NewWorkspaceRow() {
   const [creating, setCreating] = useState(false);
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton size="nav" onClick={() => setCreating(true)} data-sidebar-first-workspace>
+      <SidebarMenuButton
+        size="nav"
+        variant="nav"
+        onClick={() => setCreating(true)}
+        data-sidebar-first-workspace
+      >
         <PlusIcon />
         <span className="min-w-0 truncate">New workspace</span>
       </SidebarMenuButton>

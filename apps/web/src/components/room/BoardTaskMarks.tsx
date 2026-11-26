@@ -28,14 +28,21 @@ const priorityTitle = (priority: RoomTaskPriority) =>
 export function TaskPriorityMark({
   priority,
   iconOnly = false,
+  paper = false,
 }: {
   readonly priority: RoomTaskPriority;
   readonly iconOnly?: boolean;
+  readonly paper?: boolean;
 }) {
   const { icon: Icon, tone } = PRIORITY_LOOK[priority];
   const title = priorityTitle(priority);
   return (
-    <BoardChip tone={tone} aria-label={`Priority: ${title}`} title={`Priority: ${title}`}>
+    <BoardChip
+      tone={tone}
+      aria-label={`Priority: ${title}`}
+      title={`Priority: ${title}`}
+      className={paper && tone === "neutral" ? "text-paint-ink-muted" : undefined}
+    >
       <Icon aria-hidden className="size-3" />
       {iconOnly ? null : title}
     </BoardChip>
@@ -53,15 +60,21 @@ export function TaskDueChip({
   due,
   today,
   done,
+  paper = false,
 }: {
   readonly due: string;
   readonly today: string;
   readonly done: boolean;
+  readonly paper?: boolean;
 }) {
   const { label, overdue } = boardPlanDue(due, today);
   const bareDay = !label.startsWith("Due") && !label.startsWith("Overdue");
+  const tone = overdue && !done ? "error" : "neutral";
   return (
-    <BoardChip tone={overdue && !done ? "error" : "neutral"}>
+    <BoardChip
+      tone={tone}
+      className={paper && tone === "neutral" ? "text-paint-ink-muted" : undefined}
+    >
       <CalendarIcon aria-hidden className="size-3" />
       {bareDay ? <span className="sr-only">{"Due "}</span> : null}
       {label}

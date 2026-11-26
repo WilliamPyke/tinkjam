@@ -46,7 +46,7 @@ function AgentPill({ agents }: { readonly agents: ReadonlyArray<ArtAgent> }) {
 const TEAMMATES = [
   { initial: "P", tone: "bg-brand-forest text-white" },
   { initial: "S", tone: "bg-brand-raspberry text-white" },
-  { initial: "M", tone: "bg-brand-claude text-white" },
+  { initial: "M", tone: "bg-brand-claude text-brand-ink" },
   { initial: "+4", tone: "bg-brand-sun text-brand-ink" },
 ];
 

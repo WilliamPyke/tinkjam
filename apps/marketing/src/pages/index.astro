@@ -16,7 +16,7 @@ const agents = [
 const faces = [
   { initial: "P", color: "var(--forest)" },
   { initial: "S", color: "var(--raspberry)" },
-  { initial: "M", color: "var(--claude)" },
+  { initial: "M", color: "var(--claude)", ink: "#17141C" },
   { initial: "+4", color: "var(--sun)", ink: "#17141C" },
 ];
 const arrow = "M2 2l5.5 13 2-5.5 5.5-2z";
@@ -149,7 +149,7 @@ const samples = SAMPLE_BOARDS.map((board) => ({
           <svg viewBox="0 0 18 18"
             ><path d={arrow} fill="var(--claude)" stroke="var(--page)" stroke-width="1.2"></path></svg
           >
-          <span style="background:var(--claude)">Maya</span>
+          <span style="background:var(--claude);color:#17141C">Maya</span>
         </div>
 
         <div class="bcard landing" aria-hidden="true" data-landing>
