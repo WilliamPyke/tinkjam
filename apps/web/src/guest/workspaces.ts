@@ -26,7 +26,7 @@ import * as Schema from "effect/Schema";
 import { Atom } from "effect/reactivity";
 
 import { getLocalStorageItem, setLocalStorageItem } from "../hooks/useLocalStorage";
-import { appAtomRegistry } from "../rpc/atomRegistry";
+import { appAtomRegistry, subscribeAtomChanges } from "../rpc/atomRegistry";
 import {
   accountRequest,
   boardAccountsEnabled,
@@ -36,7 +36,7 @@ import {
   SIGN_IN_UNCONFIRMED,
 } from "./boardAccount";
 import { cloudBoardsHost, cloudBoardsOrigin } from "./cloudBoardsHost";
-import { type JoinedGuestShare, rememberGuestShare } from "./guestShares";
+import { endedShareNoticesAtom, type JoinedGuestShare, rememberGuestShare } from "./guestShares";
 
 /** Which boards the home and sidebar show: every one, the person's own, or one workspace's. */
 export type WorkspaceScope = "all" | "personal" | (string & {});
@@ -133,6 +133,13 @@ export function syncWorkspaces(userId: string | null) {
 export const refreshWorkspaceList = () => {
   if (syncedUser !== null && boardAccountsEnabled()) void refreshWorkspaces();
 };
+
+// A board that ended may have gone with a workspace the account was taken out of.
+subscribeAtomChanges(endedShareNoticesAtom, () => {
+  if (syncedUser === null || !boardAccountsEnabled()) return;
+  void refreshWorkspaces();
+  void refreshAccountBoards();
+});
 
 let workspaceRefresh = 0;
 
@@ -366,6 +373,22 @@ export const openListedBoard = (board: {
   board.workspaceId === null
     ? openAccountBoard(board.shareId)
     : openWorkspaceBoard(board.workspaceId, board.shareId);
+
+/**
+ * Opens a board from its address as the account: its own seat, else as a member of a workspace
+ * that lists it, as the workspace's tile does. A failure that can be retried is the tag.
+ */
+export async function openBoardAsAccount(
+  shareId: string,
+): Promise<JoinedGuestShare | string | { readonly temporary: true }> {
+  const opened = await openAccountBoard(shareId, { temporary: "tagged" });
+  if (typeof opened !== "string" || syncedUser === null) return opened;
+  await refreshWorkspaces();
+  const workspace = appAtomRegistry
+    .get(workspacesAtom)
+    ?.find((candidate) => candidate.boards.some((board) => board.shareId === shareId));
+  return workspace === undefined ? opened : openWorkspaceBoard(workspace.id, shareId);
+}
 
 /** What an invite link is for, read without signing in. */
 export async function previewWorkspaceInvite(

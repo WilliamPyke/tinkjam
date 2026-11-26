@@ -13,6 +13,8 @@ export const ASKED_KEY = "tinkjam:move-asked:v1";
 
 const SHARES_KEY = "t3code:guest-shares:v1";
 const HASH_PREFIX = "#moved=";
+// `public/move.html`: a static page, so asking the older address does not load the app there.
+const MOVE_PAGE = "/move";
 const CLERK_DEV_BROWSER = "__clerk_db_jwt";
 // Small per-browser choices worth keeping. Each is copied only where the new address has none.
 const KEPT_KEYS = [
@@ -210,11 +212,8 @@ export function moveStep(input: {
   if (input.moved || input.asked || !input.canStore || input.now >= ASKING_ENDS) {
     return { kind: "stay" };
   }
-  return {
-    kind: "go",
-    href: `${older[0]}${input.path}${input.search}${input.hash}`,
-    asking: true,
-  };
+  const to = encodeURIComponent(`${input.path}${input.search}`);
+  return { kind: "go", href: `${older[0]}${MOVE_PAGE}?to=${to}${input.hash}`, asking: true };
 }
 
 /**

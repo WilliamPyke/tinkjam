@@ -30,7 +30,7 @@ const asked = () => {
 /**
  * Runs before anything reads this browser's storage or the link: the older address leaves for the
  * current one with what it holds, and the current one takes that in. See `domainMove.logic.ts`.
- * True when the page is leaving or loading again, so the app should not start on it.
+ * True when the page is leaving, so the app should not start on it.
  */
 function moveBetweenOurDomains(): boolean {
   const origins = builtHostedAppOrigins();
@@ -74,12 +74,10 @@ function moveBetweenOurDomains(): boolean {
     if (step.done) window.localStorage.setItem(MOVED_KEY, new Date().toISOString());
   } catch {
     // Blocked storage keeps nothing; the page still opens.
-    return false;
   }
-  if (step.payload === null) return false;
-  // Loaded again so everything that reads storage as the page starts, the theme first, sees it.
-  location.reload();
-  return true;
+  // No reload: the app's modules load after this and read what was kept. Only the splash, drawn
+  // by index.html before this runs, shows the default look this once.
+  return false;
 }
 
 export const leavingForOurOtherDomain = typeof window !== "undefined" && moveBetweenOurDomains();

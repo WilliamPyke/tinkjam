@@ -110,6 +110,7 @@ import {
   writeTextToClipboard,
 } from "~/hooks/useCopyToClipboard";
 import { useClientSettings } from "~/hooks/useSettings";
+import { holdChunkReload } from "~/lib/chunkReloadGuard";
 import { observeResize } from "~/lib/observeResize";
 import { useStableCallback } from "~/hooks/useStableCallback";
 
@@ -1297,6 +1298,9 @@ export function RoomBoard({
   const settledEdits = settleBoardEdits(board, edits);
   if (settledEdits !== edits) setEdits(settledEdits);
   const shown = resolveBoard(board, settledEdits);
+  const unsent = Object.keys(settledEdits).length > 0;
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keeps the page from reloading for a new deploy while edits here are not yet on the board
+  useEffect(() => (unsent ? holdChunkReload() : undefined), [unsent]);
   const edges = shown.edges ?? [];
   const marks = boardMarks(shown);
   // The card a note held over would be handed to, and what that does.

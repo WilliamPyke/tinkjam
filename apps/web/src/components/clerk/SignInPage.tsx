@@ -40,7 +40,7 @@ export function SignInPage() {
             href={PRIVACY_POLICY_URL}
             target="_blank"
             rel="noreferrer"
-            className="rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            className="pointer-coarse:-my-3 pointer-coarse:py-3 rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           >
             Privacy and terms
           </a>

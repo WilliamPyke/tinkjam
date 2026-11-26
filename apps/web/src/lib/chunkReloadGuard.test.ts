@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { clearChunkReloadGuard, reloadOnceForChunkLoadError } from "./chunkReloadGuard";
+import { holdChunkReload, reloadForChunkLoadError } from "./chunkReloadGuard";
 
 function createStorageStub(): Storage {
   const store = new Map<string, string>();
@@ -20,27 +20,31 @@ function createStorageStub(): Storage {
   };
 }
 
-describe("reloadOnceForChunkLoadError", () => {
-  it("reloads on the first failure and lets the second one surface", () => {
+const AT = 1_800_000_000_000;
+
+describe("reloadForChunkLoadError", () => {
+  it("reloads, lets a failure right after the reload surface, and reloads for a later deploy", () => {
     const storage = createStorageStub();
     const reload = vi.fn();
 
-    expect(reloadOnceForChunkLoadError(() => storage, reload)).toBe(true);
+    expect(reloadForChunkLoadError(() => storage, reload, AT)).toBe(true);
+    expect(reloadForChunkLoadError(() => storage, reload, AT + 5_000)).toBe(false);
     expect(reload).toHaveBeenCalledTimes(1);
 
-    expect(reloadOnceForChunkLoadError(() => storage, reload)).toBe(false);
-    expect(reload).toHaveBeenCalledTimes(1);
+    expect(reloadForChunkLoadError(() => storage, reload, AT + 10 * 60_000)).toBe(true);
+    expect(reload).toHaveBeenCalledTimes(2);
   });
 
-  it("reloads again after a successful boot cleared the guard", () => {
+  it("does not reload while a board has edits it has not sent", () => {
     const storage = createStorageStub();
     const reload = vi.fn();
+    const release = holdChunkReload();
 
-    reloadOnceForChunkLoadError(() => storage, reload);
-    clearChunkReloadGuard(() => storage);
-
-    expect(reloadOnceForChunkLoadError(() => storage, reload)).toBe(true);
-    expect(reload).toHaveBeenCalledTimes(2);
+    expect(reloadForChunkLoadError(() => storage, reload, AT)).toBe(false);
+    release();
+    release();
+    expect(reloadForChunkLoadError(() => storage, reload, AT)).toBe(true);
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 
   it("never reloads when storage is blocked, so a persistent failure cannot loop", () => {
@@ -49,8 +53,7 @@ describe("reloadOnceForChunkLoadError", () => {
       throw new DOMException("blocked", "SecurityError");
     };
 
-    expect(reloadOnceForChunkLoadError(blocked, reload)).toBe(false);
+    expect(reloadForChunkLoadError(blocked, reload, AT)).toBe(false);
     expect(reload).not.toHaveBeenCalled();
-    expect(() => clearChunkReloadGuard(blocked)).not.toThrow();
   });
 });

@@ -44,7 +44,7 @@ export const clerkAppearance = {
     lastAuthenticationStrategyBadge: "hidden",
     card: "border-0 bg-transparent shadow-none",
     footer: "bg-transparent bg-none",
-    header: "items-start text-start",
+    header: "items-stretch text-start",
     headerTitle: "text-xl font-semibold",
     headerSubtitle: "text-sm text-muted-foreground",
     buttonArrowIcon: "hidden",
@@ -59,7 +59,7 @@ export const clerkAppearance = {
 } satisfies NonNullable<ClerkProviderProps["appearance"]>;
 
 const linkElement =
-  "font-medium text-update-foreground underline underline-offset-3 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset";
+  "pointer-coarse:-my-3 pointer-coarse:py-3 font-medium text-update-foreground underline underline-offset-3 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset";
 
 /**
  * The sign-in page's form, laid out as the page's own content: no card, the heading face, tall
@@ -83,7 +83,7 @@ export const signInScreenAppearance = {
     rootBox: "w-full",
     cardBox: "w-full max-w-none overflow-visible rounded-none border-0 bg-transparent shadow-none",
     card: "w-full gap-8 rounded-none border-0 bg-transparent p-0 shadow-none",
-    header: "items-start gap-2.5 text-start",
+    header: "items-stretch gap-2.5 text-start",
     headerTitle:
       "font-heading text-[2.25rem] leading-[1.05] font-semibold tracking-[-0.035em] text-foreground sm:text-[2.75rem]",
     headerSubtitle: "text-base text-muted-foreground",
@@ -117,6 +117,8 @@ export const signInScreenAppearance = {
       "h-12 rounded-full border-primary bg-primary bg-none text-base font-semibold text-primary-foreground shadow-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
     formFieldAction: linkElement,
     formResendCodeLink: linkElement,
+    identityPreview: "min-w-0",
+    identityPreviewText: "min-w-0 truncate",
     identityPreviewEditButton: linkElement,
     alternativeMethodsBlockButton:
       "h-12 rounded-full border-[1.5px] border-border bg-card text-foreground shadow-none",

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
+import movePage from "../public/move.html?raw";
 import { mergeMovedShares, moveStep, packMove, unpackMove } from "./domainMove.logic";
 
 const NEW = "https://app.tinkjam.com";
@@ -15,6 +16,30 @@ const share = (shareId: string, extra: Record<string, unknown> = {}) => ({
   joinedAt: "2026-11-01T00:00:00.000Z",
   ...extra,
 });
+
+// Runs public/move.html's script at `href`, and returns where it sends the browser, if anywhere.
+function runMovePage(href: string, stored: Record<string, string>, cookie = "", framed = false) {
+  const script = movePage.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+  if (script === undefined) throw new Error("move.html has no script");
+  const url = new URL(href);
+  let went: string | null = null;
+  const location = {
+    origin: url.origin,
+    protocol: url.protocol,
+    hostname: url.hostname,
+    port: url.port,
+    search: url.search,
+    hash: url.hash,
+    replace: (to: string) => void (went = to),
+  };
+  const fakeWindow: Record<string, unknown> = {
+    location,
+    localStorage: { getItem: (key: string) => stored[key] ?? null },
+  };
+  fakeWindow.top = framed ? {} : fakeWindow;
+  new Function("window", "document", script)(fakeWindow, { cookie });
+  return went;
+}
 
 const step = (over: Partial<Parameters<typeof moveStep>[0]>) =>
   moveStep({
@@ -86,7 +111,7 @@ describe("moving between our domains", () => {
   it("asks the older address once per browser, and only from the app's own pages", () => {
     expect(step({})).toEqual({
       kind: "go",
-      href: `${OLD}/guest?host=boards.tinkjam.com#invite`,
+      href: `${OLD}/move?to=%2Fguest%3Fhost%3Dboards.tinkjam.com#invite`,
       asking: true,
     });
     for (const over of [
@@ -102,6 +127,42 @@ describe("moving between our domains", () => {
     }
     expect(unpackMove("#moved=not-json")).toBeNull();
     expect(unpackMove(packMove({ read: () => "{", hash: "" }))?.shares).toBe("[]");
+  });
+
+  it("asks through a static page on the older address that hands over as the app there would", () => {
+    const stored: Record<string, string> = {
+      [SHARES]: JSON.stringify([share("a", { openedAt: "2026-11-02T00:00:00.000Z" }), share("b")]),
+      "t3code:board-name:v1": "Ada",
+    };
+    const cookie = "__clerk_db_jwt_ab12=dev.jwt=";
+    const asked = step({});
+    if (asked.kind !== "go") throw new Error("expected the current address to ask");
+    const went = runMovePage(asked.href, stored, cookie);
+    const fromApp = step({ origin: OLD, read: (key) => stored[key] ?? null, cookie });
+    if (fromApp.kind !== "go") throw new Error("expected the older address to leave");
+    expect(went).toBe(fromApp.href);
+
+    const arrived = new URL(went ?? "");
+    expect(step({ search: arrived.search, hash: arrived.hash, referrer: `${OLD}/` })).toMatchObject(
+      {
+        kind: "arrived",
+        href: `/guest${arrived.search}#invite`,
+        payload: { kept: { "t3code:board-name:v1": "Ada" } },
+        done: true,
+      },
+    );
+    expect(runMovePage(`${OLD}/move?to=%2F`, {})).toMatch(new RegExp(`^${NEW}/#moved=`));
+  });
+
+  it("sends the static page's hand-over only to the app's current address", () => {
+    for (const to of ["//evil.test/x", "https://evil.test/", "/\t/evil.test", "\\evil.test"]) {
+      const went = runMovePage(`${OLD}/move?to=${encodeURIComponent(to)}`, {});
+      expect(new URL(went ?? "").origin, to).toBe(NEW);
+    }
+    expect(runMovePage(`${NEW}/move?to=%2Fguest#invite`, { [SHARES]: "[]" })).toBe(
+      `${NEW}/guest#invite`,
+    );
+    expect(runMovePage(`${OLD}/move?to=%2F`, {}, "", true)).toBeNull();
   });
 
   it("takes in handed-over boards without replacing its own or following a strange host", () => {

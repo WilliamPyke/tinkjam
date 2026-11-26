@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { openAccountBoard, useBoardAccount } from "~/guest/boardAccount";
+import { useBoardAccount } from "~/guest/boardAccount";
+import { openBoardAsAccount } from "~/guest/workspaces";
 
 import { guestBoardOpenStep } from "./guestStream.logic";
 
@@ -36,7 +37,7 @@ export function useAccountBoardOpen(input: {
   useEffect(() => {
     if (step !== "account" || shareId === null) return;
     let stopped = false;
-    void openAccountBoard(shareId, { temporary: "tagged" }).then((opened) => {
+    void openBoardAsAccount(shareId).then((opened) => {
       if (stopped) return;
       if (typeof opened === "string") setRefused(shareId);
       else if ("temporary" in opened) setUnreachable({ shareId, attempt });

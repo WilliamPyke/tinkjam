@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Tinkjam</title>
+    <script>
+      // The app's current address sends a new browser here, on an older one, to collect what this
+      // browser saved here. The same hand-over as `moveStep` from an older address in
+      // src/domainMove.logic.ts, without loading the app; domainMove.logic.test.ts holds them equal.
+      (() => {
+        const DOMAINS = ["tinkjam.com", "trellium.org"];
+        const SHARES_KEY = "t3code:guest-shares:v1";
+        const KEPT_KEYS = [
+          "t3code:browser-identity:v1",
+          "t3code:board-name:v1",
+          "t3code:account-names:v1",
+          "t3code:board-name-suggestion:v1",
+          "t3code:client-settings:v1",
+          "t3code:theme",
+          "t3code:theme-follow-system",
+          "t3code:theme-appearance-mode",
+          "t3code:boards-sort:v1",
+          "t3code:sign-in-nudge-dismissed:v1",
+          "t3code:connect-computer-nudge-dismissed:v1",
+        ];
+        const KEPT_VALUE_MAX = 8000;
+        const SHARES_MAX = 40000;
+        const CLERK_DEV_BROWSER = "__clerk_db_jwt";
+        const { location } = window;
+        if (window.top !== window) return;
+
+        const host = location.hostname;
+        const older = DOMAINS.slice(1).find(
+          (domain) => host === domain || host.endsWith(`.${domain}`),
+        );
+        const port = location.port === "" ? "" : `:${location.port}`;
+        const current =
+          older === undefined
+            ? location.origin
+            : `${location.protocol}//${host.slice(0, host.length - older.length)}${DOMAINS[0]}${port}`;
+        const asked = new URLSearchParams(location.search).get("to") ?? "/";
+        let to = new URL(asked.startsWith("/") ? asked : "/", current);
+        if (to.origin !== current) to = new URL("/", current);
+        if (older === undefined) {
+          location.replace(`${to.href}${location.hash}`);
+          return;
+        }
+
+        const read = (key) => {
+          try {
+            return window.localStorage.getItem(key);
+          } catch {
+            return null;
+          }
+        };
+        const isRecord = (value) =>
+          typeof value === "object" && value !== null && !Array.isArray(value);
+        const lastOpened = (share) => {
+          const at = Date.parse(String(share.openedAt ?? share.joinedAt ?? ""));
+          return Number.isFinite(at) ? at : 0;
+        };
+        let stored = [];
+        try {
+          stored = JSON.parse(read(SHARES_KEY) ?? "[]");
+        } catch {}
+        const shares = Array.isArray(stored)
+          ? stored
+              .filter(isRecord)
+              .filter((share) => share.accountId === undefined)
+              .sort((left, right) => lastOpened(right) - lastOpened(left))
+          : [];
+        while (shares.length > 0 && JSON.stringify(shares).length > SHARES_MAX) shares.pop();
+        const kept = {};
+        for (const key of KEPT_KEYS) {
+          const value = read(key);
+          if (value !== null && value.length <= KEPT_VALUE_MAX) kept[key] = value;
+        }
+        const payload = JSON.stringify({
+          hash: location.hash,
+          shares: JSON.stringify(shares),
+          kept,
+        });
+        let binary = "";
+        for (const byte of new TextEncoder().encode(payload)) binary += String.fromCharCode(byte);
+        const packed = btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+
+        let search = to.search;
+        for (const part of document.cookie.split(";")) {
+          const [name, ...value] = part.trim().split("=");
+          if (name.startsWith(CLERK_DEV_BROWSER) && value.join("=") !== "") {
+            to.searchParams.set(CLERK_DEV_BROWSER, value.join("="));
+            search = to.search;
+            break;
+          }
+        }
+        location.replace(`${current}${to.pathname}${search}#moved=${packed}`);
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
