@@ -17,6 +17,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 import "~/index.css";
 
 import { fakeTimers, render } from "../../../test/render";
+import { stopBoardChangeRetries } from "~/guest/boardChangeRetries";
 import { forgetGuestShare, guestRoomAtom, rememberGuestShare } from "../../guest/guestShares";
 import { AppAtomRegistryProvider, appAtomRegistry } from "../../rpc/atomRegistry";
 import { makeThreadProjectionFixture } from "../../test-fixtures";
@@ -273,6 +274,27 @@ describe("postBoardChange", () => {
     expect(settledUnload.defaultPrevented).toBe(false);
     expect(host.sends()).toHaveLength(3);
     expect(new Set(host.sends().map(([, init]) => init?.body)).size).toBe(1);
+  });
+
+  it("stops a waiting change when its board's retries stop", async () => {
+    using _timers = fakeTimers();
+    using host = boardHost(
+      new Response(null, { status: 500 }),
+      new Response(null, { status: 200 }),
+    );
+    const sent = postBoardChange(endpoint, { type: "card.move", cardId: "c", x: 1, y: 2 });
+    await vi.advanceTimersByTimeAsync(0);
+    const waitingUnload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(waitingUnload);
+    expect(waitingUnload.defaultPrevented).toBe(true);
+
+    stopBoardChangeRetries(SHARE_ID);
+
+    await expect(sent).resolves.toBe(false);
+    const settledUnload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(settledUnload);
+    expect(settledUnload.defaultPrevented).toBe(false);
+    expect(host.sends()).toHaveLength(1);
   });
 
   it("does not send a refused change again", async () => {

@@ -57,6 +57,7 @@ import { copyCloudBoard, renameCloudBoard } from "~/guest/cloudBoards";
 import { useThreadActions } from "~/hooks/useThreadActions";
 import { randomUUID } from "~/lib/utils";
 import { endBoardLanding, isLandingOnBoard } from "~/guestPage";
+import { boardChangeRetryController } from "~/guest/boardChangeRetries";
 import { deriveThreadAgentWorking } from "~/session-logic";
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { useEnvironment, useEnvironmentProviders } from "~/state/environments";
@@ -169,6 +170,7 @@ const messageOfFailure = (error: unknown) =>
 async function sendBoardChange(
   endpoint: GuestShareEndpoint,
   change: RoomBoardChange,
+  signal: AbortSignal,
 ): Promise<number | null> {
   try {
     const response = await guestShareRequest(endpoint, GUEST_BOARD_ROUTE, {
@@ -176,6 +178,7 @@ async function sendBoardChange(
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(change),
+        signal,
       },
     });
     return response.status;
@@ -184,28 +187,43 @@ async function sendBoardChange(
   }
 }
 
-const boardChangeRetry = (tries: number) =>
-  new Promise<void>((resolve) => {
-    if (!navigator.onLine) {
-      window.addEventListener("online", () => resolve(), { once: true });
+const boardChangeRetry = (tries: number, signal: AbortSignal) =>
+  new Promise<boolean>((resolve) => {
+    if (signal.aborted) {
+      resolve(false);
       return;
     }
-    setTimeout(resolve, boardChangeRetryDelayMs(tries));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const settle = (again: boolean) => {
+      signal.removeEventListener("abort", stop);
+      window.removeEventListener("online", retry);
+      if (timer !== undefined) clearTimeout(timer);
+      resolve(again);
+    };
+    const retry = () => settle(true);
+    const stop = () => settle(false);
+    timer = navigator.onLine ? setTimeout(retry, boardChangeRetryDelayMs(tries)) : undefined;
+    if (!navigator.onLine) window.addEventListener("online", retry, { once: true });
+    signal.addEventListener("abort", stop, { once: true });
   });
 
 /**
  * Sends one change to the room's board. Resolves to whether the owner's server took it. A host
  * that is down or busy gets the same change again until it answers, so the board's queue keeps
- * later changes to the same card behind it; a refusal resolves false at once.
+ * later changes to the same card behind it. A refusal, or leaving or ending the board, resolves
+ * false at once.
  */
 export async function postBoardChange(
   endpoint: GuestShareEndpoint,
   change: RoomBoardChange,
 ): Promise<boolean> {
   let settle: (() => void) | null = null;
+  const controller = boardChangeRetryController(endpoint.shareId);
   try {
     for (let tries = 0; ; tries += 1) {
-      const status = await sendBoardChange(endpoint, change);
+      if (controller.signal.aborted) return false;
+      const status = await sendBoardChange(endpoint, change, controller.signal);
+      if (controller.signal.aborted) return false;
       if (status !== null && status >= 200 && status < 300) return true;
       if (!boardChangeFailureIsTemporary(status)) return false;
       // A toggle sent twice would undo itself, and a failed answer does not say it did not land.
@@ -213,8 +231,8 @@ export async function postBoardChange(
         toastManager.add({ type: "error", title: "That change was not saved. Try again." });
         return false;
       }
-      if (settle === null) settle = holdBoardChange();
-      await boardChangeRetry(tries);
+      if (settle === null) settle = holdBoardChange(endpoint.shareId);
+      if (!(await boardChangeRetry(tries, controller.signal))) return false;
     }
   } finally {
     settle?.();
@@ -964,7 +982,7 @@ function GuestThreadSession({
   return (
     <RoomLiveContext value={live}>
       <BoardLanded />
-      <BoardSyncNote live={thread.status === "live"} />
+      <BoardSyncNote live={thread.status === "live"} shareId={share.shareId} />
       <GuestBoardLive shareId={share.shareId} running={running} live={live} />
       <BoardSplit
         open={sidePanel !== null || (!cloud && panelOpen)}

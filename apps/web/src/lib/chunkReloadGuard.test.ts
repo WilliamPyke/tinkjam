@@ -51,7 +51,7 @@ describe("reloadForChunkLoadError", () => {
   it("does not reload while a board change is waiting to reach the host", () => {
     const storage = createStorageStub();
     const reload = vi.fn();
-    const release = holdBoardChange();
+    const release = holdBoardChange("share-test");
 
     expect(reloadForChunkLoadError(() => storage, reload, AT)).toBe(false);
     release();

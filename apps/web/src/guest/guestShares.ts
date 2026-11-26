@@ -28,6 +28,7 @@ import { Atom, AtomRegistry } from "effect/reactivity";
 import { MOVED_SHARES_KEY, mergeMovedShares } from "../domainMove.logic";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { sharedThreadLocationOf } from "./boardAddress";
+import { stopBoardChangeRetries } from "./boardChangeRetries";
 import { linkRefusalNotice, type RefusalNotice } from "./linkRefusal.logic";
 import {
   acceptedGuestLinkHost,
@@ -298,6 +299,7 @@ function noteBoardPreview(shareId: string, view: GuestShareView) {
  * no longer opens, which the share's page then shows instead of "not valid".
  */
 export function forgetGuestShare(shareId: string, endedDetail?: string) {
+  stopBoardChangeRetries(shareId);
   reopeningWrites.delete(shareId);
   appAtomRegistry.update(
     reopeningSharesAtom,
