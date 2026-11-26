@@ -13,7 +13,7 @@ import { useRelativeTimeState } from "~/hooks/useRelativeTimeState";
 import { useStableCallback } from "~/hooks/useStableCallback";
 import { cn } from "~/lib/utils";
 
-import ChatMarkdown from "../ChatMarkdown";
+import { LazyChatMarkdown } from "../LazyChatMarkdown";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { toastManager } from "../ui/toast";
@@ -131,7 +131,7 @@ export function RoomArtifactBody({
                 {draft}
               </pre>
             ) : (
-              <ChatMarkdown text={draft} cwd={undefined} />
+              <LazyChatMarkdown text={draft} cwd={undefined} />
             )}
           </div>
         </div>
@@ -405,7 +405,7 @@ function ArtifactText({
         linkMenu.press(link, { x: event.clientX, y: event.clientY });
       }}
     >
-      <ChatMarkdown text={body} cwd={undefined} />
+      <LazyChatMarkdown text={body} cwd={undefined} />
       <ArtifactLinkMenu menu={linkMenu} onOpenBeside={links?.onOpenBeside} />
     </div>
   );

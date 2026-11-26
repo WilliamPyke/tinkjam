@@ -43,8 +43,9 @@ describe("RoomArtifactBody", () => {
 
   it("turns a click in a marked-up page into a pick, and what is typed into a mark", async () => {
     const onAdd = vi.fn();
-    // The page clicks its own button once it is told it is marked up, as a person would.
-    const page = `<!doctype html><html><body><section class="hero"><button id="cta" onclick="document.title='pressed'">Get a quote</button></section><script>addEventListener("message", (event) => { if (event.data && event.data.type === "mode") setTimeout(() => document.getElementById("cta").click()); });</script></body></html>`;
+    // The page clicks its own button once, the first time it is told it is marked up, as a person
+    // would. Adding the mark tells the page again, and a second click would open the field again.
+    const page = `<!doctype html><html><body><section class="hero"><button id="cta" onclick="document.title='pressed'">Get a quote</button></section><script>let clicked = false; addEventListener("message", (event) => { if (clicked || !event.data || event.data.type !== "mode") return; clicked = true; setTimeout(() => document.getElementById("cta").click()); });</script></body></html>`;
     await using screen = await render(
       <div style={{ display: "flex", flexDirection: "column", width: 400, height: 300 }}>
         <RoomArtifactBody

@@ -571,6 +571,10 @@
       "types": "./src/PtyAdapter.ts",
       "import": "./src/PtyAdapter.ts"
     },
+    "./assistantLineBreaks": {
+      "types": "./src/assistantLineBreaks.ts",
+      "import": "./src/assistantLineBreaks.ts"
+    },
     "./markdownMath": {
       "types": "./src/markdownMath.ts",
       "import": "./src/markdownMath.ts"

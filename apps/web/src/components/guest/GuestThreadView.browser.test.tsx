@@ -217,31 +217,52 @@ describe("GuestThreadRoute", () => {
 
 describe("postBoardChange", () => {
   const endpoint = { httpBaseUrl: "https://boards.example", shareId: SHARE_ID, token: "t" };
+  const toBoard = (input: unknown) => String(input).startsWith(endpoint.httpBaseUrl);
+
+  /**
+   * Answers the board host's requests in turn, repeating the last answer. Other requests go out
+   * as usual: earlier renders leave the app's own environment poll running.
+   */
+  function boardHost(...answers: ReadonlyArray<Response | Error>) {
+    const realFetch = globalThis.fetch;
+    let next = 0;
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (!toBoard(input)) return realFetch(input, init);
+      const answer = answers[Math.min(next++, answers.length - 1)];
+      return answer instanceof Response ? Promise.resolve(answer) : Promise.reject(answer);
+    });
+    return Object.assign(spy, {
+      sends: () => spy.mock.calls.filter(([input]) => toBoard(input)),
+    });
+  }
 
   it("keeps a change made offline and sends it once the connection is back", async () => {
     using online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
-    using fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
-      .mockResolvedValue(new Response(null, { status: 200 }));
+    using host = boardHost(new TypeError("Failed to fetch"), new Response(null, { status: 200 }));
     const sent = postBoardChange(endpoint, { type: "card.move", cardId: "c", x: 1, y: 2 });
-    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    // The change waits for the connection only once its failed send is counted as unsaved.
+    await vi.waitFor(() => {
+      const unload = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(unload);
+      expect(unload.defaultPrevented).toBe(true);
+    });
+    expect(host.sends()).toHaveLength(1);
     online.mockReturnValue(true);
     window.dispatchEvent(new Event("online"));
     await expect(sent).resolves.toBe(true);
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(host.sends()).toHaveLength(2);
   });
 
   it("sends a change again while the host fails, until it lands", async () => {
     using _timers = fakeTimers();
-    using fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(new Response(null, { status: 500 }))
-      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
-      .mockResolvedValue(new Response(null, { status: 200 }));
+    using host = boardHost(
+      new Response(null, { status: 500 }),
+      new TypeError("Failed to fetch"),
+      new Response(null, { status: 200 }),
+    );
     const sent = postBoardChange(endpoint, { type: "card.move", cardId: "c", x: 1, y: 2 });
     await vi.advanceTimersByTimeAsync(1_000);
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(host.sends()).toHaveLength(2);
     const waitingUnload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(waitingUnload);
     expect(waitingUnload.defaultPrevented).toBe(true);
@@ -250,32 +271,27 @@ describe("postBoardChange", () => {
     const settledUnload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(settledUnload);
     expect(settledUnload.defaultPrevented).toBe(false);
-    expect(fetchSpy).toHaveBeenCalledTimes(3);
-    expect(new Set(fetchSpy.mock.calls.map(([, init]) => init?.body)).size).toBe(1);
+    expect(host.sends()).toHaveLength(3);
+    expect(new Set(host.sends().map(([, init]) => init?.body)).size).toBe(1);
   });
 
   it("does not send a refused change again", async () => {
-    using fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(new Response(null, { status: 403 }));
+    using host = boardHost(new Response(null, { status: 403 }));
     await expect(
       postBoardChange(endpoint, { type: "card.move", cardId: "c", x: 1, y: 2 }),
     ).resolves.toBe(false);
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(host.sends()).toHaveLength(1);
   });
 
   it("does not send a toggle again, which could land twice", async () => {
     using _online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
-    using fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
-      .mockResolvedValue(new Response(null, { status: 500 }));
+    using host = boardHost(new TypeError("Failed to fetch"), new Response(null, { status: 500 }));
     await expect(
       postBoardChange(endpoint, { type: "note.react", noteId: "n", emoji: "👍" }),
     ).resolves.toBe(false);
     await expect(
       postBoardChange(endpoint, { type: "artifact.restore", noteId: "n" }),
     ).resolves.toBe(false);
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(host.sends()).toHaveLength(2);
   });
 });

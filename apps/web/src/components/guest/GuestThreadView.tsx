@@ -57,6 +57,8 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { ArrowUpIcon, GithubIcon, PaperclipIcon, XIcon } from "lucide-react";
 import {
+  lazy,
+  Suspense,
   useEffect,
   useRef,
   useState,
@@ -117,7 +119,7 @@ import {
 } from "../chat/roomBoardPrompt";
 import { GuestMessageName, guestBubbleClassName } from "../chat/guestMessageStyle";
 import { GuestTurnList } from "../chat/GuestTurnList";
-import { MessagesTimeline, type MessagesTimelineHistoryControls } from "../chat/MessagesTimeline";
+import type { MessagesTimelineHistoryControls } from "../chat/MessagesTimeline";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { getDisplayModelName, getTriggerDisplayModelName } from "../chat/providerIconUtils";
 import { ScrollToEndButton } from "../chat/TimelineOverlays";
@@ -194,6 +196,11 @@ import {
   OwnBoxModelPicker,
   useOwnRoomMachine,
 } from "./ownRoomMachine";
+
+// A cloud board never shows the conversation, so the timeline and its markdown load when it opens.
+const MessagesTimeline = lazy(() =>
+  import("../chat/MessagesTimeline").then((module) => ({ default: module.MessagesTimeline })),
+);
 
 // A reload keeps the tab's session, so it keeps which messages still wait for a row too.
 const AWAITING_ROWS_KEY = "t3:guest-awaiting-rows";
@@ -1494,75 +1501,83 @@ function GuestThread({
           }
         >
           <HostImageUrlContext value={hostImageUrl}>
-            <MessagesTimeline
-              listRef={listRef}
-              timelineEntries={entries}
-              isWorking={isWorking}
-              activeTurnStartedAt={workStartedAt}
-              latestRun={activityRun}
-              runningRunId={runningRunId}
-              turnDiffSummaries={NO_TURN_DIFFS}
-              runs={projection.runs}
-              routeThreadKey={threadKey}
-              onOpenThread={ignore}
-              supportsConversationRollback={false}
-              onRevertToTurnCount={ignore}
-              isRevertingCheckpoint={false}
-              onImageExpand={openExpandedImage}
-              onFileOpen={openFile}
-              onFileDownload={openFile}
-              renderHtmlRender={renderHtmlRender}
-              turnItemSource={turnItemSource}
-              historyControls={historyControls}
-              activeThreadEnvironmentId={guestEnvironmentId(shareId)}
-              markdownCwd={undefined}
-              resolvedTheme={resolvedTheme}
-              timestampFormat="locale"
-              workspaceRoot={undefined}
-              anchorMessageId={null}
-              onAnchorReady={ignore}
-              onAnchorSizeChanged={ignore}
-              contentInsetEndAdjustment={0}
-              emptyPlaceholderInset={0}
-              liveFollowEnabled={follow.timelineLiveFollowEnabled}
-              onIsAtEndChange={follow.onIsAtEndChangeStable}
-              onViewportAttach={follow.attachTimelineViewport}
-              onFooterGrow={follow.onTimelineFooterGrowStable}
-              footer={
-                unplaced.length === 0 && (turns ?? []).length === 0 ? null : (
-                  <>
-                    <GuestTurnList
-                      roster={{ guests, guestName: null }}
-                      turns={turns ?? []}
-                      ownGuestId={guestId}
-                    />
-                    {unplaced.length === 0 ? null : (
-                      <ol className="chat-content-lane flex flex-col gap-4 pb-4">
-                        {unplaced.map((message) => (
-                          <li key={message.id}>
-                            <UnplacedGuestMessage
-                              endpoint={endpoint}
-                              fileUrl={(id) => files.url(GUEST_ATTACHMENT_ROUTE, { id })}
-                              message={message}
-                              artifactTitle={
-                                message.status === "pending"
-                                  ? guestMessageArtifactTitle(board, message)
-                                  : null
-                              }
-                              author={
-                                message.guestId === guestId
-                                  ? "You"
-                                  : guestMessageAuthorName({ guests, guestName: null }, message)
-                              }
-                            />
-                          </li>
-                        ))}
-                      </ol>
-                    )}
-                  </>
-                )
+            <Suspense
+              fallback={
+                <p role="status" className={cn(LANE, "py-4 text-sm text-muted-foreground")}>
+                  Opening the conversation…
+                </p>
               }
-            />
+            >
+              <MessagesTimeline
+                listRef={listRef}
+                timelineEntries={entries}
+                isWorking={isWorking}
+                activeTurnStartedAt={workStartedAt}
+                latestRun={activityRun}
+                runningRunId={runningRunId}
+                turnDiffSummaries={NO_TURN_DIFFS}
+                runs={projection.runs}
+                routeThreadKey={threadKey}
+                onOpenThread={ignore}
+                supportsConversationRollback={false}
+                onRevertToTurnCount={ignore}
+                isRevertingCheckpoint={false}
+                onImageExpand={openExpandedImage}
+                onFileOpen={openFile}
+                onFileDownload={openFile}
+                renderHtmlRender={renderHtmlRender}
+                turnItemSource={turnItemSource}
+                historyControls={historyControls}
+                activeThreadEnvironmentId={guestEnvironmentId(shareId)}
+                markdownCwd={undefined}
+                resolvedTheme={resolvedTheme}
+                timestampFormat="locale"
+                workspaceRoot={undefined}
+                anchorMessageId={null}
+                onAnchorReady={ignore}
+                onAnchorSizeChanged={ignore}
+                contentInsetEndAdjustment={0}
+                emptyPlaceholderInset={0}
+                liveFollowEnabled={follow.timelineLiveFollowEnabled}
+                onIsAtEndChange={follow.onIsAtEndChangeStable}
+                onViewportAttach={follow.attachTimelineViewport}
+                onFooterGrow={follow.onTimelineFooterGrowStable}
+                footer={
+                  unplaced.length === 0 && (turns ?? []).length === 0 ? null : (
+                    <>
+                      <GuestTurnList
+                        roster={{ guests, guestName: null }}
+                        turns={turns ?? []}
+                        ownGuestId={guestId}
+                      />
+                      {unplaced.length === 0 ? null : (
+                        <ol className="chat-content-lane flex flex-col gap-4 pb-4">
+                          {unplaced.map((message) => (
+                            <li key={message.id}>
+                              <UnplacedGuestMessage
+                                endpoint={endpoint}
+                                fileUrl={(id) => files.url(GUEST_ATTACHMENT_ROUTE, { id })}
+                                message={message}
+                                artifactTitle={
+                                  message.status === "pending"
+                                    ? guestMessageArtifactTitle(board, message)
+                                    : null
+                                }
+                                author={
+                                  message.guestId === guestId
+                                    ? "You"
+                                    : guestMessageAuthorName({ guests, guestName: null }, message)
+                                }
+                              />
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </>
+                  )
+                }
+              />
+            </Suspense>
           </HostImageUrlContext>
         </RoomReplyProvider>
         {follow.showScrollToBottom ? (

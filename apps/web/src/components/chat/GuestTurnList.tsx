@@ -4,11 +4,11 @@ import {
   type ThreadGuestShare,
   type ThreadGuestTurn,
 } from "@t3tools/contracts";
-import { shouldPreserveAssistantLineBreaks } from "@t3tools/shared/markdownPipeline";
+import { shouldPreserveAssistantLineBreaks } from "@t3tools/shared/assistantLineBreaks";
 
 import { cn } from "~/lib/utils";
 
-import ChatMarkdown from "../ChatMarkdown";
+import { LazyChatMarkdown } from "../LazyChatMarkdown";
 import { guestBubbleClassName } from "./guestMessageStyle";
 
 /**
@@ -53,7 +53,7 @@ export function GuestTurnList({
                   {turn.prompt}
                 </p>
               ) : null}
-              <ChatMarkdown
+              <LazyChatMarkdown
                 text={turn.reply}
                 cwd={undefined}
                 lineBreaks={shouldPreserveAssistantLineBreaks(turn.reply)}

@@ -7,7 +7,7 @@ import {
   type RoomBoardReactionEmoji,
   type RoomBoardReply,
 } from "@t3tools/contracts";
-import { shouldPreserveAssistantLineBreaks } from "@t3tools/shared/markdownPipeline";
+import { shouldPreserveAssistantLineBreaks } from "@t3tools/shared/assistantLineBreaks";
 import { isRoomCardOwnedBy, roomMentionsIn } from "@t3tools/shared/roomBoard";
 import {
   ArrowUpIcon,
@@ -30,7 +30,7 @@ import { observeResize } from "~/lib/observeResize";
 import { cn } from "~/lib/utils";
 
 import { boardTimeLabel } from "../boards/boardsHome.logic";
-import ChatMarkdown from "../ChatMarkdown";
+import { LazyChatMarkdown } from "../LazyChatMarkdown";
 import { useInlineActionConfirm } from "../pullRequest/useInlineActionConfirm";
 import { Button } from "../ui/button";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
@@ -314,7 +314,7 @@ function CommentEntry({
       ) : (
         // An agent's answer is markdown from someone's machine, so without raw HTML.
         <div className="min-w-0 ps-6.5 text-sm [overflow-wrap:anywhere]">
-          <ChatMarkdown
+          <LazyChatMarkdown
             text={text}
             cwd={undefined}
             lineBreaks={shouldPreserveAssistantLineBreaks(text)}

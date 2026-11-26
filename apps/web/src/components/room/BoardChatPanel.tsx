@@ -1,7 +1,7 @@
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
 import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { ExternalLinkIcon, MessagesSquareIcon, XIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 
 import { useDiffPanelStore } from "~/diffPanelStore";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
@@ -9,11 +9,12 @@ import type { SideChatParentPanel } from "~/lib/sideChatPane";
 import { useRightPanelStore } from "~/rightPanelStore";
 import { cn } from "~/lib/utils";
 
-import ChatView from "../ChatView";
 import { Button } from "../ui/button";
 import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { BOARD_TITLE_BAR_CLASS } from "./BoardChrome";
+
+const ChatView = lazy(() => import("../ChatView"));
 
 /**
  * A conversation on the owner's machine beside the board: the thread's own chat, with its composer,
@@ -77,13 +78,21 @@ export function BoardChatPanel({
           <XIcon />
         </Button>
       </div>
-      <ChatView
-        key={scopedThreadKey(threadRef)}
-        environmentId={environmentId}
-        threadId={threadId}
-        routeKind="server"
-        embedded={parentPanel}
-      />
+      <Suspense
+        fallback={
+          <p role="status" className="p-4 text-sm text-muted-foreground">
+            Opening the conversation…
+          </p>
+        }
+      >
+        <ChatView
+          key={scopedThreadKey(threadRef)}
+          environmentId={environmentId}
+          threadId={threadId}
+          routeKind="server"
+          embedded={parentPanel}
+        />
+      </Suspense>
     </div>
   );
 }
