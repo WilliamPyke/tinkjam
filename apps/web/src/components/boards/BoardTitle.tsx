@@ -85,7 +85,7 @@ export function BoardTitle({
             <button
               type="button"
               // Its negative margins come off the width the header gives it, so it may take them back.
-              className="group/title -mx-1 inline-flex max-w-[calc(100%+0.5rem)] cursor-text items-center gap-1.5 rounded-md px-1 py-0.5 text-start outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              className="group/title relative -mx-1 pointer-coarse:after:absolute pointer-coarse:after:-inset-y-2 pointer-coarse:after:inset-x-0 inline-flex max-w-[calc(100%+0.5rem)] cursor-text items-center gap-1.5 rounded-md px-1 py-0.5 text-start outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               aria-label={`Rename board ${title}`}
               data-board-title
               onPointerDown={(event) => event.stopPropagation()}

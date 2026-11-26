@@ -92,7 +92,7 @@ export function CreateWorkspaceButton() {
     <>
       <Button type="button" variant="outline" onClick={() => setCreating(true)} data-new-workspace>
         <UsersIcon />
-        Create a workspace for your team
+        Create a team workspace
       </Button>
       {creating ? <NewWorkspaceDialog onClose={() => setCreating(false)} /> : null}
     </>

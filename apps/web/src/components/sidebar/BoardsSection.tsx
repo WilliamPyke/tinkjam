@@ -97,7 +97,9 @@ export function BoardsSection({ canStart }: { readonly canStart: boolean }) {
         <SearchIcon aria-hidden className="size-4.5 shrink-0" />
         <span className="min-w-0 flex-1 truncate text-start">Search boards</span>
         {searchShortcut === null ? null : (
-          <kbd className="font-sans text-2xs text-sidebar-muted-foreground">{searchShortcut}</kbd>
+          <kbd className="font-sans text-2xs text-sidebar-muted-foreground pointer-coarse:hidden">
+            {searchShortcut}
+          </kbd>
         )}
       </button>
       <SidebarMenu>

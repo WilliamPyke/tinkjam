@@ -63,11 +63,16 @@ export function BoardsWelcome() {
           }
         >
           {sample === null && !boardAccountsEnabled() ? null : (
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-rule pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-rule pt-4 pointer-coarse:-mx-1.5 pointer-coarse:pt-2">
               {sample === null ? (
                 <span />
               ) : (
-                <InlineButton tone="accent" render={<a href={sample} />} data-welcome-sample-board>
+                <InlineButton
+                  tone="accent"
+                  touchTarget="padded"
+                  render={<a href={sample} />}
+                  data-welcome-sample-board
+                >
                   Look around a sample board
                 </InlineButton>
               )}
@@ -75,7 +80,9 @@ export function BoardsWelcome() {
                 account.status === "signed-out" ? (
                   <WelcomeSignIn />
                 ) : account.status === "signed-in" ? (
-                  <CreateWorkspaceButton />
+                  <div className="pointer-coarse:px-1.5">
+                    <CreateWorkspaceButton />
+                  </div>
                 ) : null
               ) : null}
             </div>
@@ -255,7 +262,7 @@ export function StartBoardForm({
 function WelcomeSignIn() {
   const { openAuthPrompt } = useT3ConnectAuthPrompt();
   return (
-    <InlineButton tone="accent" onClick={openAuthPrompt} data-welcome-sign-in>
+    <InlineButton tone="accent" touchTarget="padded" onClick={openAuthPrompt} data-welcome-sign-in>
       Sign in
     </InlineButton>
   );

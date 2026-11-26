@@ -6,6 +6,15 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
+    <script>
+      // iOS zooms the page into any field under 16px on focus, such as a board note, and the
+      // board's own pinch then cannot undo it. On iOS this stops that zoom, not pinch zooming.
+      if (
+        /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 1 && navigator.platform === "MacIntel")
+      )
+        document.querySelector('meta[name="viewport"]').content += ", maximum-scale=1";
+    </script>
     <meta name="theme-color" content="#fdfcfb" />
     <meta
       name="description"

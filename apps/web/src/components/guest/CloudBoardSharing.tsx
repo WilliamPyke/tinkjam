@@ -206,7 +206,7 @@ export function CloudBoardSharing({
     toastManager.add(
       failed === null
         ? { type: "success", title: done ?? "Done" }
-        : { type: "error", title: "Something went wrong", description: failed },
+        : { type: "error", title: "The sharing change was not saved", description: failed },
     );
   };
   const newLink = (kind: CloudBoardLinkKind, current: string | null) =>
@@ -238,7 +238,12 @@ export function CloudBoardSharing({
     const failed = await removeFromCloudBoard(share, viewer);
     setBusy(false);
     if (failed === null) forget(share.shareId, "You left the board");
-    else toastManager.add({ type: "error", title: "Something went wrong", description: failed });
+    else
+      toastManager.add({
+        type: "error",
+        title: "Could not leave the board",
+        description: failed,
+      });
   };
   // As with a confirmation, the popover closes first, so nothing is left behind the dialog.
   const ask = (change: AccessChange) => {

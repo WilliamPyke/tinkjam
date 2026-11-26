@@ -33,6 +33,7 @@ import { boardOwnHosts } from "./boardFrameCheck";
 import { BoardContextMenu, type CardAction } from "./RoomBoardCardMenu";
 import { BoardPageCover, useBoardPageRelease } from "./RoomBoardEmbed";
 import {
+  boardTouchFirst,
   type BoardPeople,
   boardCardsLine,
   boardDraftIsPage,
@@ -677,7 +678,7 @@ function RoomArtifactEditor({
         }}
       />
       <p className="shrink-0 text-2xs text-muted-foreground">
-        Saves when you click away or press Ctrl+Enter. Esc cancels.
+        Saves when you {boardTouchFirst() ? "tap" : "click"} away or press Ctrl+Enter. Esc cancels.
         {text.length > ROOM_ARTIFACT_MAX_LENGTH * 0.9
           ? ` ${text.length.toLocaleString()} of ${ROOM_ARTIFACT_MAX_LENGTH.toLocaleString()} characters.`
           : ""}

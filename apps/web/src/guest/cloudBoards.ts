@@ -57,7 +57,7 @@ import {
   linkRefusalNotice,
   refusalSentence,
 } from "./linkRefusal.logic";
-import { placeNewBoard } from "./workspaces";
+import { noteWorkspaceBoardTitle, placeNewBoard } from "./workspaces";
 
 const decodeCreated = Schema.decodeUnknownOption(CloudBoardCreateResult);
 const decodeHandoff = Schema.decodeUnknownOption(GuestHandoff);
@@ -249,16 +249,19 @@ export async function renameCloudBoard(
   share: JoinedGuestShare,
   title: string,
 ): Promise<string | null> {
+  // The host takes no longer name, so a long one is cut rather than refused.
+  const kept = title.slice(0, CLOUD_BOARD_TITLE_MAX_LENGTH).trim();
   try {
     const response = await guestShareRequest(guestShareEndpointOf(share), CLOUD_BOARD_TITLE_ROUTE, {
       init: {
         method: "POST",
         headers: { "content-type": "application/json" },
-        // The host takes no longer name, so a long one is cut rather than refused.
-        body: JSON.stringify({ title: title.slice(0, CLOUD_BOARD_TITLE_MAX_LENGTH).trim() }),
+        body: JSON.stringify({ title: kept }),
       },
     });
-    return response.ok ? null : "The board service did not take the new name. Try again.";
+    if (!response.ok) return "The board service did not take the new name. Try again.";
+    if (kept !== "") noteWorkspaceBoardTitle(share.shareId, kept);
+    return null;
   } catch {
     return "Could not reach the board service.";
   }

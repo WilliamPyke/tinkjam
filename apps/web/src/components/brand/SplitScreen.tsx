@@ -70,6 +70,6 @@ export function SplitHeading({
   );
 }
 
-/** A link styled as the designs' underlined accent text. */
+/** A link styled as the designs' underlined accent text, finger-sized to tap on a touch screen. */
 export const splitLinkClassName =
-  "rounded-sm font-medium text-update-foreground underline underline-offset-3 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset";
+  "relative pointer-coarse:after:absolute pointer-coarse:after:-inset-x-1 pointer-coarse:after:-inset-y-2.5 rounded-sm font-medium text-update-foreground underline underline-offset-3 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset";

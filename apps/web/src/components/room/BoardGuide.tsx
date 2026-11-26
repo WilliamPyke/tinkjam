@@ -27,6 +27,7 @@ import {
   useBoardGuideState,
 } from "./boardGuideState";
 import { type BoardGuideInput, type BoardGuideStepId, boardGuideSteps } from "./boardGuide.logic";
+import { boardTouchFirst } from "./roomBoard.logic";
 
 const STEP_TEXT: Readonly<
   Record<BoardGuideStepId, { readonly label: string; readonly hint: string }>
@@ -81,6 +82,7 @@ export function BoardGuide({
   // Until sign-in says who this is, what this browser keeps may be the last person's.
   const whoKnown = useBoardAccount().status !== "loading";
   const steps = boardGuideSteps({ ...input, done: state.done });
+  const touchFirst = boardTouchFirst();
   if (!whoKnown || hidden || state.hidden || steps.length === 0) return null;
   const done = steps.filter((step) => step.done).length;
   const complete = done === steps.length;
@@ -277,7 +279,11 @@ export function BoardGuide({
                             {icon}
                           </span>
                         </TooltipTrigger>
-                        <TooltipPopup side="left">{hint}</TooltipPopup>
+                        <TooltipPopup side="left">
+                          {touchFirst
+                            ? hint.replace("Then click", "Then tap").replace("Click one", "Tap one")
+                            : hint}
+                        </TooltipPopup>
                       </Tooltip>
                     )}
                   </li>

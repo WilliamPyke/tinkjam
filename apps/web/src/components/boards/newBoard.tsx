@@ -262,7 +262,7 @@ function useCreateBoard() {
       toastManager.add({
         type: "error",
         title: "Could not start a board",
-        description: "Set up a provider on this machine first.",
+        description: "Set up an agent on this computer first.",
       });
       return false;
     }

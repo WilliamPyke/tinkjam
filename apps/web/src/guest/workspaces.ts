@@ -74,6 +74,27 @@ const UNREACHABLE = "Could not reach the board service.";
 /** The signed-in account's workspaces; null signed out, before they load, or without accounts. */
 export const useWorkspaces = () => useAtomValue(workspacesAtom);
 
+/** Gives a workspace's list a board's new name, which the home shows ahead of the account's. */
+export function noteWorkspaceBoardTitle(shareId: string, title: string) {
+  const workspaces = appAtomRegistry.get(workspacesAtom);
+  const renames = (board: CloudWorkspace["boards"][number]) =>
+    board.shareId === shareId && board.title !== title;
+  if (workspaces === null || !workspaces.some((workspace) => workspace.boards.some(renames))) {
+    return;
+  }
+  appAtomRegistry.set(
+    workspacesAtom,
+    workspaces.map((workspace) =>
+      workspace.boards.some(renames)
+        ? {
+            ...workspace,
+            boards: workspace.boards.map((board) => (renames(board) ? { ...board, title } : board)),
+          }
+        : workspace,
+    ),
+  );
+}
+
 /** The scope shown: the one picked, unless it is a workspace the person is no longer in. */
 export function useWorkspaceScope(): WorkspaceScope {
   const scope = useAtomValue(scopeAtom);
