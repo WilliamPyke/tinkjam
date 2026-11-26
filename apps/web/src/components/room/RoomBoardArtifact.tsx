@@ -291,7 +291,7 @@ function ArtifactPage({
         sandbox="allow-scripts"
         srcDoc={boardPageWithMarks(body)}
         className={cn(
-          "min-h-0 w-full flex-1 rounded-b-board border-0 group-data-board-busy/board:pointer-events-none",
+          "min-h-0 w-full flex-1 rounded-b-board border-0 [[data-board-busy]_&]:pointer-events-none",
           !active && !on && "pointer-events-none",
         )}
         tabIndex={active || on ? 0 : -1}

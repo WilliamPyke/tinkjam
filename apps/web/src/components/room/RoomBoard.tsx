@@ -6150,10 +6150,10 @@ export function RoomBoard({
           // focusing a card at the edge cannot scroll the board out from under the pointer.
           tabIndex={0}
           className={cn(
-            "group/board relative min-h-0 flex-1 cursor-grab touch-none overflow-clip bg-board-canvas outline-none active:cursor-grabbing",
+            "relative min-h-0 flex-1 cursor-grab touch-none overflow-clip bg-board-canvas outline-none active:cursor-grabbing",
             // A resting finger never selects text or opens the browser's callout; a card it picked
             // up lifts a little.
-            "data-[board-resting]:select-none data-[board-resting]:[-webkit-touch-callout:none] [&_[data-board-lifted]]:shadow-lg [&_[data-board-lifted]]:outline-2 [&_[data-board-lifted]]:-outline-offset-2 [&_[data-board-lifted]]:outline-primary/60",
+            "data-[board-resting]:select-none data-[board-resting]:[-webkit-touch-callout:none] [&_[data-board-resting]]:select-none [&_[data-board-resting]]:[-webkit-touch-callout:none] [&_[data-board-lifted]]:shadow-lg [&_[data-board-lifted]]:outline-2 [&_[data-board-lifted]]:-outline-offset-2 [&_[data-board-lifted]]:outline-primary/60",
             following !== null && "transition-[background-position,background-size] duration-200",
             // Laid out still under the Plan, so Show on board finds each card where it is.
             planShown && "absolute inset-x-0 top-14 bottom-0 invisible",
@@ -6533,7 +6533,7 @@ export function RoomBoard({
                 className={cn(
                   // Cards are placed and sized in board pixels, so spacing inside the world is
                   // pinned to pixels: a person's text size changes the words, never the geometry.
-                  "group/lines absolute top-0 left-0 origin-top-left [--spacing:4px]",
+                  "absolute top-0 left-0 origin-top-left [--spacing:4px]",
                   following !== null && "transition-transform duration-200 ease-out",
                 )}
                 style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}

@@ -171,7 +171,7 @@ function focusBoardLines(
 /**
  * Which lines stand out: those on the cards selected or under the pointer (as one being dragged
  * is), and the line selected or under it. Put `ref` and the handlers on the element holding every
- * line, which takes the `group/lines` class.
+ * line.
  */
 export function useBoardLineFocus(
   selected: ReadonlySet<string>,
@@ -357,7 +357,7 @@ export const BoardEdgeLine = memo(function BoardEdgeLine({
       data-line-id={id}
       data-line-from={fromRef}
       data-line-to={toRef}
-      className="group-data-[lines-focused]/lines:opacity-30 data-[line-focus]:opacity-100!"
+      className="[[data-lines-focused]_&]:opacity-30 data-[line-focus]:opacity-100!"
     >
       {selectable ? (
         <path

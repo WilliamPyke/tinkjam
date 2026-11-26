@@ -86,8 +86,8 @@ const endTouch = (element: Element, press: Press | undefined) => {
   touch.done = true;
   clearTimeout(touch.timer);
   element.removeAttribute("data-board-lifted");
+  element.removeAttribute("data-board-resting");
   touchResting = Math.max(0, touchResting - 1);
-  if (touchResting === 0) boardOf(element)?.removeAttribute("data-board-resting");
 };
 
 /**
@@ -150,6 +150,7 @@ export function dragHandlers(
     if (press?.moved !== false || !element.hasPointerCapture(pointerId)) return;
     touch.held = true;
     if (boardOf(element) !== element) element.setAttribute("data-board-lifted", "");
+    else element.setAttribute("data-board-resting", "");
   };
   return {
     onPointerDown: (event: PointerEvent<HTMLElement>) => {
@@ -174,7 +175,9 @@ export function dragHandlers(
           : null;
       if (touch !== null) {
         touchResting += 1;
-        boardOf(element)?.setAttribute("data-board-resting", "");
+        // Marking the board restyles every card on it, so the board waits until the finger rests,
+        // still before the browser's own long press; a pan or pinch never marks it.
+        if (boardOf(element) !== element) element.setAttribute("data-board-resting", "");
       }
       presses.set(element, {
         x: event.clientX,
