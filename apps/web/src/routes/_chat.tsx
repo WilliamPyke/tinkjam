@@ -35,8 +35,13 @@ function ChatRouteLayout() {
   const modalOpen = useMatches({
     select: (matches) => matches.some((match) => isAppModalPage(match.pathname)),
   });
+  const notFound = useMatches({
+    select: (matches) =>
+      matches.some((match) => match.routeId === "/_chat" && match.globalNotFound),
+  });
   // Settings and Usage render over the thread that opened them, so ChatView never remounts.
   const [backgroundTarget, setBackgroundTarget] = useState(threadTarget);
+  if (notFound) return <Outlet />;
   if (!modalOpen && threadRouteTargetKey(backgroundTarget) !== threadRouteTargetKey(threadTarget)) {
     setBackgroundTarget(threadTarget);
   }
