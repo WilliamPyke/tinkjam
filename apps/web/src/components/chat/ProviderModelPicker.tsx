@@ -8,8 +8,10 @@ import {
 import { RegistryContext } from "@effect/atom-react";
 import {
   createContext,
+  lazy,
   memo,
   type ReactNode,
+  Suspense,
   useContext,
   useEffect,
   useEffectEvent,
@@ -20,7 +22,7 @@ import { Badge } from "../ui/badge";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
-import { ModelPickerContent, resolveModelPickerSelectedModel } from "./ModelPickerContent";
+import { resolveModelPickerSelectedModel } from "./modelPickerSelectedModel";
 import { ChatGptSharingControl } from "./ChatGptSharingControl";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { ModelEsque, getDisplayModelName, getTriggerDisplayModelName } from "./providerIconUtils";
@@ -30,6 +32,25 @@ import { takeOpenTarget, useComposerMenuProps } from "./composerEventScope";
 import { shortcutLabelForCommand } from "../../keybindings";
 import { serverEnvironment } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
+
+const loadModelPickerContent = () => import("./ModelPickerContent");
+// The list loads when a picker first opens or is pointed at, so a page with a picker stays light.
+const ModelPickerContent = lazy(() =>
+  loadModelPickerContent().then((module) => ({ default: module.ModelPickerContent })),
+);
+
+/** Holds the list's place while it loads; `onLoaded` runs once the list has replaced it. */
+function ModelPickerLoading({ onLoaded }: { readonly onLoaded: () => void }) {
+  return (
+    <div
+      role="status"
+      className="flex w-screen max-w-90 items-center justify-center p-4 text-sm text-muted-foreground"
+      ref={(node) => (node ? () => queueMicrotask(onLoaded) : undefined)}
+    >
+      Loading models…
+    </div>
+  );
+}
 
 /** Holds the page still behind the open picker; its lifetime is the popup element's. */
 function lockBackgroundScroll(popup: HTMLElement | null) {
@@ -274,45 +295,55 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
     "data-chat-provider-model-picker-label": "true",
   } as const;
 
+  // The popup opened before the list arrived, so `initialFocus` found no search to focus.
+  const focusLoadedSearch = () => {
+    const active = document.activeElement;
+    if (!popupRef.current?.contains(active) || active?.closest("[data-model-picker-effort]"))
+      return;
+    searchInputRef.current?.focus({ preventScroll: true });
+  };
+
   const picker = (
-    <ModelPickerContent
-      searchInputRef={searchInputRef}
-      environmentId={props.environmentId}
-      activeInstanceId={activeInstanceId}
-      model={props.model}
-      {...(props.selectedModels !== undefined ? { selectedModels: props.selectedModels } : {})}
-      {...(props.onToggleModel
-        ? {
-            onToggleModel: (instanceId: ProviderInstanceId, model: string) => {
-              if (!props.disabled) props.onToggleModel?.(instanceId, model);
-            },
-          }
-        : {})}
-      lockedProvider={props.lockedProvider}
-      lockedContinuationGroupKey={props.lockedContinuationGroupKey ?? null}
-      instanceEntries={props.instanceEntries}
-      {...(props.keybindings ? { keybindings: props.keybindings } : {})}
-      modelOptionsByInstance={props.modelOptionsByInstance}
-      terminalOpen={props.terminalOpen ?? false}
-      onRequestClose={() => setIsMenuOpen(false)}
-      {...(props.onOpenProviderSetup ? { onOpenProviderSetup: props.onOpenProviderSetup } : {})}
-      getModelDisabledReason={(instanceId, model) =>
-        props.disabled
-          ? "Model picker is disabled"
-          : (props.getModelDisabledReason?.(instanceId, model) ?? null)
-      }
-      onInstanceModelChange={handleInstanceModelChange}
-      {...(docked
-        ? {
-            docked,
-            onFocusEffort: () => void focusEffort("any"),
-            // Inside the fixed height, so switching to or from a ChatGPT plan never resizes it.
-            ...(props.selectedModels === undefined
-              ? { listFooter: <ChatGptSharingControl provider={activeEntry?.snapshot ?? null} /> }
-              : {}),
-          }
-        : {})}
-    />
+    <Suspense fallback={<ModelPickerLoading onLoaded={focusLoadedSearch} />}>
+      <ModelPickerContent
+        searchInputRef={searchInputRef}
+        environmentId={props.environmentId}
+        activeInstanceId={activeInstanceId}
+        model={props.model}
+        {...(props.selectedModels !== undefined ? { selectedModels: props.selectedModels } : {})}
+        {...(props.onToggleModel
+          ? {
+              onToggleModel: (instanceId: ProviderInstanceId, model: string) => {
+                if (!props.disabled) props.onToggleModel?.(instanceId, model);
+              },
+            }
+          : {})}
+        lockedProvider={props.lockedProvider}
+        lockedContinuationGroupKey={props.lockedContinuationGroupKey ?? null}
+        instanceEntries={props.instanceEntries}
+        {...(props.keybindings ? { keybindings: props.keybindings } : {})}
+        modelOptionsByInstance={props.modelOptionsByInstance}
+        terminalOpen={props.terminalOpen ?? false}
+        onRequestClose={() => setIsMenuOpen(false)}
+        {...(props.onOpenProviderSetup ? { onOpenProviderSetup: props.onOpenProviderSetup } : {})}
+        getModelDisabledReason={(instanceId, model) =>
+          props.disabled
+            ? "Model picker is disabled"
+            : (props.getModelDisabledReason?.(instanceId, model) ?? null)
+        }
+        onInstanceModelChange={handleInstanceModelChange}
+        {...(docked
+          ? {
+              docked,
+              onFocusEffort: () => void focusEffort("any"),
+              // Inside the fixed height, so switching to or from a ChatGPT plan never resizes it.
+              ...(props.selectedModels === undefined
+                ? { listFooter: <ChatGptSharingControl provider={activeEntry?.snapshot ?? null} /> }
+                : {}),
+            }
+          : {})}
+      />
+    </Suspense>
   );
 
   return (
@@ -343,6 +374,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
             size={size}
             data-chat-provider-model-picker="true"
             data-composer-shortcut={props.triggerShortcuts}
+            onPointerEnter={() => void loadModelPickerContent()}
+            onFocus={() => void loadModelPickerContent()}
             onClick={(event) => {
               if (!isMenuOpen || !docked) return;
               const target = takeOpenTarget(triggerRef.current);
