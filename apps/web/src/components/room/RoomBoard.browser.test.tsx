@@ -22,6 +22,14 @@ import { toastManager } from "../ui/toast";
 import { RoomBoard, RoomCursors } from "./RoomBoard";
 import { rememberRoomBoardView } from "./roomBoardNavigation";
 
+function visit(path: string): Disposable {
+  const previous = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  window.history.replaceState(window.history.state, "", path);
+  return {
+    [Symbol.dispose]: () => window.history.replaceState(window.history.state, "", previous),
+  };
+}
+
 function sizedContainer(width = 1000, height = 700) {
   const container = document.createElement("div");
   container.style.cssText = `display:flex;flex-direction:column;width:${width}px;height:${height}px`;
@@ -176,6 +184,29 @@ describe("RoomBoard view", () => {
     }
     await using screen = await renderBoard(notes, "view-test:away").screen;
     await expect.element(screen.getByText("50%", { exact: true })).not.toBeInTheDocument();
+  });
+
+  it("exposes the view switch as radios with the checked view as its tab stop after a reload", async () => {
+    using _page = visit(`${window.location.pathname}?view=plan`);
+    const board = renderBoard([]);
+    await using screen = await board.screen;
+    const switcher = screen.getByRole("radiogroup", { name: "View" });
+    const boardView = switcher.getByRole("radio", { name: "Board" });
+    const plan = switcher.getByRole("radio", { name: "Plan" });
+    const list = switcher.getByRole("radio", { name: "List" });
+    await expect.element(plan).toHaveAttribute("aria-checked", "true");
+    await expect.element(plan).not.toHaveAttribute("aria-pressed");
+    expect(boardView.element().tabIndex).toBe(-1);
+    expect(plan.element().tabIndex).toBe(0);
+    expect(list.element().tabIndex).toBe(-1);
+
+    plan.element().focus();
+    await userEvent.keyboard("{ArrowRight}");
+    await expect.element(list).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(list).toHaveAttribute("aria-checked", "true");
+    expect(plan.element().tabIndex).toBe(-1);
+    expect(list.element().tabIndex).toBe(0);
   });
 });
 
@@ -1179,7 +1210,7 @@ describe("RoomBoard keys and pointer", () => {
     const { onChange } = board;
     await using screen = await board.screen;
     const view = (name: string) =>
-      screen.getByRole("group", { name: "View" }).getByRole("button", { name });
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name });
     await userEvent.click(headerIn(screen.container, "a"));
     await expect.element(screen.getByText("1 selected")).toBeInTheDocument();
 
@@ -1216,7 +1247,7 @@ describe("RoomBoard keys and pointer", () => {
     const { onChange } = board;
     await using screen = await board.screen;
     await userEvent.click(
-      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Plan" }),
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name: "Plan" }),
     );
     const actions = screen.getByRole("button", { name: "Actions for Ship" });
     actions.element().focus();
@@ -1230,7 +1261,7 @@ describe("RoomBoard keys and pointer", () => {
     );
     await expect.element(actions).toHaveFocus();
     await userEvent.click(
-      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Board" }),
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name: "Board" }),
     );
   });
 
@@ -1247,7 +1278,7 @@ describe("RoomBoard keys and pointer", () => {
     );
     await using screen = await board.screen;
     const view = (name: string) =>
-      screen.getByRole("group", { name: "View" }).getByRole("button", { name });
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name });
     await userEvent.click(view("Plan"));
     await userEvent.click(screen.getByRole("button", { name: "Actions for Second" }));
     await expect.element(page.getByRole("menu")).toBeVisible();
@@ -1275,7 +1306,7 @@ describe("RoomBoard keys and pointer", () => {
     const board = renderBoard([{ id: "t", text: "Ship", x: 300, y: 300, kind: "task" }]);
     await using screen = await board.screen;
     await userEvent.click(
-      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Plan" }),
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name: "Plan" }),
     );
     await userEvent.click(screen.getByRole("button", { name: "Sort To do" }));
     const priority = page.getByRole("menuitemradio", { name: "Priority" });
@@ -1283,7 +1314,7 @@ describe("RoomBoard keys and pointer", () => {
     await userEvent.click(priority);
     await expect.element(page.getByRole("menuitemradio")).not.toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Board" }),
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name: "Board" }),
     );
   });
 
@@ -1293,7 +1324,7 @@ describe("RoomBoard keys and pointer", () => {
     const { onChange } = board;
     await using screen = await board.screen;
     await userEvent.click(
-      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Plan" }),
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name: "Plan" }),
     );
     await userEvent.click(
       screen.getByRole("region", { name: "To do" }).getByRole("button", { name: "Add a task" }),
@@ -1304,7 +1335,7 @@ describe("RoomBoard keys and pointer", () => {
     await expect.element(field).toHaveFocus();
     expect(onChange).not.toHaveBeenCalled();
     await userEvent.click(
-      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Board" }),
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name: "Board" }),
     );
   });
 
@@ -1321,7 +1352,7 @@ describe("RoomBoard keys and pointer", () => {
     );
     await using screen = await board.screen;
     await userEvent.click(
-      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Plan" }),
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name: "Plan" }),
     );
     screen.container.style.width = "620px";
     const column = screen.getByRole("region", { name: "To do" }).element();
@@ -1357,7 +1388,7 @@ describe("RoomBoard keys and pointer", () => {
     wheelAt(list);
     expect(scroller.scrollLeft).toBeGreaterThan(sideways);
     await userEvent.click(
-      screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Board" }),
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name: "Board" }),
     );
   });
 

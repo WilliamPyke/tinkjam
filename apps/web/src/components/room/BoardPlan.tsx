@@ -144,6 +144,7 @@ export function BoardViewSwitch({
 }) {
   return (
     <ToggleGroup
+      role="radiogroup"
       aria-label="View"
       value={[view]}
       onValueChange={(next) => {
@@ -152,7 +153,15 @@ export function BoardViewSwitch({
       }}
     >
       {VIEWS.map((one) => (
-        <GroupToggle key={one.view} value={one.view} aria-label={one.title}>
+        <GroupToggle
+          key={one.view}
+          value={one.view}
+          role="radio"
+          aria-checked={view === one.view}
+          aria-pressed={undefined}
+          tabIndex={view === one.view ? 0 : -1}
+          aria-label={one.title}
+        >
           {one.icon}
           <span>{one.title}</span>
         </GroupToggle>
