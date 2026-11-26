@@ -1140,9 +1140,6 @@ a {
   top: 60px;
   animation-delay: -3.2s;
 }
-.panel--blue .cursor--c span {
-  color: #ffffff;
-}
 .tiles {
   position: absolute;
   left: 44px;
@@ -1959,6 +1956,15 @@ a {
   }
   .footer__links {
     gap: 12px 22px;
+  }
+}
+
+@media (max-width: 360px) {
+  .download .sync-switch button {
+    padding: 8px 12px;
+  }
+  .download .sync__command .btn {
+    padding: 17px 22px;
   }
 }
 

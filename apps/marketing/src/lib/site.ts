@@ -97,7 +97,7 @@ export const SYNC_SYSTEMS: ReadonlyArray<{
       ? {
           kind: "files",
           files: LINUX_DOWNLOADS.map((file) => ({
-            label: `Download for Linux (${file.label})`,
+            label: `Download for Linux: ${file.label}`,
             href: file.href,
           })),
         }

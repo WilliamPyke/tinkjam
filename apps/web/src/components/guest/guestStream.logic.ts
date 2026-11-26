@@ -56,8 +56,11 @@ export function unplacedGuestMessages(
  * for it; the server checks the signature.
  */
 export function inviteShareId(credential: string): string | null {
-  const [shareId, signature] = credential.split(".");
-  return shareId && signature ? shareId : null;
+  const parts = credential.split(".");
+  const [shareId, signature, viewSignature] = parts;
+  if (!shareId || !signature) return null;
+  if (parts.length === 2) return shareId;
+  return parts.length === 3 && signature === "v" && viewSignature ? shareId : null;
 }
 
 /** An invite this tab keeps between reading its link and joining, for its board and host only. */

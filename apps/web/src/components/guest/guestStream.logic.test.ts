@@ -136,8 +136,12 @@ describe("unplacedGuestMessages", () => {
 describe("inviteShareId", () => {
   it("reads the share id before the signature and rejects anything else", () => {
     expect(inviteShareId("k3J9xQ2mT8vL5nR1pW7yZa.sig")).toBe("k3J9xQ2mT8vL5nR1pW7yZa");
+    expect(inviteShareId("k3J9xQ2mT8vL5nR1pW7yZa.v.sig")).toBe("k3J9xQ2mT8vL5nR1pW7yZa");
     expect(inviteShareId("no-signature")).toBeNull();
     expect(inviteShareId(".sig")).toBeNull();
+    expect(inviteShareId("board-1.v.")).toBeNull();
+    expect(inviteShareId("board-1.secret.extra")).toBeNull();
+    expect(inviteShareId("board-1.x.secret")).toBeNull();
     expect(inviteShareId("")).toBeNull();
   });
 });

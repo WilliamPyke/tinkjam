@@ -16,7 +16,7 @@ import { CHECKSUMS_PUBLISHED, CHECKSUMS_URL, SYNC_SOURCE_URL, SYNC_SYSTEMS } fro
         Tinkjam Sync is installed on a computer, not on a phone or tablet.
       </p>
 
-      <nav class="sync-switch" aria-label="Choose your computer" data-switch hidden>
+      <div class="sync-switch" role="group" aria-label="Choose your computer" data-switch hidden>
         {
           SYNC_SYSTEMS.map((system) => (
             <button type="button" data-show={system.os}>
@@ -24,7 +24,7 @@ import { CHECKSUMS_PUBLISHED, CHECKSUMS_URL, SYNC_SOURCE_URL, SYNC_SYSTEMS } fro
             </button>
           ))
         }
-      </nav>
+      </div>
 
       {
         SYNC_SYSTEMS.map((system) => (
