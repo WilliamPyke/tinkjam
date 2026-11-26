@@ -22,9 +22,9 @@ import { toastManager } from "../ui/toast";
 import { RoomBoard, RoomCursors } from "./RoomBoard";
 import { rememberRoomBoardView } from "./roomBoardNavigation";
 
-function sizedContainer() {
+function sizedContainer(width = 1000, height = 700) {
   const container = document.createElement("div");
-  container.style.cssText = "display:flex;flex-direction:column;width:1000px;height:700px";
+  container.style.cssText = `display:flex;flex-direction:column;width:${width}px;height:${height}px`;
   return container;
 }
 
@@ -40,9 +40,11 @@ function renderBoard(
     edges = [],
     takes = async () => true,
     withCommandMenu = false,
+    containerSize,
   }: {
     /** Renders the app's command menu around the board, as the app does. */
     readonly withCommandMenu?: boolean;
+    readonly containerSize?: { readonly width: number; readonly height: number };
     readonly messages?: ComponentProps<typeof RoomBoard>["messages"];
     readonly onCursor?: ComponentProps<typeof RoomBoard>["onCursor"];
     readonly onUseNote?: ComponentProps<typeof RoomBoard>["onUseNote"];
@@ -79,15 +81,15 @@ function renderBoard(
     />
   );
   const screen = render(withCommandMenu ? <CommandPalette>{element}</CommandPalette> : element, {
-    container: sizedContainer(),
+    container: sizedContainer(containerSize?.width, containerSize?.height),
   });
   return { screen, onChange };
 }
 
 /** A frame as big as the board, so the mouse reaches every card on it; put back when disposed. */
-async function boardSizedViewport() {
+async function boardSizedViewport(width = 1100, height = 800) {
   const was = { width: window.innerWidth, height: window.innerHeight };
-  await page.viewport(1100, 800);
+  await page.viewport(width, height);
   return { [Symbol.asyncDispose]: () => page.viewport(was.width, was.height) };
 }
 
@@ -1230,6 +1232,42 @@ describe("RoomBoard keys and pointer", () => {
     await userEvent.click(
       screen.getByRole("group", { name: "View" }).getByRole("button", { name: "Board" }),
     );
+  });
+
+  it("fits a tall task menu and an empty priority cell into a short phone viewport", async () => {
+    await using _viewport = await boardSizedViewport(390, 420);
+    const longTitle = "Decide the launch story and every step the team still owes";
+    const board = renderBoard(
+      [
+        { id: "long", text: longTitle, x: 300, y: 300, kind: "task" },
+        { id: "second", text: "Second", x: 300, y: 300, kind: "task" },
+      ],
+      undefined,
+      { containerSize: { width: 390, height: 420 } },
+    );
+    await using screen = await board.screen;
+    const view = (name: string) =>
+      screen.getByRole("group", { name: "View" }).getByRole("button", { name });
+    await userEvent.click(view("Plan"));
+    await userEvent.click(screen.getByRole("button", { name: "Actions for Second" }));
+    await expect.element(page.getByRole("menu")).toBeVisible();
+    const popup = document.querySelector<HTMLElement>("[data-slot=menu-popup]");
+    if (popup === null) throw new Error("The task menu did not open");
+    const popupStyle = getComputedStyle(popup);
+    expect(popupStyle.overflowY).toBe("auto");
+    expect(popup.scrollHeight).toBeGreaterThan(popup.clientHeight);
+    expect(Number.parseFloat(popupStyle.maxHeight)).toBeLessThanOrEqual(window.innerHeight);
+    expect(popup.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(view("List"));
+
+    const title = screen.getByRole("list", { name: "Tasks" }).getByText(longTitle).element();
+    const row = title.closest("li");
+    const priority = title.nextElementSibling?.nextElementSibling;
+    if (row === null || priority === null || priority === undefined) {
+      throw new Error("The list row did not draw its priority cell");
+    }
+    expect(priority.getBoundingClientRect().width).toBe(0);
   });
 
   it("closes a Plan column's sort menu after a sort is chosen", async () => {

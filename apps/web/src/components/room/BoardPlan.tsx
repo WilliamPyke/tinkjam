@@ -1523,7 +1523,11 @@ function PlanListRow({
           </>
         )}
       </span>
-      <span className="flex w-20">
+      <span
+        className={cn(
+          task.priority === undefined ? "hidden sm:flex sm:w-20" : "flex w-auto sm:w-20",
+        )}
+      >
         {task.priority === undefined ? null : <TaskPriorityMark priority={task.priority} />}
       </span>
       <span className="hidden w-28 sm:flex">
