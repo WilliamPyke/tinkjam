@@ -21,7 +21,7 @@ import { forgetGuestShare, guestRoomAtom, rememberGuestShare } from "../../guest
 import { AppAtomRegistryProvider, appAtomRegistry } from "../../rpc/atomRegistry";
 import { makeThreadProjectionFixture } from "../../test-fixtures";
 import { SidebarProvider } from "../ui/sidebar";
-import { GuestThreadRoute } from "./GuestThreadView";
+import { GuestThreadRoute, postBoardChange } from "./GuestThreadView";
 
 const thread = vi.hoisted(() => ({ state: null as unknown }));
 vi.mock(import("~/state/threads"), async (original) => ({
@@ -177,5 +177,34 @@ describe("GuestThreadRoute", () => {
         ),
       ),
     );
+  });
+});
+
+describe("postBoardChange", () => {
+  const endpoint = { httpBaseUrl: "https://boards.example", shareId: SHARE_ID, token: "t" };
+
+  it("keeps a change made offline and sends it once the connection is back", async () => {
+    using online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    using fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue(new Response(null, { status: 200 }));
+    const sent = postBoardChange(endpoint, { type: "card.move", cardId: "c", x: 1, y: 2 });
+    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    online.mockReturnValue(true);
+    window.dispatchEvent(new Event("online"));
+    await expect(sent).resolves.toBe(true);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not send a toggle again, which could land twice", async () => {
+    using _online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    using fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new TypeError("Failed to fetch"));
+    await expect(
+      postBoardChange(endpoint, { type: "note.react", noteId: "n", emoji: "👍" }),
+    ).resolves.toBe(false);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });

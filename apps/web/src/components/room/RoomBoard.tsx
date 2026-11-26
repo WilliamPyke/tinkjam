@@ -1981,6 +1981,7 @@ export function RoomBoard({
     if (pending === undefined || onChange === undefined) return;
     clearTypingTimers(pending);
     if (value === undefined || value === null || !("text" in value)) return;
+    if (settledEdits[key] === undefined) return;
     pending.saved = true;
     const change = boardChangeOf(target, settleBoardValue(value));
     void queueChange(key, () => onChange(change));
@@ -2201,8 +2202,18 @@ export function RoomBoard({
   }, [historyKeyOutside]);
   // The room hears of a drag or a draft once, when it ends.
   const letGo = (target: BoardTarget, after?: string) => {
-    const value = held.current.get(boardEditKey(target));
-    if (value !== undefined) send(target, settleBoardValue(value), after);
+    const key = boardEditKey(target);
+    const value = held.current.get(key);
+    if (value === undefined) return;
+    // Someone else deleted the note held here (see `settleBoardEdits`): it is not put back.
+    if (settledEdits[key] === undefined) {
+      stopSavingTyping(key);
+      held.current.delete(key);
+      gestureFrom.current.delete(key);
+      letFrameGo(key);
+      return;
+    }
+    send(target, settleBoardValue(value), after);
   };
   // Typed text goes to the room when its field blurs, but a phone leaving the board, or hiding
   // the page, unmounts or freezes the field without one: send what is typed then too.

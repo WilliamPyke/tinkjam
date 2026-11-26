@@ -1338,7 +1338,10 @@ export interface BoardEdit {
   readonly value: BoardValue;
   /** Still being dragged or typed: it shows whatever the room's copy does. */
   readonly held: boolean;
-  /** The room's copy when it was let go. The edit shows until the room's copy differs. */
+  /**
+   * The room's copy when it was let go, or last held. A let-go edit shows until the room's copy
+   * differs; a held note, until someone else deletes it.
+   */
   readonly base: BoardValue | undefined;
 }
 export type BoardEdits = Readonly<Record<string, BoardEdit>>;
@@ -1382,8 +1385,11 @@ const valueKey = (value: BoardValue | undefined): string => {
   ]);
 };
 
-const shows = (board: RoomBoard, edit: BoardEdit) =>
-  edit.held || valueKey(edit.base) === valueKey(roomCopy(board, edit.target));
+const shows = (board: RoomBoard, edit: BoardEdit) => {
+  const room = roomCopy(board, edit.target);
+  if (!edit.held) return valueKey(edit.base) === valueKey(room);
+  return edit.target.kind !== "note" || edit.base === undefined || room !== undefined;
+};
 
 /**
  * Forgets the edits the room's copy has moved past, the same edits when there are none. Run on
@@ -1412,7 +1418,7 @@ export function putBoardEdit(
       target,
       value,
       held,
-      base: held ? undefined : roomCopy(board, target),
+      base: roomCopy(board, target),
     },
   };
 }

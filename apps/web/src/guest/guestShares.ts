@@ -485,7 +485,8 @@ export const layerGuestShareAccess = Layer.succeed(
       });
     }),
     ended: Effect.fn("GuestShareAccess.ended")(function (shareId: string, detail?: string) {
-      return Effect.sync(() => forgetGuestShare(shareId, detail));
+      // A host that ended the session without saying why still ended it.
+      return Effect.sync(() => forgetGuestShare(shareId, detail ?? "ended"));
     }),
   }),
 );

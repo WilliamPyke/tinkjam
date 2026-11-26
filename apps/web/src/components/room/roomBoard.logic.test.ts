@@ -728,6 +728,10 @@ describe("resolveBoard", () => {
     const stored: RoomBoard = { positions: {}, notes: [written] };
     const typing = putBoardEdit(stored, added, target, { ...written, text: "Ship Monday" }, true);
     expect(resolveBoard(stored, typing).notes[0]?.text).toBe("Ship Monday");
+    // Typed in before the room has it, a new note still shows; once someone else deletes it, not.
+    const early = putBoardEdit(EMPTY_ROOM_BOARD, added, target, { ...written, text: "Ship" }, true);
+    expect(resolveBoard(EMPTY_ROOM_BOARD, early).notes).toHaveLength(1);
+    expect(settleBoardEdits(EMPTY_ROOM_BOARD, typing)).toEqual(NO_BOARD_EDITS);
     const removed = putBoardEdit(stored, typing, target, null, false);
     expect(resolveBoard(stored, removed).notes).toEqual([]);
     expect(boardChangeOf(target, null)).toEqual({ type: "note.remove", noteId: "n" });

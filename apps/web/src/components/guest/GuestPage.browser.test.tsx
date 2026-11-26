@@ -1,4 +1,7 @@
+import { it as effectIt } from "@effect/vitest";
+import { GuestShareAccess } from "@t3tools/client-runtime/rpc";
 import { ThreadId } from "@t3tools/contracts";
+import * as Effect from "effect/Effect";
 import { describe, expect, it, vi } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
 
@@ -8,6 +11,7 @@ import { render } from "../../../test/render";
 import {
   endedShareNoticesAtom,
   forgetGuestShare,
+  layerGuestShareAccess,
   readGuestShares,
   rememberGuestShare,
 } from "../../guest/guestShares";
@@ -118,6 +122,15 @@ describe("GuestPage", () => {
       detail: "Ask whoever shared it to turn it on or add you.",
     });
   });
+
+  effectIt.effect("keeps the ended notice when the host ends a session without saying why", () =>
+    Effect.gen(function* () {
+      using _forget = { [Symbol.dispose]: () => forgetGuestShare("share-4") };
+      const access = yield* GuestShareAccess;
+      yield* access.ended("share-4");
+      expect(appAtomRegistry.get(endedShareNoticesAtom).get("share-4")?.title).toBe(INVALID);
+    }).pipe(Effect.provide(layerGuestShareAccess)),
+  );
 
   it("says why the board host refused an invite, instead of that it ended", async () => {
     using _page = visit("/guest?host=sam.trellium.org#share-3.signature");

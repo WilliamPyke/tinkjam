@@ -254,7 +254,7 @@ async function postGuestAction<A>(
 }
 
 /** Sends one change to the room's board. Resolves to whether the owner's server took it. */
-async function postBoardChange(
+export async function postBoardChange(
   endpoint: GuestShareEndpoint,
   change: RoomBoardChange,
 ): Promise<boolean> {
@@ -268,7 +268,12 @@ async function postBoardChange(
     });
     return response.ok;
   } catch {
-    return false;
+    // Made offline, a change waits for the connection; a toggle sent twice would undo itself.
+    if (navigator.onLine || change.type === "note.react" || change.type === "artifact.restore") {
+      return false;
+    }
+    await new Promise((resolve) => window.addEventListener("online", resolve, { once: true }));
+    return postBoardChange(endpoint, change);
   }
 }
 
