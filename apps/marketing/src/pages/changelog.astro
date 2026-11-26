@@ -1,6 +1,44 @@
 ---
 import Layout from "../layouts/Layout.astro";
 
+const today = [
+  {
+    title: "Faster boards",
+    text: "Tinkjam and its boards open faster, most of all on a phone, and zooming a board is smoother.",
+  },
+  {
+    title: "Phones that work properly",
+    text: "Boards open reliably on iPhone and iPad. Buttons and links are bigger, fields stay above the keyboard, long menus scroll, and an embedded video or Figma file loads when you tap it.",
+  },
+  {
+    title: "Nothing you type is lost quietly",
+    text: "If a change cannot be saved, Tinkjam keeps trying and says so, and asks before you close the tab. When the connection drops, the board says it is reconnecting.",
+  },
+  {
+    title: "Lines and comments by keyboard",
+    text: "Pick the Line or Comment tool, then press Enter on a card.",
+  },
+  {
+    title: "Pricing",
+    text: "tinkjam.com/pricing shows the Free and Team plans. Everything is free while Tinkjam is in beta.",
+  },
+];
+
+const lookAndSignIn = [
+  {
+    title: "A new look",
+    text: "Cobalt blue, new headings, and new Settings, Share and Bring my agent screens, in light and dark. Pick a theme in Settings under Appearance, or make your own.",
+  },
+  {
+    title: "Signing in and connecting a computer",
+    text: "Signing in has its own page, and Connect a computer walks you through getting Tinkjam Sync and approving the computer.",
+  },
+  {
+    title: "One Download page",
+    text: "tinkjam.com/download has Tinkjam Sync for Mac, Windows and Linux in one place.",
+  },
+];
+
 const newest = [
   {
     title: "Agents arrange the board",
@@ -159,6 +197,30 @@ const entries = [
     <article class="prose changelog">
       <h1>Changelog</h1>
       <p>What is new in Tinkjam, in plain words.</p>
+
+      <h2>26 November</h2>
+      <ul class="changelog__list">
+        {
+          today.map((entry) => (
+            <li>
+              <b>{entry.title}</b>
+              <span>{entry.text}</span>
+            </li>
+          ))
+        }
+      </ul>
+
+      <h2>20 November</h2>
+      <ul class="changelog__list">
+        {
+          lookAndSignIn.map((entry) => (
+            <li>
+              <b>{entry.title}</b>
+              <span>{entry.text}</span>
+            </li>
+          ))
+        }
+      </ul>
 
       <h2>19 November</h2>
       <ul class="changelog__list">

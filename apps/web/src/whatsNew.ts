@@ -12,6 +12,18 @@ export interface WhatsNewEntry {
 /** Newest first. Shortcuts are written for Windows and Linux with the Mac key in brackets. */
 export const WHATS_NEW: ReadonlyArray<WhatsNewEntry> = [
   {
+    date: "2026-11-26",
+    title: "Faster boards, and phones that work properly",
+    items: [
+      "Tinkjam and its boards open faster, most of all on a phone. Zooming and pinching a board is smoother.",
+      "Boards open reliably on iPhone and iPad.",
+      "If a change cannot be saved, Tinkjam keeps trying and says so, and asks before you close the tab. When the connection drops, the board says it is reconnecting.",
+      "On a phone: bigger buttons and links, fields stay above the keyboard, long menus scroll, and an embedded video or Figma file loads when you tap it.",
+      "Draw lines and add comments with the keyboard: pick the Line or Comment tool, then press Enter on a card.",
+      "A link that leads nowhere says This page does not exist, with a way back to your boards.",
+    ],
+  },
+  {
     date: "2026-11-20",
     title: "A new look, sign-in and Download page",
     items: [
