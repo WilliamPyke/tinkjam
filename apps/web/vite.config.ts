@@ -23,6 +23,7 @@ import { ownDomainOrigins } from "@t3tools/shared/ownDomains";
 import { loadRepoEnv } from "../../scripts/lib/public-config";
 import { thirdPartyLicensesPlugin } from "../../scripts/lib/third-party-licenses";
 import { tailwindPlugins } from "./vite/tailwind";
+import { startupChunks } from "./vite/startupChunks";
 import { warmBundledDevPlugin } from "./vite/warmBundledDev";
 
 // Tests render without the sign-in provider, so a developer's own .env must not switch it on.
@@ -91,7 +92,7 @@ const unitTestProject = {
   extends: true,
   test: {
     name: "unit",
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "vite/**/*.test.ts"],
     exclude: ["src/**/*.browser.test.{ts,tsx}"],
     hookTimeout: 15_000,
     testTimeout: 15_000,
@@ -282,6 +283,8 @@ function chunkCycleGuardPlugin(): Plugin {
   };
 }
 
+const startup = startupChunks();
+
 const originOf = (url: string | undefined) =>
   url !== undefined && URL.canParse(url) ? new URL(url).origin : null;
 
@@ -336,6 +339,7 @@ export default defineConfig(() => {
     plugins: [
       devCompressionPlugin(),
       chunkCycleGuardPlugin(),
+      startup.plugin,
       builtDev
         ? undefined
         : thirdPartyLicensesPlugin({
@@ -457,6 +461,7 @@ export default defineConfig(() => {
             asset.originalFileNames.some((path) => /[/\\]pdfjs-dist[/\\]wasm[/\\]/.test(path))
               ? `assets/pdfjs-${pdfjsPkg.version}/[name][extname]`
               : "assets/[name]-[hash][extname]",
+          ...(bundledDev ? {} : { codeSplitting: startup.codeSplitting }),
         },
       },
     },
