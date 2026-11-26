@@ -5,7 +5,6 @@ import * as Schema from "effect/Schema";
 
 import { applyAppearanceContrast } from "./appearanceContrast";
 import { applyAppearanceFontVariables, TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "./appearanceFonts";
-import { startElectronBrowserHost } from "./browser/ElectronBrowserHost";
 import { startBrowserProfileReporting } from "./browser/BrowserProfileReporter";
 import { startPreviewTitleRecording } from "./browserHistoryStore";
 import { retainThreadOverlaysForThread } from "./components/chat/threadOverlayRetention";
@@ -20,7 +19,7 @@ import { startMainAppLocationTracking } from "./components/sidebar/mainAppLocati
 import { startDesktopUpdateLaunchNotice } from "./components/sidebar/updateEverythingRun";
 import { startSlowRpcRequestToasts } from "./components/SlowRpcRequestToastCoordinator";
 import { startThreadNotifications } from "./components/ThreadNotificationCoordinator";
-import { startGuideRunNotifications } from "./components/pullRequest/guide/PullRequestGuideRunCoordinator";
+import { useGuideRunStore } from "./components/pullRequest/guide/guideRunStore";
 import { APP_BASE_NAME, APP_DISPLAY_NAME, APP_STAGE_LABEL } from "./branding";
 import { resolveServerBackedAppDisplayName } from "./branding.logic";
 import { setDocumentAppName } from "./documentTitle";
@@ -164,6 +163,23 @@ function startThreadOverlayRetention(router: AppRouter): void {
   });
 }
 
+/** The guide run poller and its pull request code load once a guide run is first watched. */
+function startGuideRunNotificationsOnFirstWatch(router: AppRouter): void {
+  const start = () =>
+    void import("./components/pullRequest/guide/PullRequestGuideRunCoordinator").then((module) =>
+      module.startGuideRunNotifications(appAtomRegistry, router),
+    );
+  if (Object.keys(useGuideRunStore.getState().watches).length > 0) {
+    start();
+    return;
+  }
+  const unsubscribe = useGuideRunStore.subscribe((state) => {
+    if (Object.keys(state.watches).length === 0) return;
+    unsubscribe();
+    start();
+  });
+}
+
 /**
  * Starts every app-lifetime service once, before the first render, and returns the router.
  * They run for the life of the page, so their disposers are dropped here.
@@ -190,7 +206,11 @@ export function startAppServices(): AppRouter {
   startDefaultThemeAdoption();
   startModelPreferencesMigration();
   startAgentOpenedPreviews();
-  if (isElectron) startElectronBrowserHost();
+  if (isElectron) {
+    void import("./browser/ElectronBrowserHost").then((module) =>
+      module.startElectronBrowserHost(),
+    );
+  }
   startPreviewTitleRecording();
   startBrowserProfileReporting();
   installChatRouteCommands(router);
@@ -222,7 +242,7 @@ export function startAppServices(): AppRouter {
   startLegacyThreadMigrationToast();
   startPermissionUpdateNotices(router);
   startThreadNotifications(appAtomRegistry, router);
-  startGuideRunNotifications(appAtomRegistry, router);
+  startGuideRunNotificationsOnFirstWatch(router);
   if (isElectron) startDesktopUpdateLaunchNotice();
 
   return router;

@@ -34,8 +34,8 @@ import {
   getSettingsSearchTargetScope,
   getThreadAutoSettlementSearchAvailability,
   isSettingsSearchScopeAvailable,
-  movedSettingsPath,
 } from "../components/settings/settingsSearch";
+import { isSplitSettingsPath } from "../components/settings/movedSettingsPaths";
 
 function RestoreDeviceDefaultsButton({ onRestored }: { onRestored: () => void }) {
   const { changedSettingLabels, restoreDefaults } = useSettingsRestore(onRestored);
@@ -217,6 +217,8 @@ export const Route = createFileRoute("/_chat/settings")({
     if (location.pathname === "/settings" && settingsLandingPath(readShellMode()) !== "/settings") {
       throw redirect({ to: "/settings/general", replace: true });
     }
+    if (!isSplitSettingsPath(location.pathname)) return;
+    const { movedSettingsPath } = await import("../components/settings/settingsSearch");
     const moved = movedSettingsPath(location.pathname, location.hash);
     if (moved) throw redirect({ to: moved, search: true, hash: true, replace: true });
   },

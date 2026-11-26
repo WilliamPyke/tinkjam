@@ -10,19 +10,19 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { Check, Copy } from "lucide";
-import { useEffect, useEffectEvent, useState } from "react";
+import { lazy, Suspense, useEffect, useEffectEvent, useState } from "react";
 
 import { APP_DISPLAY_NAME, APP_VERSION } from "../branding";
 import { AppSidebarLayout } from "../components/AppSidebarLayout";
 import { NotFoundPage } from "../components/NotFoundPage";
 import { CommandPalette } from "../components/CommandPaletteHost";
-import { CustomSnoozeDialogHost } from "../components/CustomSnoozeDialog";
+import { CustomSnoozeDialogHost } from "../components/CustomSnoozeDialogHost";
 import { GuestShareDialogHost } from "../components/chat/GuestShareDialogHost";
-import { UseInAnotherAppDialogHost } from "../components/mcp/UseInAnotherAppDialog";
+import { UseInAnotherAppDialogHost } from "../components/mcp/UseInAnotherAppDialogHost";
 import { NewTeamDialogHost } from "../components/teams/NewTeamDialog";
 import { useHomeFocus } from "../components/boards/homeFocus";
 import { NewBoardDialogHost } from "../components/boards/newBoard";
-import { AddProjectToMachineDialogHost } from "../components/AddProjectToMachineDialog";
+import { AddProjectToMachineDialogHost } from "../components/AddProjectToMachineDialogHost";
 import { ConfirmDialogHost } from "../components/ConfirmDialogHost";
 import { ConnectComputerDialogHost } from "../components/ConnectComputerDialog";
 import { isSignInPath } from "../components/sidebar/mainAppLocation";
@@ -31,12 +31,10 @@ import { DocumentTitleSync } from "../components/shell/DocumentTitleSync";
 import { OfflineNote } from "../components/shell/OfflineNote";
 import { DevReplayHost } from "../components/DevReplayHost";
 import { FirstRunGate } from "../components/onboarding/FirstRunGate";
-import { ConnectOnboardingDialog } from "../components/cloud/ConnectOnboardingDialog";
+import { ConnectOnboardingDialog } from "../components/cloud/ConnectOnboardingDialogHost";
 import { RelayClientInstallDialog } from "../components/cloud/RelayClientInstallDialog";
 import { SshPasswordPromptDialog } from "../components/desktop/SshPasswordPromptDialog";
-import { SnapShotCoordinator } from "../components/desktop/SnapShotCoordinator";
 import { DesktopAppActivationCoordinator } from "../components/desktop/DesktopAppActivationCoordinator";
-import { DesktopWebLinkCoordinator } from "../components/desktop/DesktopWebLinkCoordinator";
 import { RunningThreadKeepAlive } from "../components/desktop/RunningThreadKeepAlive";
 import { ReopenClosedViewShortcut } from "../components/ReopenClosedViewShortcut";
 import { ProjectCloneToastCoordinator } from "../components/ProjectCloneToastCoordinator";
@@ -74,6 +72,17 @@ import { ComputerReconnectCoordinator } from "../components/guest/ComputerReconn
 
 import { getDesktopSnapShotBridge } from "../lib/desktopSnapShot";
 import { shouldResumeSnapShotSetupOnStartup } from "../lib/snapShotSetupResume";
+
+const SnapShotCoordinator = lazy(() =>
+  import("../components/desktop/SnapShotCoordinator").then((module) => ({
+    default: module.SnapShotCoordinator,
+  })),
+);
+const DesktopWebLinkCoordinator = lazy(() =>
+  import("../components/desktop/DesktopWebLinkCoordinator").then((module) => ({
+    default: module.DesktopWebLinkCoordinator,
+  })),
+);
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
@@ -201,13 +210,17 @@ function RootRouteBranch() {
     <>
       {primaryEnvironmentAuthenticated ? <DesktopAppActivationCoordinator /> : null}
       {primaryEnvironmentAuthenticated || localEnvironmentDisabled ? (
-        <DesktopWebLinkCoordinator />
+        <Suspense fallback={null}>
+          <DesktopWebLinkCoordinator />
+        </Suspense>
       ) : null}
       {isElectron ? <RunningThreadKeepAlive /> : null}
       <RelayClientInstallDialog />
       <ConnectOnboardingDialog />
       <SshPasswordPromptDialog />
-      <SnapShotCoordinator />
+      <Suspense fallback={null}>
+        <SnapShotCoordinator />
+      </Suspense>
       <ReopenClosedViewShortcut />
       <ConfirmDialogHost />
       <CustomSnoozeDialogHost />

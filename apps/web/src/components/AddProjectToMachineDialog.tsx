@@ -7,7 +7,6 @@ import {
 } from "@t3tools/client-runtime/operations/projects";
 import { resolvePastedPath } from "@t3tools/shared/path";
 import {
-  type EnvironmentId,
   type ProjectIgnoredFile,
   type ScopedProjectRef,
   resolveEnvironmentMachineKind,
@@ -19,7 +18,6 @@ import {
 } from "@t3tools/shared/cloneUrl";
 import { ArrowRightIcon } from "lucide-react";
 import { useId, useState } from "react";
-import { create } from "zustand";
 
 import { type DraftId, useComposerDraftStore } from "../composerDraftStore";
 import { useAddProjectTargets } from "../hooks/useAddProjectTargets";
@@ -32,10 +30,14 @@ import {
 } from "../lib/addProjectToMachine";
 import { formatBytes } from "../lib/formatBytes";
 import { newProjectId } from "../lib/utils";
-import { readProject, subscribeProject, useProject } from "../state/entities";
+import { useProject } from "../state/entities";
 import { useEnvironments } from "../state/environments";
 import { projectEnvironment } from "../state/projects";
 import { useEnvironmentQuery } from "../state/query";
+import {
+  type AddProjectToMachineRequest,
+  closeAddProjectToMachine,
+} from "./AddProjectToMachineDialogHost";
 import { EnvironmentMachineIcon } from "./EnvironmentMachineIcon";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
@@ -54,43 +56,7 @@ import { MiddleTruncate } from "./ui/middle-truncate";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "./ui/select";
 import { Toggle, ToggleGroup } from "./ui/toggle-group";
 
-interface AddProjectToMachineRequest {
-  readonly projectRef: ScopedProjectRef;
-  readonly targetEnvironmentId: EnvironmentId | null;
-}
-
-const useRequest = create<{ request: AddProjectToMachineRequest | null; session: number }>(() => ({
-  request: null,
-  session: 0,
-}));
-
-let endRequestWithProject: (() => void) | null = null;
-
-/** Opens the dialog that clones a project onto another connected machine. */
-export function openAddProjectToMachine(request: AddProjectToMachineRequest) {
-  if (readProject(request.projectRef) === null) return;
-  endRequestWithProject?.();
-  // The request ends when its project goes away, so a project that comes back
-  // later cannot reopen a dialog nobody asked for.
-  endRequestWithProject = subscribeProject(request.projectRef, (project) => {
-    if (project === null) close();
-  });
-  useRequest.setState((state) => ({ request, session: state.session + 1 }));
-}
-
-function close() {
-  endRequestWithProject?.();
-  endRequestWithProject = null;
-  useRequest.setState({ request: null });
-}
-
-export function AddProjectToMachineDialogHost() {
-  const request = useRequest((state) => state.request);
-  const session = useRequest((state) => state.session);
-  return request ? <AddProjectToMachineDialog key={session} request={request} /> : null;
-}
-
-function AddProjectToMachineDialog({ request }: { request: AddProjectToMachineRequest }) {
+export function AddProjectToMachineDialog({ request }: { request: AddProjectToMachineRequest }) {
   const id = useId();
   const project = useProject(request.projectRef);
   const handleNewThread = useNewThreadHandler();
@@ -201,7 +167,7 @@ function AddProjectToMachineDialog({ request }: { request: AddProjectToMachineRe
         destinationPath: destinationPath.trim(),
         files: files.filter((file) => selectedFiles.has(file.path)).map((file) => file.path),
       });
-      close();
+      closeAddProjectToMachine();
       openClonedProject(scopeProjectRef(target.environmentId, projectId));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not start the clone.");
@@ -213,7 +179,7 @@ function AddProjectToMachineDialog({ request }: { request: AddProjectToMachineRe
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) close();
+        if (!open) closeAddProjectToMachine();
       }}
     >
       <DialogPopup className="sm:max-w-xl">
@@ -390,7 +356,7 @@ function AddProjectToMachineDialog({ request }: { request: AddProjectToMachineRe
             {error ? <p className="text-destructive-foreground text-sm">{error}</p> : null}
           </DialogPanel>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={close}>
+            <Button type="button" variant="outline" onClick={closeAddProjectToMachine}>
               Cancel
             </Button>
             <Button type="submit" disabled={unavailable || submitting}>

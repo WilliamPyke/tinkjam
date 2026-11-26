@@ -1,18 +1,11 @@
 import { useAtomValue } from "@effect/atom-react";
 import { usesChatGptSharing } from "@t3tools/shared/usageLimits";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { environmentPresentations } from "../../state/presentation";
-import { OpenAI } from "../Icons";
-import { Button } from "../ui/button";
-import {
-  Dialog,
-  DialogPopup,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "../ui/dialog";
-import { ChatGptUsageButton } from "./ChatGptUsageButton";
+
+const ChatGptWelcomeDialog = lazy(() =>
+  import("./ChatGptWelcomeDialog").then((module) => ({ default: module.ChatGptWelcomeDialog })),
+);
 
 const STORAGE_KEY = "t3:chatgpt-sharing-welcome:v1";
 function readAcknowledgedProfiles(): string[] {
@@ -30,6 +23,7 @@ export function ChatGptWelcomeCoordinator() {
   const presentations = useAtomValue(environmentPresentations.presentationsAtom);
   const providersByEnvironment = useAtomValue(environmentPresentations.providersByEnvironmentAtom);
   const [acknowledged, setAcknowledged] = useState(readAcknowledgedProfiles);
+  const [shown, setShown] = useState(false);
   const profiles = [...presentations].flatMap(([environmentId, presentation]) =>
     presentation.connection.phase !== "connected"
       ? []
@@ -54,30 +48,11 @@ export function ChatGptWelcomeCoordinator() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     } catch {}
   };
-  return (
-    <Dialog
-      open={next !== undefined}
-      onOpenChange={(open) => {
-        if (!open) dismiss();
-      }}
-    >
-      <DialogPopup>
-        <DialogHeader>
-          <OpenAI className="mb-2 size-8" aria-hidden="true" />
-          <DialogTitle>Your ChatGPT plan is connected</DialogTitle>
-          <DialogDescription>
-            Eligible usage in Tinkjam uses your ChatGPT plan. Manage your shared usage and any
-            credit settings in ChatGPT.
-          </DialogDescription>
-          <p className="text-xs text-muted-foreground">
-            {next?.providerName} on {next?.environmentLabel}
-          </p>
-        </DialogHeader>
-        <DialogFooter>
-          <ChatGptUsageButton />
-          <Button onClick={dismiss}>Continue</Button>
-        </DialogFooter>
-      </DialogPopup>
-    </Dialog>
-  );
+  // The dialog loads the first time it has a profile to show, then stays so it can animate closed.
+  if (next !== undefined && !shown) setShown(true);
+  return shown ? (
+    <Suspense fallback={null}>
+      <ChatGptWelcomeDialog next={next} dismiss={dismiss} />
+    </Suspense>
+  ) : null;
 }

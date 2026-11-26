@@ -8,7 +8,7 @@ import {
 import { ComposerHandleContext } from "../composerHandleContext";
 import type { ChatComposerHandle } from "./chat/ChatComposer";
 import type { CommandPaletteReturnContext } from "./CommandPalette.logic";
-import { CommandDialog } from "./ui/command";
+import { CommandDialog } from "./ui/command-dialog";
 
 const CommandPaletteDialog = lazy(() =>
   import("./CommandPalette").then((module) => ({ default: module.CommandPaletteDialog })),

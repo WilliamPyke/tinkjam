@@ -256,7 +256,7 @@ import { canShareWithGuestAtom } from "./chat/guestShareAvailability";
 import { openGuestShareDialog } from "./chat/guestShareDialogState";
 import { roomBoardLocation } from "./room/roomBoardNavigation";
 import { openBoardTemplates, useStartNewBoard } from "./boards/newBoard";
-import { openUseInAnotherApp } from "./mcp/UseInAnotherAppDialog";
+import { openUseInAnotherApp } from "./mcp/UseInAnotherAppDialogHost";
 import { openNewTeamDialog } from "./teams/NewTeamDialog";
 import { openConnectComputer } from "./ConnectComputerDialog";
 import { setShellMode, useShellMode } from "../shellMode";

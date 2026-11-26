@@ -17,8 +17,7 @@ import {
 } from "~/components/ui/autocomplete";
 import { DIALOG_BACKDROP_CLASS, DIALOG_POPUP_CLASS } from "~/components/ui/dialog-styles";
 import { Button } from "~/components/ui/button";
-
-const CommandDialog = CommandDialogPrimitive.Root;
+import { CommandDialog } from "~/components/ui/command-dialog";
 
 const CommandDialogPortal = CommandDialogPrimitive.Portal;
 

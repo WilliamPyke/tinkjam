@@ -15,7 +15,6 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { Check, Copy } from "lucide";
 import * as Option from "effect/Option";
-import { Atom } from "effect/reactivity";
 import * as Result from "effect/Result";
 import { type ReactNode, useEffect, useEffectEvent, useState } from "react";
 
@@ -30,7 +29,6 @@ import { useT3ConnectTurnOn } from "~/cloud/useT3ConnectTurnOn";
 import { useCopyToClipboard, writeTextToClipboard } from "~/hooks/useCopyToClipboard";
 import { useNowSecond } from "~/hooks/useNowSecond";
 import { readLocalApi } from "~/localApi";
-import { appAtomRegistry } from "~/rpc/atomRegistry";
 import {
   type EnvironmentPresentation,
   useEnvironmentIdentities,
@@ -55,31 +53,14 @@ import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
 import { WizardFooter, WizardHeader, WizardPanel, WizardPopup, WizardSteps } from "../ui/wizard";
 import { afterFailedCheck, resolveMcpGate } from "./mcpGate";
+import { closeUseInAnotherApp } from "./UseInAnotherAppDialogHost";
 import { MCP_APPS, type McpApp, mcpHandoffAction, OTHER_MCP_APP_STEPS } from "./mcpApps";
 
-const requestAtom = Atom.make<{ readonly environmentId: EnvironmentId | null } | null>(null).pipe(
-  Atom.keepAlive,
-  Atom.withLabel("mcp:use-in-another-app"),
-);
-
-/** Opens the wizard for `environmentId`, or for the one Sharing & access picks when null. */
-export function openUseInAnotherApp(environmentId: EnvironmentId | null): void {
-  appAtomRegistry.set(requestAtom, { environmentId });
-}
-
-const close = () => appAtomRegistry.set(requestAtom, null);
-
-/** Hosted once at the root, so Cmd-K and Settings can open it from anywhere. */
-export function UseInAnotherAppDialogHost() {
-  const request = useAtomValue(requestAtom);
-  return request === null ? null : <UseInAnotherAppDialog requested={request.environmentId} />;
-}
-
-function UseInAnotherAppDialog({ requested }: { readonly requested: EnvironmentId | null }) {
+export function UseInAnotherAppDialog({ requested }: { readonly requested: EnvironmentId | null }) {
   const { environment, label } = useAccessEnvironment(requested);
   const title = `Use Tinkjam in another app (MCP) · ${label ?? "Tinkjam"}`;
   return (
-    <Dialog open onOpenChange={(open) => (open ? undefined : close())}>
+    <Dialog open onOpenChange={(open) => (open ? undefined : closeUseInAnotherApp())}>
       <WizardPopup>
         {environment !== null && hasCloudPublicConfig() ? (
           <Wizard key={environment.environmentId} environment={environment} title={title} />
@@ -178,7 +159,7 @@ function Wizard({
             </Button>
           ) : null}
           {step === 2 ? (
-            <Button onClick={close}>Done</Button>
+            <Button onClick={closeUseInAnotherApp}>Done</Button>
           ) : (
             <Button
               disabled={step === 0 ? choice === null : access === null}
@@ -385,7 +366,7 @@ function GateScreen({
           {/* Clerk's sign-in is its own modal, so this dialog closes first. */}
           <Button
             onClick={() => {
-              close();
+              closeUseInAnotherApp();
               openAuthPrompt();
             }}
           >
@@ -809,7 +790,7 @@ function ManageAccessButton({
     <Button
       variant="ghost"
       onClick={() => {
-        close();
+        closeUseInAnotherApp();
         void navigate({ to: "/settings/access", search: { machine: environment.environmentId } });
       }}
     >

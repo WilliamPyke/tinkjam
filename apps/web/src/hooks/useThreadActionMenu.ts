@@ -1,5 +1,5 @@
 import { scopeProjectRef } from "@t3tools/client-runtime/environment";
-import { requestCustomSnooze } from "../components/CustomSnoozeDialog";
+import { requestCustomSnooze } from "../components/CustomSnoozeDialogHost";
 import { openGuestShareDialog } from "../components/chat/guestShareDialogState";
 import { roomBoardLocation } from "../components/room/roomBoardNavigation";
 import {
