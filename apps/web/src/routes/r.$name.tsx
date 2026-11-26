@@ -5,7 +5,7 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
 import { resolveCloudPublicConfig } from "../cloud/publicConfig";
-import { GoToTinkjam, GuestNotice } from "../components/guest/GuestThreadView";
+import { GoToTinkjam, GuestNotice } from "../components/guest/GuestNotice";
 import { linkRefusalNotice, refusalDetailOf } from "../guest/linkRefusal.logic";
 import { guestLinkHost, guestShareOrigin } from "../guest/guestShares";
 import { GUEST_PAGE_PATH } from "../guestPage";

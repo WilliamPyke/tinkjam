@@ -7,7 +7,9 @@ import { openCommandPalette } from "../commandPaletteBus";
 import { useCommandPaletteStore } from "../commandPaletteStore";
 import { makeThreadFixture } from "../test-fixtures";
 import type { Project, Thread } from "../types";
-import { CommandPalette } from "./CommandPalette";
+// The host loads the palette on first open; loading it up front keeps that off each test's clock.
+import "./CommandPalette";
+import { CommandPalette } from "./CommandPaletteHost";
 
 const entities = vi.hoisted(() => ({
   projects: [] as ReadonlyArray<Project>,

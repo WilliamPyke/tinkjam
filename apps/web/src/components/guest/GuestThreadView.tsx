@@ -35,7 +35,6 @@ import {
   GuestMessageId,
   GuestShareId,
   type GuestShareView,
-  type GuestSignInFailure,
   GuestSignInStart,
   guestMessageAuthorName,
   type GuestThreadModel,
@@ -52,7 +51,7 @@ import {
   type ThreadGuestMessageStatus,
 } from "@t3tools/contracts";
 import { buildJoinLink } from "@t3tools/shared/promptLinks";
-import { Link, Navigate, useNavigate, useParams } from "@tanstack/react-router";
+import { Navigate, useNavigate, useParams } from "@tanstack/react-router";
 import type { LegendListRef } from "@legendapp/list/react";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -126,6 +125,7 @@ import type { TimelineRow } from "../chat/timelineRowContext";
 import { useTimelineFollow } from "../chat/useTimelineFollow";
 import { PersonDot } from "../room/BoardChrome";
 import { TinkjamLoading } from "../TinkjamLoading";
+import { GoToTinkjam, GuestNotice, takeGuestSignInFailure } from "./GuestNotice";
 import { composerDraftPick } from "../room/BoardModelPicker";
 import { boardAgentEndOf } from "../room/boardAgents.logic";
 import {
@@ -184,8 +184,8 @@ import {
 import { guestTurnItemSource } from "./guestTurnItemSource";
 import { ownAgentFailureMessage } from "./bringAgent.logic";
 import { useJoinBoardOnComputer } from "./joinBoardOnComputer";
+import { announceRoomMachineJoined } from "~/guest/roomMachineJoins";
 import {
-  announceRoomMachineJoined,
   type OwnRoomMachine,
   OwnBoxComputerPicker,
   OwnBoxModelPicker,
@@ -213,12 +213,6 @@ function writeAwaitingRowIds(ids: ReadonlySet<GuestMessageId>) {
   try {
     sessionStorage.setItem(AWAITING_ROWS_KEY, JSON.stringify([...ids].slice(-AWAITING_ROWS_LIMIT)));
   } catch {}
-}
-
-// Why the GitHub sign-in a share's guest just came back from did not finish. Shown once.
-const signInFailures = new Map<string, GuestSignInFailure>();
-export function noteGuestSignInFailure(shareId: string, failure: GuestSignInFailure) {
-  signInFailures.set(shareId, failure);
 }
 
 const decodeErrorBody = Schema.decodeUnknownOption(Schema.Struct({ message: Schema.String }));
@@ -365,31 +359,6 @@ const STATUS_LABEL: Record<ThreadGuestMessageStatus, string> = {
 
 /** Same column as the owner's timeline, so both views wrap text at the same width. */
 const LANE = "chat-content-lane px-4";
-
-export function GuestNotice({
-  title,
-  detail,
-  children,
-}: {
-  readonly title: string;
-  readonly detail?: string;
-  readonly children?: ReactNode;
-}) {
-  return (
-    <div className="m-auto flex w-full max-w-sm flex-col items-center gap-2 rounded-dialog border bg-raised px-6 py-7 text-center text-card-foreground shadow-board">
-      <h1 className="font-heading text-xl leading-tight font-semibold tracking-brand text-balance">
-        {title}
-      </h1>
-      {detail ? <p className="text-sm text-pretty text-muted-foreground">{detail}</p> : null}
-      {children ? <div className="mt-3 flex justify-center">{children}</div> : null}
-    </div>
-  );
-}
-
-/** The way out a full-page notice gives someone whose link opened nothing: the app's home. */
-export function GoToTinkjam() {
-  return <Button render={<Link to="/" replace />}>Go to Tinkjam</Button>;
-}
 
 /** A board's own address with no session here: a member who signs in opens it as themselves. */
 function SignedOutBoardNotice() {
@@ -1620,8 +1589,7 @@ function GuestGitHubSignIn({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(() => {
-    const failure = signInFailures.get(endpoint.shareId);
-    signInFailures.delete(endpoint.shareId);
+    const failure = takeGuestSignInFailure(endpoint.shareId);
     return failure === undefined ? null : SIGN_IN_ENDINGS[failure];
   });
 

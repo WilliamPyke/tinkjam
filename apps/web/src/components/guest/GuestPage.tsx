@@ -44,7 +44,7 @@ import { TinkjamWordmark } from "../TinkjamLogo";
 import { Button, InlineButton } from "../ui/button";
 import { Input } from "../ui/input";
 import { useAccountBoardOpen } from "./useAccountBoardOpen";
-import { GoToTinkjam, GuestNotice, noteGuestSignInFailure } from "./GuestThreadView";
+import { GoToTinkjam, GuestNotice, noteGuestSignInFailure } from "./GuestNotice";
 import {
   guestEntryStep,
   guestLinkInvite,

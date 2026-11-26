@@ -2,7 +2,7 @@ import { useAtomValue } from "@effect/atom-react";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 
 import { BoardsHome } from "../components/boards/BoardsHome";
-import { GuestNotice } from "../components/guest/GuestThreadView";
+import { GuestNotice } from "../components/guest/GuestNotice";
 import { HostedEmptyState } from "../components/HostedEmptyState";
 import { cloudBoardsOrigin } from "../guest/cloudBoardsHost";
 import { guestShareLocation, guestSharesAtom } from "../guest/guestShares";

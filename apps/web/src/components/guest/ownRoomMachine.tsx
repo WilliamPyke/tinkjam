@@ -7,15 +7,15 @@ import {
   type ThreadId,
 } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
-import { Atom } from "effect/reactivity";
 import { MonitorIcon } from "lucide-react";
 import { useEffect, useEffectEvent, useState } from "react";
 
 import { getLocalStorageItem, setLocalStorageItem } from "~/hooks/useLocalStorage";
-import { appAtomRegistry } from "~/rpc/atomRegistry";
 import { useProjects, useThreadShell } from "~/state/entities";
 import { useEnvironments } from "~/state/environments";
 import { serverEnvironment } from "~/state/server";
+import { roomMachineJoinsAtom } from "~/guest/roomMachineJoins";
+import { appAtomRegistry } from "~/rpc/atomRegistry";
 import { useAtomCommand } from "~/state/use-atom-command";
 
 import { BoardModelPicker, ThreadBoardModelPicker } from "../room/BoardModelPicker";
@@ -30,15 +30,6 @@ export interface OwnRoomMachine {
   readonly threadId: ThreadId;
   readonly boxes: Readonly<Record<string, ThreadId>>;
 }
-
-// Bumped when one of this person's machines joins a room from this page, so the room asks again.
-const roomMachineJoinsAtom = Atom.family((_shareId: string) =>
-  Atom.make(0).pipe(Atom.keepAlive, Atom.withLabel("guest:room-machine-joins")),
-);
-
-/** Tells an open room that one of this person's machines just joined it. */
-export const announceRoomMachineJoined = (shareId: string) =>
-  appAtomRegistry.update(roomMachineJoinsAtom(shareId), (count) => count + 1);
 
 /** One of the person's own computers, as a box's computer picker lists it. */
 export interface OwnComputer {

@@ -15,7 +15,7 @@ import {
   readGuestShares,
   rememberGuestShare,
 } from "../../guest/guestShares";
-import { appAtomRegistry } from "../../rpc/atomRegistry";
+import { AppAtomRegistryProvider, appAtomRegistry } from "../../rpc/atomRegistry";
 import { GuestPage } from "./GuestPage";
 
 function visit(path: string): Disposable {
@@ -114,7 +114,11 @@ describe("GuestPage", () => {
           Response.json({ reason: "invalid", detail: "sharing_off" }, { status: 403 }),
         ),
       );
-    await using screen = await render(<GuestPage />);
+    await using screen = await render(
+      <AppAtomRegistryProvider>
+        <GuestPage />
+      </AppAtomRegistryProvider>,
+    );
     await vi.waitFor(() => expect(readGuestShares()).toEqual([]));
     await expect.element(screen.getByText("Link sharing is off for this board")).toBeVisible();
     expect(appAtomRegistry.get(endedShareNoticesAtom).get("share-3")).toEqual({

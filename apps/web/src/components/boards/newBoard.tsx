@@ -59,7 +59,7 @@ import { waitForAtomValue } from "~/state/waitForAtomValue";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { useOrchestrationCommand } from "~/state/use-orchestration-command";
 
-import { announceRoomMachineJoined } from "../guest/ownRoomMachine";
+import { announceRoomMachineJoined } from "~/guest/roomMachineJoins";
 import { sortScopedProjectsForSidebar } from "../Sidebar.logic";
 import { Button } from "../ui/button";
 import {

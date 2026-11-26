@@ -37,7 +37,6 @@ import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { ensureLocalApi } from "~/localApi";
 import { onThisHostedApp } from "~/hostedPairing";
 import { useNowMinute } from "~/hooks/useNowMinute";
-import { appAtomRegistry } from "~/rpc/atomRegistry";
 import { useQuietThreadProjection, useQuietThreadShell } from "~/state/entities";
 import { useEnvironmentSettings, useUpdateEnvironmentSettings } from "~/hooks/useSettings";
 import { useEnvironmentProviders } from "~/state/environments";
@@ -82,7 +81,6 @@ import { markBoardGuideStep } from "../room/boardGuideState";
 import { roomBoardLocation } from "../room/roomBoardNavigation";
 import { GuestTurnList } from "./GuestTurnList";
 import { linkEndsLabel, linkEndsSoon, linkLifetimeDays } from "./guestLinkTiming";
-import { guestShareDialogThreadAtom } from "./guestShareDialogState";
 import { guestMessageArtifactTitle, guestMessageBoxTitle } from "./roomBoardPrompt";
 
 function useThreadGuestShare(threadRef: ScopedThreadRef | null): ThreadGuestShare | null {
@@ -100,18 +98,6 @@ async function confirmEndingLink(
   return ensureLocalApi().dialogs.confirm(message, { variant: "destructive", confirmLabel });
 }
 
-export function GuestShareDialogHost() {
-  const threadRef = useAtomValue(guestShareDialogThreadAtom);
-  if (threadRef === null) return null;
-  return (
-    <GuestShareDialog
-      key={`${threadRef.environmentId}:${threadRef.threadId}`}
-      threadRef={threadRef}
-      onClose={() => appAtomRegistry.set(guestShareDialogThreadAtom, null)}
-    />
-  );
-}
-
 type CreateState =
   | { readonly status: "idle" }
   | { readonly status: "creating" }
@@ -124,7 +110,7 @@ const DAY_MS = 24 * HOUR_MS;
 const lifetimeLabel = (days: GuestShareLifetimeDays) => (days === 1 ? "1 day" : `${days} days`);
 const cardCount = (count: number) => (count === 1 ? "1 card" : `${count} cards`);
 
-function GuestShareDialog({
+export function GuestShareDialog({
   threadRef,
   onClose,
 }: {

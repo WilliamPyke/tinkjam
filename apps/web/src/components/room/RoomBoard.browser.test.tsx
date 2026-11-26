@@ -14,7 +14,9 @@ import { render } from "../../../test/render";
 import "../../index.css";
 import { openCommandPalette } from "../../commandPaletteBus";
 import { useCommandPaletteStore } from "../../commandPaletteStore";
-import { CommandPalette } from "../CommandPalette";
+// The host loads the palette on first open; loading it up front keeps that off each test's clock.
+import "../CommandPalette";
+import { CommandPalette } from "../CommandPaletteHost";
 import { toastManager } from "../ui/toast";
 
 import { RoomBoard, RoomCursors } from "./RoomBoard";

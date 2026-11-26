@@ -3,7 +3,9 @@ import { page, userEvent } from "vite-plus/test/browser";
 import { DEFAULT_RESOLVED_KEYBINDINGS } from "@t3tools/shared/keybindings";
 import { DEFAULT_CLIENT_SETTINGS } from "@t3tools/contracts/settings";
 import { act, render } from "../../test/render";
-import { CommandPalette } from "./CommandPalette";
+// The host loads the palette on first open; loading it up front keeps that off each test's clock.
+import "./CommandPalette";
+import { CommandPalette } from "./CommandPaletteHost";
 import { openCommandPalette } from "../commandPaletteBus";
 import { primaryServerKeybindingsAtom } from "../state/server";
 

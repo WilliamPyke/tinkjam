@@ -15,9 +15,9 @@ import { useEffect, useEffectEvent, useState } from "react";
 
 import { APP_DISPLAY_NAME, APP_VERSION } from "../branding";
 import { AppSidebarLayout } from "../components/AppSidebarLayout";
-import { CommandPalette } from "../components/CommandPalette";
+import { CommandPalette } from "../components/CommandPaletteHost";
 import { CustomSnoozeDialogHost } from "../components/CustomSnoozeDialog";
-import { GuestShareDialogHost } from "../components/chat/GuestShareControls";
+import { GuestShareDialogHost } from "../components/chat/GuestShareDialogHost";
 import { UseInAnotherAppDialogHost } from "../components/mcp/UseInAnotherAppDialog";
 import { NewTeamDialogHost } from "../components/teams/NewTeamDialog";
 import { useHomeFocus } from "../components/boards/homeFocus";

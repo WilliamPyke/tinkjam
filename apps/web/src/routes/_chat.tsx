@@ -1,16 +1,26 @@
 import { isGuestEnvironment, scopedThreadKey } from "@t3tools/client-runtime/environment";
 import { Outlet, createFileRoute, redirect, useMatches } from "@tanstack/react-router";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
-import { GuestThreadRoute } from "../components/guest/GuestThreadView";
-import { ThreadRouteView } from "../components/ThreadRouteView";
 import { BoardsHome } from "../components/boards/BoardsHome";
+import { TinkjamLoading } from "../components/TinkjamLoading";
 import { appModalOpenedOverHome, isAppModalPage } from "../components/sidebar/mainAppLocation";
 import { SidebarInset } from "../components/ui/sidebar";
 import { resolveThreadRouteTarget, type ThreadRouteTarget } from "../threadRoutes";
 import { retainThreadFindForRoute } from "../components/chat/threadFindStore";
 import { ThreadLinkPrompt } from "../components/promptLinks/ThreadLinkPrompt";
 import { useThreadRouteTarget } from "../hooks/useThreadRouteTarget";
+import { isLandingOnBoard } from "../guestPage";
+
+// The boards home is the usual first page; the chat and guest views load when a thread opens.
+const ThreadRouteView = lazy(() =>
+  import("../components/ThreadRouteView").then((module) => ({ default: module.ThreadRouteView })),
+);
+const GuestThreadRoute = lazy(() =>
+  import("../components/guest/GuestThreadView").then((module) => ({
+    default: module.GuestThreadRoute,
+  })),
+);
 
 function threadRouteTargetKey(target: ThreadRouteTarget | null) {
   if (!target) return null;
@@ -42,9 +52,15 @@ function ChatRouteLayout() {
         <ThreadLinkPrompt threadRef={shownTarget.threadRef} />
       ) : null}
       {guestThreadRef !== null ? (
-        <GuestThreadRoute threadRef={guestThreadRef} />
+        <Suspense
+          fallback={<TinkjamLoading cover={isLandingOnBoard()} label="Opening the board" />}
+        >
+          <GuestThreadRoute threadRef={guestThreadRef} />
+        </Suspense>
       ) : shownTarget ? (
-        <ThreadRouteView target={shownTarget} background={modalOpen} />
+        <Suspense fallback={<TinkjamLoading label="Opening the chat" />}>
+          <ThreadRouteView target={shownTarget} background={modalOpen} />
+        </Suspense>
       ) : modalOpen ? (
         // A modal opened over the boards home keeps the home in sight behind it.
         appModalOpenedOverHome() ? (

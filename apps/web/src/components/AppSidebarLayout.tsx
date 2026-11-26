@@ -1,6 +1,8 @@
 import { useAtomValue } from "@effect/atom-react";
 import * as Schema from "effect/Schema";
 import {
+  lazy,
+  Suspense,
   useEffect,
   useState,
   useSyncExternalStore,
@@ -39,7 +41,6 @@ import {
 } from "../panelAnimations";
 import { BackgroundThreadAnnouncer } from "./BackgroundThreadAnnouncer";
 import { HistorySwipeNavigation } from "./HistorySwipeNavigation";
-import ThreadSidebar from "./Sidebar";
 import { SidebarBrandWidthProbe } from "./sidebar/SidebarChrome";
 import { isAppModalPage } from "./sidebar/mainAppLocation";
 import type { SidebarRouteReveal } from "./sidebar/routeReveal";
@@ -112,6 +113,9 @@ function readWindowFullscreen(): boolean {
   }
   return windowFullscreenSnapshot;
 }
+
+// Not loaded where the sidebar is hidden: a new account's first screen and the Welcome page.
+const ThreadSidebar = lazy(() => import("./Sidebar"));
 
 function readInitialThreadSidebarWidth(): number {
   try {
@@ -484,7 +488,9 @@ export function AppSidebarLayout({
               }}
               style={windowControlsInsetStyle}
             >
-              <ThreadSidebar routeReveal={sidebarRouteReveal} />
+              <Suspense fallback={null}>
+                <ThreadSidebar routeReveal={sidebarRouteReveal} />
+              </Suspense>
               <SidebarRail onDoubleClick={resetSidebarWidth} />
             </Sidebar>
           </>
