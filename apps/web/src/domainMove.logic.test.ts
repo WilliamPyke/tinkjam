@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
+import appPage from "../index.html?raw";
 import movePage from "../public/move.html?raw";
 import { mergeMovedShares, moveStep, packMove, unpackMove } from "./domainMove.logic";
 
@@ -38,6 +39,53 @@ function runMovePage(href: string, stored: Record<string, string>, cookie = "", 
   };
   fakeWindow.top = framed ? {} : fakeWindow;
   new Function("window", "document", script)(fakeWindow, { cookie });
+  return went;
+}
+
+// Runs index.html's domain-move script at `href` as the hosted build fills it (`origins`), and
+// returns where it sends the browser, if anywhere.
+function runAppPage(
+  href: string,
+  options: {
+    readonly stored?: Record<string, string>;
+    readonly session?: Record<string, string>;
+    readonly origins?: ReadonlyArray<string>;
+    readonly framed?: boolean;
+    readonly blocked?: boolean;
+    readonly now?: number;
+  } = {},
+) {
+  const tag = appPage.match(/<script id="domain-move">([\s\S]*?)<\/script>/)?.[1];
+  if (tag === undefined) throw new Error("index.html has no domain-move script");
+  const origins = options.origins ?? [NEW, OLD];
+  const script = tag.replace("const ORIGINS = [];", `const ORIGINS = ${JSON.stringify(origins)};`);
+  const url = new URL(href);
+  let went: string | null = null;
+  const storage = (values: Record<string, string>) => ({
+    getItem: (key: string) => {
+      if (options.blocked) throw new Error("blocked");
+      return values[key] ?? null;
+    },
+    setItem: (key: string, value: string) => {
+      if (options.blocked) throw new Error("blocked");
+      values[key] = value;
+    },
+    removeItem: (key: string) => void delete values[key],
+  });
+  const fakeWindow: Record<string, unknown> = {
+    location: {
+      origin: url.origin,
+      pathname: url.pathname,
+      search: url.search,
+      hash: url.hash,
+      replace: (to: string) => void (went = to),
+    },
+    localStorage: storage({ ...options.stored }),
+    sessionStorage: storage(options.session ?? {}),
+  };
+  fakeWindow.top = options.framed ? {} : fakeWindow;
+  const now = options.now ?? Date.UTC(2026, 10, 20);
+  new Function("window", "Date", script)(fakeWindow, { UTC: Date.UTC, now: () => now });
   return went;
 }
 
@@ -152,6 +200,48 @@ describe("moving between our domains", () => {
       },
     );
     expect(runMovePage(`${OLD}/move?to=%2F`, {})).toMatch(new RegExp(`^${NEW}/#moved=`));
+  });
+
+  it("leaves from index.html before the app loads, exactly when the app would", () => {
+    const stored: Record<string, string> = {
+      [SHARES]: JSON.stringify([share("a")]),
+      "t3code:theme": "dark",
+    };
+    const cookie = "__clerk_db_jwt_ab12=dev.jwt=";
+    const href = `${NEW}/guest?host=boards.tinkjam.com#invite`;
+    const session: Record<string, string> = {};
+    const asked = step({});
+    if (asked.kind !== "go") throw new Error("expected the current address to ask");
+    expect(runAppPage(href, { session })).toBe(asked.href);
+    expect(session["tinkjam:move-asked:v1"]).toBe("1");
+
+    // The older address hands over through its static page, as the app there would.
+    const fromApp = step({ origin: OLD, read: (key) => stored[key] ?? null, cookie });
+    if (fromApp.kind !== "go") throw new Error("expected the older address to leave");
+    const toMovePage = runAppPage(`${OLD}/guest?host=boards.tinkjam.com#invite`, { stored });
+    expect(toMovePage).toBe("/move?to=%2Fguest%3Fhost%3Dboards.tinkjam.com#invite");
+    expect(runMovePage(new URL(toMovePage ?? "", OLD).href, stored, cookie)).toBe(fromApp.href);
+
+    const desktop = "t3code://app";
+    for (const [name, page, over] of [
+      ["moved", { stored: { "tinkjam:moved:v1": "2026-11-20" } }, { moved: true }],
+      ["asked this tab", { session: { "tinkjam:move-asked:v1": "1" } }, { asked: true }],
+      ["blocked storage", { blocked: true }, { canStore: false }],
+      ["framed", { framed: true }, { framed: true }],
+      ["asking over", { now: Date.UTC(2027, 5, 1) }, { now: Date.UTC(2027, 5, 1) }],
+      ["not the hosted build", { origins: [] }, { origins: [] }],
+      ["an address of ours alone", { origins: [NEW] }, { origins: [NEW] }],
+    ] as const) {
+      expect(runAppPage(href, page), name).toBeNull();
+      expect(step(over), name).toEqual({ kind: "stay" });
+    }
+    for (const origin of ["http://localhost:5733", desktop]) {
+      expect(runAppPage(`${origin}/guest#invite`), origin).toBeNull();
+      expect(step({ origin }), origin).toEqual({ kind: "stay" });
+    }
+    // An arrival is the app's to take in.
+    const arrival = `${NEW}/guest${packMove({ read: () => null, hash: "#invite" })}`;
+    expect(runAppPage(arrival)).toBeNull();
   });
 
   it("sends the static page's hand-over only to the app's current address", () => {

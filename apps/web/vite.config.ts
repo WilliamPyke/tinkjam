@@ -17,6 +17,8 @@ import {
   DEV_PROXIED_ORIGIN_PRESERVING_PREFIXES,
   DEV_PROXIED_PATH_PREFIXES,
 } from "@t3tools/shared/devProxy";
+import { guestHostZoneOf } from "@t3tools/shared/guestLinks";
+import { ownDomainOrigins } from "@t3tools/shared/ownDomains";
 
 import { loadRepoEnv } from "../../scripts/lib/public-config";
 import { thirdPartyLicensesPlugin } from "../../scripts/lib/third-party-licenses";
@@ -280,6 +282,38 @@ function chunkCycleGuardPlugin(): Plugin {
   };
 }
 
+const originOf = (url: string | undefined) =>
+  url !== undefined && URL.canParse(url) ? new URL(url).origin : null;
+
+// On the hosted app: index.html's domain-move script gets the app's addresses, as
+// `builtHostedAppOrigins` has them, and the board host's connection opens with the page. Any
+// other build drops the script. The board host is found as `cloudBoardsOrigin` finds it.
+function hostedHeadPlugin(): Plugin {
+  const hosted = originOf(configuredHostedAppUrl);
+  const origins = hosted === null ? [] : ownDomainOrigins(hosted);
+  const zone = configuredGuestHostZone || (hosted === null ? null : guestHostZoneOf(hosted));
+  const boards = configuredCloudBoardsUrl
+    ? originOf(configuredCloudBoardsUrl)
+    : zone === null
+      ? null
+      : `https://boards.${zone}`;
+  return {
+    name: "t3code:hosted-head",
+    transformIndexHtml(html) {
+      const script = /<script id="domain-move">[\s\S]*?<\/script>\s*/;
+      if (origins.length < 2) return html.replace(script, "");
+      const preconnect =
+        boards === null ? "" : `<link rel="preconnect" href="${boards}" crossorigin />\n    `;
+      return html.replace(
+        script,
+        (tag) =>
+          tag.replace("const ORIGINS = [];", `const ORIGINS = ${JSON.stringify(origins)};`) +
+          preconnect,
+      );
+    },
+  };
+}
+
 // Allow Tailnet hosts for sharing; Tailscale-controlled DNS prevents attacker rebinding.
 const configuredAllowedHosts = (process.env.T3CODE_DEV_ALLOWED_HOSTS ?? "")
   .split(",")
@@ -317,6 +351,7 @@ export default defineConfig(() => {
       react({ compiler: true }),
       tailwindPlugins(bundledDev),
       warmBundledDevPlugin(),
+      hostedHeadPlugin(),
     ],
     optimizeDeps: {
       include: [

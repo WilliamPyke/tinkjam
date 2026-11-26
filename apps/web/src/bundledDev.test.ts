@@ -35,6 +35,10 @@ it("initializes React refresh before a shared UI chunk runs in bundled dev", asy
       await NodeFSP.copyFile(new URL(`../${file}`, import.meta.url), NodePath.join(root, file));
     }
     await NodeFSP.writeFile(
+      NodePath.join(root, "src/domainMove.ts"),
+      "export const leavingForOurOtherDomain = false;",
+    );
+    await NodeFSP.writeFile(
       NodePath.join(root, "src/shared.tsx"),
       "export function Shared() { return <div>ready</div>; }",
     );

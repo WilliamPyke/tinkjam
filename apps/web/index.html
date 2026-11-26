@@ -2,6 +2,38 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script id="domain-move">
+      // `moveStep`'s leaving half from src/domainMove.logic.ts, before the app loads; the build
+      // fills in ORIGINS on the hosted app and drops this elsewhere. domainMove.ts takes in an
+      // arrival. domainMove.logic.test.ts holds the two equal.
+      (() => {
+        const ORIGINS = [];
+        const MOVED_KEY = "tinkjam:moved:v1";
+        const ASKED_KEY = "tinkjam:move-asked:v1";
+        const ASKING_ENDS = Date.UTC(2027, 4, 1);
+        const { location } = window;
+        const [current, older] = ORIGINS;
+        if (older === undefined || !ORIGINS.includes(location.origin)) return;
+        if (window.top !== window) return;
+        const to = `/move?to=${encodeURIComponent(location.pathname + location.search)}`;
+        if (location.origin !== current) {
+          location.replace(`${to}${location.hash}`);
+          return;
+        }
+        if (location.hash.startsWith("#moved=")) return;
+        try {
+          if (window.localStorage.getItem(MOVED_KEY) !== null) return;
+          if (window.sessionStorage.getItem(ASKED_KEY) !== null) return;
+          window.localStorage.setItem(ASKED_KEY, "1");
+          window.localStorage.removeItem(ASKED_KEY);
+          if (Date.now() >= ASKING_ENDS) return;
+          window.sessionStorage.setItem(ASKED_KEY, "1");
+        } catch {
+          return;
+        }
+        location.replace(`${older}${to}${location.hash}`);
+      })();
+    </script>
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
