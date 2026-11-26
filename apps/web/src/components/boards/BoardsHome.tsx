@@ -237,7 +237,11 @@ export function BoardsHome() {
     <SidebarInset
       {...contentArea}
       role="main"
-      className="h-dvh min-h-0 overflow-y-auto overscroll-y-none scrollbar-gutter-both"
+      className={cn(
+        "h-dvh min-h-0 overflow-y-auto overscroll-y-none",
+        // The welcome's backdrop runs edge to edge, where a reserved gutter shows as a strip.
+        content !== "welcome" && "scrollbar-gutter-both",
+      )}
       data-boards-home
     >
       {isElectron ? (

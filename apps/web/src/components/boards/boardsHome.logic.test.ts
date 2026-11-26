@@ -357,6 +357,17 @@ describe("boardThumbnail", () => {
     ]);
   });
 
+  it("draws a board of one or two cards zoomed out, not blown up to fill the frame", () => {
+    const rects = boardThumbnail([{ x: 400, y: 300, w: 192, h: 144, kind: "note" }], {
+      width: 240,
+      height: 150,
+      padding: 10,
+    });
+    expect(rects).toEqual([
+      { x: 96, y: 57, width: 48, height: 36, kind: "note", color: undefined },
+    ]);
+  });
+
   it("draws nothing for an empty board, and never a card too small to see", () => {
     expect(boardThumbnail([], { width: 100, height: 60, padding: 4 })).toEqual([]);
     const [tiny] = boardThumbnail(

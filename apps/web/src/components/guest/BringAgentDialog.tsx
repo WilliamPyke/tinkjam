@@ -233,7 +233,10 @@ export function BringAgentDialog({
     >
       {/* After an agent came, the caret goes to its box on the board, not back to a button. */}
       <DialogPopup
-        className={size === "compact" ? "h-120 max-w-2xl" : "h-180 max-w-2xl"}
+        className={cn(
+          size === "compact" ? "h-120" : "h-180",
+          "max-w-2xl sm:max-h-[calc(100dvh-2rem)]",
+        )}
         finalFocus={brought ? false : undefined}
       >
         <DialogHeader>
@@ -479,12 +482,7 @@ export function ConnectComputerRoutes({
   return (
     <div className="flex flex-col gap-3" data-bring-agent-steps>
       <section className="flex flex-col gap-3 rounded-2xl border border-border bg-panel p-4">
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold">Install Tinkjam Sync</h3>
-          <p className="text-xs text-muted-foreground">
-            The small app that lets your boards reach the agents on your computer.
-          </p>
-        </div>
+        <h3 className="text-sm font-semibold">Install Tinkjam Sync</h3>
         {os === null ? (
           <div className="flex flex-col gap-3 text-sm" data-sync-other-device>
             <p>

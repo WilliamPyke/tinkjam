@@ -169,7 +169,7 @@ export function CloudBoardSharing({
   const { copyToClipboard, isCopied } = useCopyToClipboard({
     onCopy: () => {
       markBoardGuideStep("invite");
-      toastManager.add({ type: "success", title: "Edit link copied" });
+      toastManager.add({ type: "success", title: "Invite link copied" });
     },
     onError: () =>
       toastManager.add({
@@ -300,14 +300,14 @@ export function CloudBoardSharing({
             color={boardCursorColor(guests, guest.id)}
             className={cn(
               "size-7 text-xs font-semibold ring-2 ring-background",
-              index > 1 && "@max-xl/board:hidden",
+              index > 1 && "@max-[66rem]/board:hidden",
             )}
           >
             {initialOf(guest.name)}
           </PersonDot>
         ))}
         {here.length > 4 ? (
-          <span className="inline-grid size-7 place-items-center rounded-full bg-muted text-2xs font-semibold text-muted-foreground ring-2 ring-background @max-xl/board:hidden">
+          <span className="inline-grid size-7 place-items-center rounded-full bg-muted text-2xs font-semibold text-muted-foreground ring-2 ring-background @max-[66rem]/board:hidden">
             +{here.length - 4}
           </span>
         ) : null}
@@ -402,7 +402,7 @@ export function CloudBoardSharing({
         onConfirm={confirmAsked}
       />
       {viewing > 0 ? (
-        <span className="flex shrink-0 items-center gap-1 px-1 text-xs text-muted-foreground @max-xl/board:hidden">
+        <span className="flex shrink-0 items-center gap-1 px-1 text-xs text-muted-foreground @max-[66rem]/board:hidden">
           <EyeIcon className="size-3.5" aria-hidden />
           {viewingLabel(viewing)}
         </span>
@@ -415,8 +415,14 @@ export function CloudBoardSharing({
           data-cloud-board-invite
         >
           {isCopied ? <CheckIcon /> : <LinkIcon />}
-          {/* Read out at every width; a narrow board shows the mark alone. */}
-          <span className="@max-xl/board:sr-only">{isCopied ? "Copied" : "Copy invite link"}</span>
+          {/* Read out at every width; a narrow board shows the mark alone. Both words keep their
+              place, so the button keeps its width when it says Copied. */}
+          <span className="grid @max-[66rem]/board:sr-only">
+            <span className={cn("col-start-1 row-start-1", isCopied && "invisible")}>
+              Copy invite link
+            </span>
+            <span className={cn("col-start-1 row-start-1", !isCopied && "invisible")}>Copied</span>
+          </span>
         </Button>
       )}
       {faces}

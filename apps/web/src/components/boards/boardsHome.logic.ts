@@ -477,6 +477,8 @@ export interface ThumbnailRect {
 
 // A card smaller than this on the thumbnail would vanish; it is drawn at least this big.
 const THUMBNAIL_MIN_SIDE = 2;
+// A board of one or two cards is drawn as if zoomed out, not blown up to fill its tile.
+const THUMBNAIL_MAX_SCALE = 0.25;
 
 /**
  * A board's cards fitted into a `width` by `height` thumbnail, keeping their proportions and
@@ -496,6 +498,7 @@ export function boardThumbnail(
   const scale = Math.min(
     innerWidth / Math.max(maxX - minX, 1),
     innerHeight / Math.max(maxY - minY, 1),
+    THUMBNAIL_MAX_SCALE,
   );
   const offsetX = frame.padding + (innerWidth - (maxX - minX) * scale) / 2;
   const offsetY = frame.padding + (innerHeight - (maxY - minY) * scale) / 2;

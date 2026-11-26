@@ -14,6 +14,7 @@ import { sampleBoardHref } from "~/sampleBoard";
 
 import { useT3ConnectAuthPrompt } from "../clerk/useT3ConnectAuthPrompt";
 import { BoardBackdrop } from "../room/BoardChrome";
+import { boardTouchFirst } from "../room/roomBoard.logic";
 import { TinkjamWordmark } from "../TinkjamLogo";
 import { Button, InlineButton } from "../ui/button";
 import { Input } from "../ui/input";
@@ -117,6 +118,8 @@ export function StartBoardForm({
   const [asked] = useState(() => cloud && knownBoardName() === null);
   const [suggested] = useState(suggestedBoardName);
   const [submitted, setSubmitted] = useState(false);
+  // The caret starts in the first field to type in; on a touch screen that would open the keyboard.
+  const [caret] = useState(() => !boardTouchFirst());
   const [starting, setStarting] = useState(false);
   // The board is made and its page is loading: the button keeps saying so until it takes over.
   const leaving = useLocation({ select: (location) => location.pathname !== "/" });
@@ -148,7 +151,10 @@ export function StartBoardForm({
     }
     setStarting(true);
     try {
-      if (await startNewBoard(template, undefined, draft.title.trim() || null)) clearWelcomeDraft();
+      // The name was asked for here, so the board does not open asking for it again.
+      if (await startNewBoard(template, undefined, draft.title.trim() || UNTITLED_BOARD)) {
+        clearWelcomeDraft();
+      }
     } finally {
       setStarting(false);
     }
@@ -202,6 +208,7 @@ export function StartBoardForm({
             Your name
             <Input
               size="lg"
+              autoFocus={caret}
               autoComplete="name"
               maxLength={GUEST_NAME_MAX_LENGTH}
               value={name}
@@ -228,6 +235,7 @@ export function StartBoardForm({
           Board name
           <Input
             size="lg"
+            autoFocus={caret && !typing}
             maxLength={CLOUD_BOARD_TITLE_MAX_LENGTH}
             placeholder={UNTITLED_BOARD}
             value={draft.title}
