@@ -306,6 +306,16 @@ describe("the home's order and what it shows", () => {
     expect(homeContent({ ...signingIn, boards: 1, welcomed: false, leaving: true })).toBe("boards");
   });
 
+  it("never mistakes an account whose boards could not be read for a new one", () => {
+    const loaded = { workspaces: 0, machinesLoaded: true, accountLoaded: true };
+    expect(homeContent({ ...loaded, boards: 0, accountFailed: true })).toBe("unavailable");
+    expect(homeContent({ ...loaded, boards: 2, accountFailed: true })).toBe("boards");
+    expect(homeContent({ ...loaded, boards: 0, accountFailed: false })).toBe("welcome");
+    expect(homeContent({ ...loaded, boards: 0, accountFailed: true, machinesLoaded: false })).toBe(
+      "loading",
+    );
+  });
+
   it("gives the home the window to itself until it has boards, only where that is offered", () => {
     const focused = (shown: "boards" | "loading" | "welcome" | null, pathname = "/") =>
       homeIsFocused({ offered: true, pathname, shown });

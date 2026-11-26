@@ -404,14 +404,17 @@ export function homeContent(input: {
   readonly welcomed?: boolean;
   /** Another page is loading: the welcome stays as it is until that page takes over. */
   readonly leaving?: boolean;
+  /** Signed in, and the account's boards could not be read: it may have some. */
+  readonly accountFailed?: boolean;
 }): HomeContent {
   if (input.welcomed === true && input.leaving === true) return "welcome";
   if (input.boards > 0 || input.workspaces > 0) return "boards";
   if (input.welcomed === true) return "welcome";
-  return input.machinesLoaded && input.accountLoaded ? "welcome" : "loading";
+  if (!input.machinesLoaded || !input.accountLoaded) return "loading";
+  return input.accountFailed === true ? "unavailable" : "welcome";
 }
 
-export type HomeContent = "boards" | "loading" | "welcome";
+export type HomeContent = "boards" | "loading" | "unavailable" | "welcome";
 
 /**
  * Whether the home has the window to itself, with no sidebar beside it: where that is offered,

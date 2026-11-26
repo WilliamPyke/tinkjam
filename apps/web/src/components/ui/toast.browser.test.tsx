@@ -14,6 +14,20 @@ describe("toastManager", () => {
     await expect.element(page.getByText("Raised before the first render")).toBeVisible();
   });
 
+  it("keeps an error up for at least ten seconds unless it says otherwise", () => {
+    const timeouts = new Map<string, number | undefined>();
+    const stop = toastManager[" subscribe"]((event) => {
+      if (event.action === "add") timeouts.set(event.options.title, event.options.timeout);
+    });
+    toastManager.add({ type: "error", title: "Could not start a board" });
+    toastManager.add({ type: "error", title: "Brief error", timeout: 3_000 });
+    toastManager.add({ type: "success", title: "Saved" });
+    stop();
+    expect(timeouts.get("Could not start a board")).toBe(10_000);
+    expect(timeouts.get("Brief error")).toBe(3_000);
+    expect(timeouts.get("Saved")).toBeUndefined();
+  });
+
   it("keeps the toast inside a 16px gutter on narrow screens", async () => {
     await page.viewport(390, 844);
     toastManager.add({ type: "error", title: "Something failed", description: "Try again." });

@@ -3,6 +3,7 @@ import { Outlet, createFileRoute, redirect, useMatches } from "@tanstack/react-r
 import { lazy, Suspense, useState } from "react";
 
 import { BoardsHome } from "../components/boards/BoardsHome";
+import { ShellNotFoundPage } from "../components/NotFoundPage";
 import { TinkjamLoading } from "../components/TinkjamLoading";
 import { appModalOpenedOverHome, isAppModalPage } from "../components/sidebar/mainAppLocation";
 import { SidebarInset } from "../components/ui/sidebar";
@@ -88,6 +89,8 @@ export const Route = createFileRoute("/_chat")({
     return { appModalPage: isAppModalPage(location.pathname) };
   },
   component: ChatRouteLayout,
+  // Unmatched addresses land here, the deepest layout with an outlet, not on the root.
+  notFoundComponent: ShellNotFoundPage,
   // Every match carries the whole location's params, so this layout sees the thread route's too.
   onEnter: ({ context, params }) => retainThreadFindForRouteMatch(context.appModalPage, params),
   onStay: ({ context, params }) => retainThreadFindForRouteMatch(context.appModalPage, params),

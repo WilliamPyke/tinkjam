@@ -66,6 +66,8 @@ type BaseToastManager = ReturnType<typeof Toast.createToastManager<ThreadToastDa
 type ToastManagerListener = Parameters<BaseToastManager[" subscribe"]>[0];
 type ToastManagerEvent = Parameters<ToastManagerListener>[0];
 
+const ERROR_TOAST_TIMEOUT_MS = 10_000;
+
 /**
  * base-ui's manager drops events while no provider is subscribed. App services raise toasts
  * from before the first render (and while the root error view replaces the providers), so hold
@@ -84,6 +86,13 @@ function createBufferedToastManager(): BaseToastManager {
   });
   return {
     ...manager,
+    // Long enough to read what went wrong; base-ui's 5 s default is gone before that.
+    add: (options) =>
+      manager.add(
+        options.type === "error" && options.timeout === undefined
+          ? { ...options, timeout: ERROR_TOAST_TIMEOUT_MS }
+          : options,
+      ),
     " subscribe"(listener) {
       listeners.add(listener);
       for (const event of pending.splice(0)) listener(event);

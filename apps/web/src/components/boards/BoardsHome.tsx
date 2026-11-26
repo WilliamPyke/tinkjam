@@ -14,7 +14,11 @@ import { ChevronDownIcon, PlusIcon, SearchIcon } from "lucide-react";
 import { type MouseEvent, useEffect, useId, useLayoutEffect, useState } from "react";
 
 import { isElectron } from "~/env";
-import { refreshAccountBoards, useBoardAccount } from "~/guest/boardAccount";
+import {
+  type BoardAccountState,
+  refreshAccountBoards,
+  useBoardAccount,
+} from "~/guest/boardAccount";
 import { useInboxCount } from "~/guest/inbox";
 import { sharedThreadLocationOf } from "~/guest/boardAddress";
 import {
@@ -48,6 +52,7 @@ import { roomBoardLocation } from "../room/roomBoardNavigation";
 import { AvatarStack } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button, InlineButton } from "../ui/button";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "../ui/empty";
 import { Group, GroupSeparator } from "../ui/group";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "../ui/input-group";
 import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
@@ -112,8 +117,7 @@ const SORT_LABELS: Readonly<Record<HomeBoardSort, string>> = {
 const ACCOUNT_WAIT_MS = 8_000;
 
 /** Whether sign-in said who this is and, signed in, their boards arrived, or it took too long. */
-function useAccountSettled(): boolean {
-  const account = useBoardAccount();
+function useAccountSettled(account: BoardAccountState): boolean {
   const [waitedOut, setWaitedOut] = useState(false);
   const waiting =
     account.status === "loading" || (account.status === "signed-in" && !account.listed);
@@ -133,7 +137,8 @@ export function BoardsHome() {
   const joined = useAtomValue(guestSharesAtom);
   const accountBoards = useAtomValue(accountBoardsAtom);
   const localPreviews = useAtomValue(localBoardPreviewsAtom);
-  const accountSettled = useAccountSettled();
+  const account = useBoardAccount();
+  const accountSettled = useAccountSettled(account);
   const [sort, setSort] = useState(readSort);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- reads the account's boards and workspaces again from the board service each time the home opens
   useEffect(() => {
@@ -194,6 +199,8 @@ export function BoardsHome() {
     accountLoaded: accountSettled,
     welcomed,
     leaving,
+    // Its list failed, or never answered: an account that may have boards is never a new one.
+    accountFailed: account.status === "signed-in" && (!account.listed || account.listFailed),
   });
   if (content === "welcome" && !welcomed) setWelcomed(true);
   // Before paint, so the sidebar the app shell holds back arrives in the frame the boards do.
@@ -256,6 +263,8 @@ export function BoardsHome() {
         ) : (
           <BoardsWelcome />
         )
+      ) : content === "unavailable" ? (
+        <BoardsUnavailable />
       ) : content === "loading" ? (
         alone ? (
           <TinkjamLoading label="Loading your boards" />
@@ -425,6 +434,48 @@ export function BoardsHome() {
         </div>
       )}
     </SidebarInset>
+  );
+}
+
+const readBoardsAgain = () => {
+  refreshWorkspaceList();
+  return refreshAccountBoards();
+};
+
+/** The account's boards could not be read: reads them again on request, or when the page is back. */
+function BoardsUnavailable() {
+  const [retrying, setRetrying] = useState(false);
+  const retry = () => {
+    if (retrying) return;
+    setRetrying(true);
+    void readBoardsAgain().then(() => setRetrying(false));
+  };
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- reads the boards again when the connection or the tab comes back
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void readBoardsAgain();
+    };
+    const onOnline = () => void readBoardsAgain();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onOnline);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onOnline);
+    };
+  }, []);
+  return (
+    <Empty data-boards-unavailable>
+      <EmptyHeader>
+        <EmptyTitle>Your boards could not be loaded</EmptyTitle>
+        <EmptyDescription>Try again in a moment.</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <Button disabled={retrying} aria-busy={retrying || undefined} onClick={retry}>
+          {retrying ? <Spinner aria-hidden /> : null}
+          Try again
+        </Button>
+      </EmptyContent>
+    </Empty>
   );
 }
 

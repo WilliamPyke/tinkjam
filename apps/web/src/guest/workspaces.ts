@@ -69,7 +69,7 @@ const decodePreview = Schema.decodeUnknownOption(CloudWorkspacePreview);
 const decodeOpened = Schema.decodeUnknownOption(CloudBoardAccountOpenResult);
 const decodeMessage = Schema.decodeUnknownOption(Schema.Struct({ message: Schema.String }));
 
-const UNREACHABLE = "Could not reach the board service.";
+const UNREACHABLE = "Could not reach the board service. Try again.";
 
 /** The signed-in account's workspaces; null signed out, before they load, or without accounts. */
 export const useWorkspaces = () => useAtomValue(workspacesAtom);

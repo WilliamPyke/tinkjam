@@ -62,7 +62,7 @@ const decodeTasks = Schema.decodeUnknownOption(CloudMyTasks);
 const decodeAsked = Schema.decodeUnknownOption(CloudBoardAccessResult);
 const decodeMessage = Schema.decodeUnknownOption(Schema.Struct({ message: Schema.String }));
 
-const UNREACHABLE = "Could not reach the board service.";
+const UNREACHABLE = "Could not reach the board service. Try again.";
 
 const userNow = () => readBoardAccountProfile()?.userId ?? null;
 

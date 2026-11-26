@@ -106,7 +106,7 @@ export async function createCloudBoard(input: {
 }): Promise<JoinedGuestShare | string> {
   const origin = cloudBoardsOrigin();
   const host = cloudBoardsHost();
-  if (origin === null || host === null) return "Could not reach the board service.";
+  if (origin === null || host === null) return "Could not reach the board service. Try again.";
   try {
     // Signed in, the board is the account's from the start, on every device it signs in on.
     const account = await boardJoinAuth();
@@ -133,7 +133,7 @@ export async function createCloudBoard(input: {
     if (account !== null && readBoardAccountProfile()?.userId !== account.userId) {
       return SIGN_IN_UNCONFIRMED;
     }
-    if (created === null) return "Could not reach the board service.";
+    if (created === null) return "Could not reach the board service. Try again.";
     if (account !== null) {
       // Made while the home shows a workspace, it is that workspace's board from the start. Not
       // waited for: the person is already on the board by then.
@@ -159,7 +159,7 @@ export async function createCloudBoard(input: {
       ...(account === null ? {} : { accountId: account.userId }),
     };
   } catch {
-    return "Could not reach the board service.";
+    return "Could not reach the board service. Try again.";
   }
 }
 
@@ -173,7 +173,7 @@ export async function copyCloudBoard(
 ): Promise<JoinedGuestShare | string> {
   const origin = cloudBoardsOrigin();
   const host = cloudBoardsHost();
-  if (origin === null || host === null) return "Could not reach the board service.";
+  if (origin === null || host === null) return "Could not reach the board service. Try again.";
   try {
     const account = await boardJoinAuth();
     if (account === "unconfirmed") return SIGN_IN_UNCONFIRMED;
@@ -214,7 +214,7 @@ export async function copyCloudBoard(
     rememberGuestShare(copy);
     return copy;
   } catch {
-    return "Could not reach the board service.";
+    return "Could not reach the board service. Try again.";
   }
 }
 
@@ -240,7 +240,7 @@ export async function setCloudBoardCopies(
       ? "Only the person who made this board can change this."
       : "The board service did not take that. Try again.";
   } catch {
-    return "Could not reach the board service.";
+    return "Could not reach the board service. Try again.";
   }
 }
 
@@ -263,7 +263,7 @@ export async function renameCloudBoard(
     if (kept !== "") noteWorkspaceBoardTitle(share.shareId, kept);
     return null;
   } catch {
-    return "Could not reach the board service.";
+    return "Could not reach the board service. Try again.";
   }
 }
 
@@ -278,7 +278,7 @@ export async function deleteCloudBoard(share: JoinedGuestShare): Promise<string 
       ? "Only the person who made this board can delete it."
       : "The board service did not delete the board. Try again.";
   } catch {
-    return "Could not reach the board service.";
+    return "Could not reach the board service. Try again.";
   }
 }
 
@@ -308,7 +308,7 @@ export async function removeFromCloudBoard(
       ? "Only the person who made this board can remove people."
       : "The board service did not take that. Try again.";
   } catch {
-    return "Could not reach the board service.";
+    return "Could not reach the board service. Try again.";
   }
 }
 
@@ -436,7 +436,7 @@ export async function setCloudBoardLink(
       : null;
     return result ?? "The board service did not take that. Try again.";
   } catch {
-    return "Could not reach the board service.";
+    return "Could not reach the board service. Try again.";
   }
 }
 
@@ -467,7 +467,7 @@ export async function setCloudBoardSharing(
       ? "The board service does not have link sharing yet. Try again later."
       : "The board service did not take that. Try again.";
   } catch {
-    return "Could not reach the board service.";
+    return "Could not reach the board service. Try again.";
   }
 }
 
@@ -494,6 +494,6 @@ export async function setCloudBoardRole(
       ? "Only the person who made this board can change who edits it."
       : "The board service did not take that. Try again.";
   } catch {
-    return "Could not reach the board service.";
+    return "Could not reach the board service. Try again.";
   }
 }

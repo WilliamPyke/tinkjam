@@ -89,19 +89,22 @@ export type BoardAccountState =
       readonly email: string | null;
       /** Whether the account's list of boards has been read since it signed in (or failed to). */
       readonly listed: boolean;
+      /** Whether no read of that list has worked since it signed in, though one finished. */
+      readonly listFailed: boolean;
     };
 
-// Whether the signed-in account's list of boards was read, or the read failed, since sign-in.
-const accountListSettledAtom = Atom.make(false).pipe(
+// How the signed-in account's list of boards was last read since sign-in. Once read, a later
+// failure keeps the list already read.
+const accountListReadAtom = Atom.make<"pending" | "read" | "failed">("pending").pipe(
   Atom.keepAlive,
-  Atom.withLabel("account-boards-settled"),
+  Atom.withLabel("account-boards-read"),
 );
 
 /** Who is signed in for cloud boards, as React reads it. */
 export function useBoardAccount(): BoardAccountState {
   const account = useAtomValue(boardAccountAtom);
   const loaded = useAtomValue(boardAccountLoadedAtom);
-  const listed = useAtomValue(accountListSettledAtom);
+  const listRead = useAtomValue(accountListReadAtom);
   const changing = useAtomValue(boardAccountChangingAtom);
   if (!boardAccountsEnabled()) return { status: "off" };
   if (!loaded || (changing && account === null)) return { status: "loading" };
@@ -112,7 +115,8 @@ export function useBoardAccount(): BoardAccountState {
         name: account.name,
         realName: account.realName,
         email: account.email,
-        listed,
+        listed: listRead !== "pending",
+        listFailed: listRead === "failed",
       };
 }
 
@@ -256,7 +260,9 @@ export async function refreshAccountBoards(): Promise<void> {
   const listed = await listedOf(await accountRequest(CLOUD_BOARD_ACCOUNT_ROUTE));
   if (reader === undefined || readBoardAccount()?.userId !== reader) return;
   if (listed !== null) applyAccountBoards(write, listed.boards);
-  appAtomRegistry.set(accountListSettledAtom, true);
+  if (listed !== null || appAtomRegistry.get(accountListReadAtom) === "pending") {
+    appAtomRegistry.set(accountListReadAtom, listed === null ? "failed" : "read");
+  }
 }
 
 /**
@@ -326,7 +332,7 @@ export function syncBoardAccount(session: BoardAccountSession | null): void {
   appAtomRegistry.set(boardAccountAtom, session);
   writeAccountBoards(null);
   cancelReopeningShares();
-  appAtomRegistry.set(accountListSettledAtom, false);
+  appAtomRegistry.set(accountListReadAtom, "pending");
   triedClaims.clear();
   const leaving = new Set(sharesOfOtherAccounts(readGuestShares(), session?.userId ?? null));
   // Claimed before claims were marked: known as the last account's only by its list.
@@ -358,7 +364,7 @@ export async function openAccountBoard(
 ): Promise<JoinedGuestShare | string | { readonly temporary: true }> {
   const tagged = options?.temporary === "tagged";
   const unreachable = () =>
-    tagged ? { temporary: true as const } : "Could not reach the board service.";
+    tagged ? { temporary: true as const } : "Could not reach the board service. Try again.";
   const unreadable = () =>
     tagged ? { temporary: true as const } : "Could not open this board. Try again.";
   const host = cloudBoardsHost();
@@ -416,7 +422,7 @@ export async function leaveAccountBoard(shareId: string): Promise<string | null>
     `${CLOUD_BOARD_ACCOUNT_ROUTE}?${GUEST_SHARE_PARAM}=${encodeURIComponent(shareId)}`,
     { method: "DELETE" },
   );
-  if (response === null || !response.ok) return "Could not reach the board service.";
+  if (response === null || !response.ok) return "Could not reach the board service. Try again.";
   forgetGuestShare(shareId);
   return null;
 }

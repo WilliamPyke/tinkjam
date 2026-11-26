@@ -2,7 +2,6 @@ import { type ServerLifecycleWelcomePayload } from "@t3tools/contracts";
 import { scopedProjectKey, scopeProjectRef } from "@t3tools/client-runtime/environment";
 import {
   Outlet,
-  Link,
   redirect,
   createRootRoute,
   type ErrorComponentProps,
@@ -15,6 +14,7 @@ import { useEffect, useEffectEvent, useState } from "react";
 
 import { APP_DISPLAY_NAME, APP_VERSION } from "../branding";
 import { AppSidebarLayout } from "../components/AppSidebarLayout";
+import { NotFoundPage } from "../components/NotFoundPage";
 import { CommandPalette } from "../components/CommandPaletteHost";
 import { CustomSnoozeDialogHost } from "../components/CustomSnoozeDialog";
 import { GuestShareDialogHost } from "../components/chat/GuestShareDialogHost";
@@ -133,29 +133,11 @@ export const Route = createRootRoute({
   },
   component: RootRouteView,
   errorComponent: RootRouteErrorView,
-  notFoundComponent: RootRouteNotFoundView,
+  notFoundComponent: NotFoundPage,
   head: () => ({
     meta: [{ name: "title", content: APP_DISPLAY_NAME }],
   }),
 });
-
-function RootRouteNotFoundView() {
-  return (
-    <main className="flex min-h-0 min-w-0 flex-1 items-center justify-center p-6">
-      <div className="flex max-w-sm flex-col items-center gap-4 text-center">
-        <TinkjamMark aria-hidden className="size-10" />
-        <h1 className="font-heading text-2xl leading-tight font-semibold tracking-brand text-foreground">
-          Nothing here
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          This link does not lead to anything in Tinkjam. The board may have been deleted, or the
-          link may be cut short.
-        </p>
-        <Button render={<Link to="/" replace />}>Go to your boards</Button>
-      </div>
-    </main>
-  );
-}
 
 function RootRouteView() {
   // Above every branch: app services raise toasts for the whole page, so the surface they write to
