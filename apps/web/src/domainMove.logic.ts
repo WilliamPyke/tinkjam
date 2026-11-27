@@ -15,7 +15,8 @@ const SHARES_KEY = "t3code:guest-shares:v1";
 const HASH_PREFIX = "#moved=";
 // `public/move.html`: a static page, so asking the older address does not load the app there.
 const MOVE_PAGE = "/move";
-const BOARD_LINK_PATH = "/guest";
+// A board link, in full or short (`guestPage.ts`).
+const isBoardLink = (path: string) => path === "/guest" || path.startsWith("/r/");
 const CLERK_DEV_BROWSER = "__clerk_db_jwt";
 // Small per-browser choices worth keeping. Each is copied only where the new address has none.
 const KEPT_KEYS = [
@@ -212,7 +213,7 @@ export function moveStep(input: {
   }
   // A board link opens without the round trip: the board needs nothing from the older address,
   // and the hand-over only adds what this address lacks, so the next other page can still ask.
-  if (input.path === BOARD_LINK_PATH) return { kind: "stay" };
+  if (isBoardLink(input.path)) return { kind: "stay" };
   if (input.moved || input.asked || !input.canStore || input.now >= ASKING_ENDS) {
     return { kind: "stay" };
   }

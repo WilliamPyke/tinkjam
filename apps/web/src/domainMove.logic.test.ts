@@ -247,6 +247,8 @@ describe("moving between our domains", () => {
     const board = { path: "/guest", search: "?host=boards.tinkjam.com" };
     expect(runAppPage(`${NEW}/guest?host=boards.tinkjam.com#invite`)).toBeNull();
     expect(step(board)).toEqual({ kind: "stay" });
+    expect(runAppPage(`${NEW}/r/blue-fox`)).toBeNull();
+    expect(step({ path: "/r/blue-fox", search: "", hash: "" })).toEqual({ kind: "stay" });
     expect(runAppPage(`${OLD}/guest?host=boards.tinkjam.com#invite`, { stored })).toBe(
       "/move?to=%2Fguest%3Fhost%3Dboards.tinkjam.com#invite",
     );
