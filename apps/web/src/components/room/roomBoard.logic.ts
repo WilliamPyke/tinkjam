@@ -1351,6 +1351,11 @@ export interface BoardEdit {
    * differs; a held note, until someone else deletes it.
    */
   readonly base: BoardValue | undefined;
+  /**
+   * What this person sent for it before, oldest first, which the room's copy may still pass on
+   * its way here: the copy moving to one of them is not someone else's change.
+   */
+  readonly sent?: ReadonlyArray<string>;
 }
 export type BoardEdits = Readonly<Record<string, BoardEdit>>;
 export const NO_BOARD_EDITS: BoardEdits = {};
@@ -1393,10 +1398,18 @@ const valueKey = (value: BoardValue | undefined): string => {
   ]);
 };
 
-const shows = (board: RoomBoard, edit: BoardEdit) => {
+/** The edit as the room's copy leaves it, or null once that copy moved past it. */
+const settled = (board: RoomBoard, edit: BoardEdit): BoardEdit | null => {
   const room = roomCopy(board, edit.target);
-  if (!edit.held) return valueKey(edit.base) === valueKey(room);
-  return edit.target.kind !== "note" || edit.base === undefined || room !== undefined;
+  if (edit.held) {
+    return edit.target.kind !== "note" || edit.base === undefined || room !== undefined
+      ? edit
+      : null;
+  }
+  const now = valueKey(room);
+  if (valueKey(edit.base) === now) return edit;
+  const seen = edit.sent?.indexOf(now) ?? -1;
+  return seen === -1 ? null : { ...edit, base: room, sent: edit.sent?.slice(seen + 1) ?? [] };
 };
 
 /**
@@ -1405,8 +1418,22 @@ const shows = (board: RoomBoard, edit: BoardEdit) => {
  * back to its base, as when someone else deletes a line this person drew.
  */
 export function settleBoardEdits(board: RoomBoard, edits: BoardEdits): BoardEdits {
-  const kept = Object.entries(edits).filter(([, edit]) => shows(board, edit));
-  return kept.length === Object.keys(edits).length ? edits : Object.fromEntries(kept);
+  let changed = false;
+  const kept = Object.entries(edits).flatMap(([key, edit]) => {
+    const now = settled(board, edit);
+    if (now !== edit) changed = true;
+    return now === null ? [] : [[key, now] as const];
+  });
+  return changed ? Object.fromEntries(kept) : edits;
+}
+
+/** Notes that the held `value` went to the room, as typing saved at a pause does. */
+export function boardEditSent(edits: BoardEdits, target: BoardTarget, value: BoardValue) {
+  const key = boardEditKey(target);
+  const edit = edits[key];
+  if (edit === undefined) return edits;
+  const sent = [...(edit.sent ?? []), valueKey(value ?? undefined)];
+  return { ...edits, [key]: { ...edit, sent } };
 }
 
 /**
@@ -1430,13 +1457,22 @@ export function putBoardEdit(
   value: BoardValue,
   held: boolean,
 ): BoardEdits {
+  const kept = settleBoardEdits(board, edits);
+  const key = boardEditKey(target);
+  const last = kept[key];
+  // What this person let go of before is on its way to the room ahead of this.
+  const sent = [
+    ...(last?.sent ?? []),
+    ...(last === undefined || last.held ? [] : [valueKey(last.value ?? undefined)]),
+  ];
   return {
-    ...settleBoardEdits(board, edits),
-    [boardEditKey(target)]: {
+    ...kept,
+    [key]: {
       target,
       value,
       held,
       base: roomCopy(board, target),
+      ...(sent.length === 0 ? {} : { sent }),
     },
   };
 }
@@ -1696,7 +1732,7 @@ export function resolveBoard(board: RoomBoard, edits: BoardEdits): RoomBoard {
   let edges = board.edges ?? [];
   const drawn: Array<RoomBoardEdge> = [];
   for (const edit of Object.values(edits)) {
-    if (!shows(board, edit)) continue;
+    if (settled(board, edit) === null) continue;
     const { target, value } = edit;
     if (target.kind === "card") {
       if (value !== null && "x" in value) positions[target.id] = { x: value.x, y: value.y };

@@ -197,6 +197,7 @@ import {
   boardChangeOutgrowsOlderHosts,
   boardChangeQueue,
   boardChangeQueueKey,
+  boardEditSent,
   boardCommentAgentAuthor,
   boardCommentLineTo,
   boardConnector,
@@ -2140,7 +2141,9 @@ export function RoomBoard({
     if (value === undefined || value === null || !("text" in value)) return;
     if (settledEdits[key] === undefined) return;
     pending.saved = true;
-    const change = boardChangeOf(target, settleBoardValue(value));
+    const saved = settleBoardValue(value);
+    const change = boardChangeOf(target, saved);
+    setEdits((current) => boardEditSent(current, target, saved));
     void queueChange(key, (retry) => onChange(change, retry), change);
   });
   const scheduleTypingSave = (target: BoardTarget, value: RoomBoardNote) => {

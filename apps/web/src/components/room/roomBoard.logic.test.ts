@@ -177,6 +177,7 @@ import {
   roomFetchCommand,
   screenToBoard,
   settleBoardEdits,
+  boardEditSent,
   boardEditsUnsent,
   settleBoardValue,
   visibleBoardRect,
@@ -834,6 +835,30 @@ describe("resolveBoard", () => {
       positions: { thread: { x: 0, y: 0 } },
       edges: [],
     });
+  });
+
+  it("keeps an undo over its own earlier changes as the room takes them, so redo is not skipped", () => {
+    const target = { kind: "note", id: "n" } as const;
+    const empty = { id: "n", text: "", x: 0, y: 0 };
+    const typed = { ...empty, text: "Ship it" };
+    const at = (notes: ReadonlyArray<RoomBoardNote>): RoomBoard => ({ positions: {}, notes });
+    // A new note, typed in with a pause that saved part of it, then taken back at once.
+    const added = putBoardEdit(at([]), NO_BOARD_EDITS, target, empty, false);
+    const typing = boardEditSent(
+      putBoardEdit(at([]), added, target, { ...empty, text: "Ship" }, true),
+      target,
+      { ...empty, text: "Ship" },
+    );
+    const written = putBoardEdit(at([]), typing, target, typed, false);
+    let edits = putBoardEdit(at([]), written, target, null, false);
+    const history = [{ target, before: null, after: typed }];
+    // The room catches up with the add and the typing before it takes the undo.
+    for (const room of [at([empty]), at([{ ...empty, text: "Ship" }]), at([typed])]) {
+      edits = settleBoardEdits(room, edits);
+      expect(resolveBoard(room, edits).notes).toEqual([]);
+      expect(boardHistoryChanges(resolveBoard(room, edits), history, "redo")).not.toBeNull();
+    }
+    expect(settleBoardEdits(at([]), edits)).toEqual(NO_BOARD_EDITS);
   });
 
   it("shows a line drawn again over the one going away, in the queue the removal went in", () => {
