@@ -21,8 +21,25 @@
           return;
         }
         if (location.hash.startsWith("#moved=")) return;
-        if (location.pathname === "/guest" || location.pathname.startsWith("/r/")) return;
+        if (location.pathname.startsWith("/r/")) return;
         try {
+          if (location.pathname === "/guest") {
+            let invite = "";
+            try {
+              invite = decodeURIComponent(location.hash.slice(1)).trim();
+            } catch {}
+            const shareId =
+              invite !== ""
+                ? invite.split(".")[0]
+                : new URLSearchParams(location.search).get("share");
+            const stored = window.localStorage.getItem("t3code:guest-shares:v1");
+            let held = [];
+            try {
+              held = JSON.parse(stored ?? "[]");
+            } catch {}
+            if (shareId && Array.isArray(held) && held.some((share) => share?.shareId === shareId))
+              return;
+          }
           if (window.localStorage.getItem(MOVED_KEY) !== null) return;
           if (window.sessionStorage.getItem(ASKED_KEY) !== null) return;
           window.localStorage.setItem(ASKED_KEY, "1");

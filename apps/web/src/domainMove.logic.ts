@@ -15,8 +15,6 @@ const SHARES_KEY = "t3code:guest-shares:v1";
 const HASH_PREFIX = "#moved=";
 // `public/move.html`: a static page, so asking the older address does not load the app there.
 const MOVE_PAGE = "/move";
-// A board link, in full or short (`guestPage.ts`).
-const isBoardLink = (path: string) => path === "/guest" || path.startsWith("/r/");
 const CLERK_DEV_BROWSER = "__clerk_db_jwt";
 // Small per-browser choices worth keeping. Each is copied only where the new address has none.
 const KEPT_KEYS = [
@@ -62,6 +60,36 @@ function fromBase64Url(encoded: string): string | null {
     );
   } catch {
     return null;
+  }
+}
+
+/**
+ * Whether a board link can open without asking the older address: this browser already holds the
+ * board it names (`guestStream.logic.ts` reads the invite the same way), or it is a short link,
+ * whose guest page asks once it loads.
+ */
+function boardLinkNeedsNothing(input: {
+  readonly path: string;
+  readonly search: string;
+  readonly hash: string;
+  readonly read: (key: string) => string | null;
+}): boolean {
+  if (input.path.startsWith("/r/")) return true;
+  if (input.path !== "/guest") return false;
+  let invite = "";
+  try {
+    invite = decodeURIComponent(input.hash.slice(1)).trim();
+  } catch {}
+  const shareId =
+    invite !== "" ? invite.split(".")[0] : new URLSearchParams(input.search).get("share");
+  if (!shareId) return false;
+  try {
+    const held: unknown = JSON.parse(input.read(SHARES_KEY) ?? "[]");
+    return (
+      Array.isArray(held) && held.some((share) => isRecord(share) && share.shareId === shareId)
+    );
+  } catch {
+    return false;
   }
 }
 
@@ -211,9 +239,7 @@ export function moveStep(input: {
       done: trusted || from === null,
     };
   }
-  // A board link opens without the round trip: the board needs nothing from the older address,
-  // and the hand-over only adds what this address lacks, so the next other page can still ask.
-  if (isBoardLink(input.path)) return { kind: "stay" };
+  if (boardLinkNeedsNothing(input)) return { kind: "stay" };
   if (input.moved || input.asked || !input.canStore || input.now >= ASKING_ENDS) {
     return { kind: "stay" };
   }

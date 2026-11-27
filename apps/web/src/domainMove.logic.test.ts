@@ -243,10 +243,34 @@ describe("moving between our domains", () => {
     const arrival = `${NEW}/join${packMove({ read: () => null, hash: "#invite" })}`;
     expect(runAppPage(arrival)).toBeNull();
 
-    // A board link opens at once; the next other page asks. The older address still hands over.
-    const board = { path: "/guest", search: "?host=boards.tinkjam.com" };
-    expect(runAppPage(`${NEW}/guest?host=boards.tinkjam.com#invite`)).toBeNull();
-    expect(step(board)).toEqual({ kind: "stay" });
+    // A board link asks first unless this browser holds that board: the older address may hold
+    // the guest who joined it there. A short link leaves that to the board link it opens.
+    const board = { path: "/guest", search: "?host=boards.tinkjam.com", hash: "#a.sig" };
+    const boardHref = `${NEW}/guest?host=boards.tinkjam.com#a.sig`;
+    const asksForBoard = step(board);
+    expect(asksForBoard).toMatchObject({ kind: "go", asking: true });
+    expect(runAppPage(boardHref)).toBe(asksForBoard.kind === "go" ? asksForBoard.href : null);
+    const held: Record<string, string> = { [SHARES]: JSON.stringify([share("a")]) };
+    for (const [name, page, over] of [
+      ["holds the board", { stored: held }, { read: (key: string) => held[key] ?? null }],
+      ["moved", { stored: { "tinkjam:moved:v1": "2026-11-20" } }, { moved: true }],
+    ] as const) {
+      expect(runAppPage(boardHref, page), name).toBeNull();
+      expect(step({ ...board, ...over }), name).toEqual({ kind: "stay" });
+    }
+    const reloaded = `${NEW}/guest?host=boards.tinkjam.com&share=a`;
+    expect(runAppPage(reloaded, { stored: held })).toBeNull();
+    expect(
+      step({
+        ...board,
+        search: new URL(reloaded).search,
+        hash: "",
+        read: (key) => held[key] ?? null,
+      }),
+    ).toEqual({ kind: "stay" });
+    const other: Record<string, string> = { [SHARES]: JSON.stringify([share("b")]) };
+    expect(runAppPage(boardHref, { stored: other })).not.toBeNull();
+    expect(step({ ...board, read: (key) => other[key] ?? null })).toMatchObject({ kind: "go" });
     expect(runAppPage(`${NEW}/r/blue-fox`)).toBeNull();
     expect(step({ path: "/r/blue-fox", search: "", hash: "" })).toEqual({ kind: "stay" });
     expect(runAppPage(`${OLD}/guest?host=boards.tinkjam.com#invite`, { stored })).toBe(
