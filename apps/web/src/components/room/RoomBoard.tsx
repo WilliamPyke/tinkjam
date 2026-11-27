@@ -2105,81 +2105,6 @@ export function RoomBoard({
     canEdit && onChange !== undefined && canUndoRoomAgentTurn(turn, viewer)
       ? (undone: boolean) => undoAgentTurn(turn, undone)
       : undefined;
-  const travel = (direction: "undo" | "redo") => {
-    if (!canEdit) return;
-    const stack = direction === "undo" ? history.undo : history.redo;
-    const newer =
-      direction === "undo" ? boardAgentTurnToUndo(shown, viewer, stack.at(-1)) : undefined;
-    if (newer !== undefined) {
-      undoAgentTurn(newer, true);
-      setHistory((current) => ({
-        ...current,
-        redo: boardHistoryWith(current.redo, { turnId: newer.id, seen: newer.at }),
-      }));
-      return;
-    }
-    const item = stack.at(-1);
-    if (item === undefined) return;
-    const now = { ...item, seen: boardAgentTurnsSeen(shown) };
-    if ("turnId" in item) {
-      const turn = shown.agentTurns?.find((candidate) => candidate.id === item.turnId);
-      setHistory((current) =>
-        direction === "undo"
-          ? {
-              undo: current.undo.slice(0, -1),
-              redo: turn === undefined ? current.redo : [...current.redo, item],
-            }
-          : {
-              undo: turn === undefined ? current.undo : [...current.undo, now],
-              redo: current.redo.slice(0, -1),
-            },
-      );
-      if (turn === undefined) {
-        toastManager.add({
-          type: "info",
-          title: direction === "undo" ? "Skipped an undo" : "Skipped a redo",
-          description: "The board no longer keeps that agent's work.",
-        });
-        return;
-      }
-      undoAgentTurn(turn, direction === "undo");
-      return;
-    }
-    const steps = boardEntryWithAttached(
-      shown,
-      item.steps,
-      direction,
-      viewer,
-      (id) =>
-        surfaceRef.current?.querySelector<HTMLElement>(
-          `[data-board-item="${CSS.escape(noteRef(id))}"]`,
-        )?.offsetHeight,
-    );
-    const changes = boardHistoryChanges(shown, steps, direction);
-    setHistory((current) =>
-      direction === "undo"
-        ? {
-            undo: current.undo.slice(0, -1),
-            redo: changes === null ? current.redo : [...current.redo, { ...item, steps }],
-          }
-        : {
-            undo: changes === null ? current.undo : [...current.undo, { ...now, steps }],
-            redo: current.redo.slice(0, -1),
-          },
-    );
-    if (changes === null) {
-      toastManager.add({
-        type: "info",
-        title: direction === "undo" ? "Skipped an undo" : "Skipped a redo",
-        description: "Someone changed that card since, so it was left as it is.",
-      });
-      return;
-    }
-    const queues = boardHistoryQueues(changes);
-    withFlag(unrecorded, () => {
-      changes.forEach(({ target, value }, index) => send(target, value, queues[index]));
-    });
-  };
   // A link card's title read from its source, once it arrives: only while nobody named it.
   const nameLink = useStableCallback((id: string, title: string) => {
     const note = shown.notes.find((candidate) => candidate.id === id);
@@ -2192,31 +2117,6 @@ export function RoomBoard({
     }
     send({ kind: "note", id }, settleBoardValue({ ...note, text: title }));
   });
-  // A toast's Undo takes back its own deleting, while it is still the newest step.
-  const undoDeletion = useStableCallback((steps: BoardHistoryEntry) => {
-    const last = history.undo.at(-1);
-    if (last !== undefined && "steps" in last && last.steps === steps) travel("undo");
-  });
-  // Undo and redo reach the board while focus rests on a plain control outside it, such as the
-  // sidebar's toggle; fields, dialogs, menus and other widgets keep their keys.
-  const historyKeyOutside = useStableCallback((event: KeyboardEvent) => {
-    const surface = surfaceRef.current;
-    const target = event.target;
-    if (event.defaultPrevented || surface === null || surface.getClientRects().length === 0) {
-      return;
-    }
-    if (target instanceof Node && surface.contains(target)) return;
-    if (target instanceof Element && !isBoardKeyOutside(target)) return;
-    const direction = boardHistoryKey(event);
-    if (direction === null || !canEdit) return;
-    event.preventDefault();
-    travel(direction);
-  });
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keys pressed with focus outside the board reach only the window
-  useEffect(() => {
-    window.addEventListener("keydown", historyKeyOutside);
-    return () => window.removeEventListener("keydown", historyKeyOutside);
-  }, [historyKeyOutside]);
   // The room hears of a drag or a draft once, when it ends.
   const letGo = (target: BoardTarget, after?: string) => {
     const key = boardEditKey(target);
@@ -2455,6 +2355,115 @@ export function RoomBoard({
     const last = held.current.get(noteRef(note.id));
     return last !== undefined && "text" in last ? last : note;
   };
+  const travel = (direction: "undo" | "redo") => {
+    if (!canEdit) return;
+    // An undo pressed while arrow-key nudges are still settling takes the nudge back, not an
+    // older step: the nudge never reached the room, so it is simply as if it never happened.
+    if (direction === "undo" && nudgeTimer.current !== null) {
+      clearTimeout(nudgeTimer.current);
+      nudgeTimer.current = null;
+      nudged.current.clear();
+      cancelGesture();
+      return;
+    }
+    const stack = direction === "undo" ? history.undo : history.redo;
+    const newer =
+      direction === "undo" ? boardAgentTurnToUndo(shown, viewer, stack.at(-1)) : undefined;
+    if (newer !== undefined) {
+      undoAgentTurn(newer, true);
+      setHistory((current) => ({
+        ...current,
+        redo: boardHistoryWith(current.redo, { turnId: newer.id, seen: newer.at }),
+      }));
+      return;
+    }
+    const item = stack.at(-1);
+    if (item === undefined) return;
+    const now = { ...item, seen: boardAgentTurnsSeen(shown) };
+    if ("turnId" in item) {
+      const turn = shown.agentTurns?.find((candidate) => candidate.id === item.turnId);
+      setHistory((current) =>
+        direction === "undo"
+          ? {
+              undo: current.undo.slice(0, -1),
+              redo: turn === undefined ? current.redo : [...current.redo, item],
+            }
+          : {
+              undo: turn === undefined ? current.undo : [...current.undo, now],
+              redo: current.redo.slice(0, -1),
+            },
+      );
+      if (turn === undefined) {
+        toastManager.add({
+          type: "info",
+          title: direction === "undo" ? "Skipped an undo" : "Skipped a redo",
+          description: "The board no longer keeps that agent's work.",
+        });
+        return;
+      }
+      undoAgentTurn(turn, direction === "undo");
+      return;
+    }
+    const steps = boardEntryWithAttached(
+      shown,
+      item.steps,
+      direction,
+      viewer,
+      (id) =>
+        surfaceRef.current?.querySelector<HTMLElement>(
+          `[data-board-item="${CSS.escape(noteRef(id))}"]`,
+        )?.offsetHeight,
+    );
+    const changes = boardHistoryChanges(shown, steps, direction);
+    setHistory((current) =>
+      direction === "undo"
+        ? {
+            undo: current.undo.slice(0, -1),
+            redo: changes === null ? current.redo : [...current.redo, { ...item, steps }],
+          }
+        : {
+            undo: changes === null ? current.undo : [...current.undo, { ...now, steps }],
+            redo: current.redo.slice(0, -1),
+          },
+    );
+    if (changes === null) {
+      toastManager.add({
+        type: "info",
+        title: direction === "undo" ? "Skipped an undo" : "Skipped a redo",
+        description: "Someone changed that card since, so it was left as it is.",
+      });
+      return;
+    }
+    const queues = boardHistoryQueues(changes);
+    withFlag(unrecorded, () => {
+      changes.forEach(({ target, value }, index) => send(target, value, queues[index]));
+    });
+  };
+  // A toast's Undo takes back its own deleting, while it is still the newest step.
+  const undoDeletion = useStableCallback((steps: BoardHistoryEntry) => {
+    const last = history.undo.at(-1);
+    if (last !== undefined && "steps" in last && last.steps === steps) travel("undo");
+  });
+  // Undo and redo reach the board while focus rests on a plain control outside it, such as the
+  // sidebar's toggle; fields, dialogs, menus and other widgets keep their keys.
+  const historyKeyOutside = useStableCallback((event: KeyboardEvent) => {
+    const surface = surfaceRef.current;
+    const target = event.target;
+    if (event.defaultPrevented || surface === null || surface.getClientRects().length === 0) {
+      return;
+    }
+    if (target instanceof Node && surface.contains(target)) return;
+    if (target instanceof Element && !isBoardKeyOutside(target)) return;
+    const direction = boardHistoryKey(event);
+    if (direction === null || !canEdit) return;
+    event.preventDefault();
+    travel(direction);
+  });
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keys pressed with focus outside the board reach only the window
+  useEffect(() => {
+    window.addEventListener("keydown", historyKeyOutside);
+    return () => window.removeEventListener("keydown", historyKeyOutside);
+  }, [historyKeyOutside]);
   // Where a resize from a side or corner takes a card (`ref`, held as `key`): the pointer's way,
   // its moving edges snapped unless Ctrl or Cmd is held. The opposite edges stay where they are.
   const resized = (

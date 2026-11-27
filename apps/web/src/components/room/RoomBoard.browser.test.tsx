@@ -1050,6 +1050,26 @@ describe("RoomBoard keys and pointer", () => {
     expect(puts(onChange)[1]).toMatchObject({ noteId: "a", x: 0, y: 0 });
   });
 
+  it("undoes a nudge pressed right before Ctrl+Z, instead of skipping it or undoing an older step", async () => {
+    const board = renderBoard([{ id: "a", text: "First", x: 0, y: 0 }]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    await userEvent.click(headerIn(screen.container, "a"));
+    const item = () => {
+      const element = screen.container.querySelector<HTMLElement>('[data-board-item="note:a"]');
+      if (element === null) throw new Error("The board did not draw the note");
+      return element;
+    };
+    const restingX = item().getBoundingClientRect().left;
+    // The nudge is still settling when Ctrl+Z lands: undo must take the nudge back at once.
+    await userEvent.keyboard("{ArrowRight}{Control>}z{/Control}");
+    await vi.waitFor(() => expect(item().getBoundingClientRect().left).toBeCloseTo(restingX, 0));
+    // The next nudge settling is the clock for the first: it is the only move the room hears of.
+    await userEvent.keyboard("{ArrowRight}{ArrowRight}");
+    await vi.waitFor(() => expect(puts(onChange)).toHaveLength(1));
+    expect(puts(onChange)[0]).toMatchObject({ noteId: "a", x: 8, y: 0 });
+  });
+
   it("says nothing of resolved comments until one is resolved, and then counts it once", async () => {
     const comment = { id: "c", text: "Hm", x: 300, y: 300, kind: "comment" as const };
     {
