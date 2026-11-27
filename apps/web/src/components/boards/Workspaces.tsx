@@ -549,7 +549,7 @@ function MemberRow({
     const confirmed = await confirm(
       [
         `Remove ${member.name} from ${workspace.name}?`,
-        "Its boards go from their account; their cards stay, with their name. Each board's link sharing stays as it is: a board with it on can still be opened by anyone with its link. To close one, open its Share and turn link sharing off.",
+        `Its boards go from their account; their cards stay, with their name. Signed in, ${member.name} can no longer open them, even with a link. Link sharing stays as it is for everyone else: to close it on a board, open its Share and turn link sharing off.`,
       ].join("\n"),
       "Remove person",
     );
