@@ -286,7 +286,7 @@ export function CloudBoardSharing({
   };
 
   const shareLabel = `Share this board. ${here.length <= 1 ? "Only you" : `${here.length} people`} here now.`;
-  // Who is here, as overlapping faces beside Share. A narrow board keeps two; the narrowest none.
+  // Who is here, as overlapping faces beside Share; a narrower board folds them behind its menu.
   const faces: ReactNode =
     here.length === 0 ? null : (
       <span
@@ -312,6 +312,35 @@ export function CloudBoardSharing({
           </span>
         ) : null}
       </span>
+    );
+  // A phone's header has room for three circles: faces, or two and a count. They open Share, which
+  // lists everyone.
+  const phoneFaces: ReactNode =
+    here.length === 0 ? null : (
+      <button
+        type="button"
+        aria-label={
+          here.length === 1 ? "1 person here. See who" : `${here.length} people here. See who`
+        }
+        className="hidden shrink-0 items-center -space-x-1.5 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset @max-xl/board:flex pointer-coarse:after:absolute pointer-coarse:after:-inset-2 relative"
+        onClick={() => setOpen(true)}
+        data-cloud-board-phone-faces
+      >
+        {here.slice(0, here.length > 3 ? 2 : 3).map((guest) => (
+          <PersonDot
+            key={guest.id}
+            color={boardCursorColor(guests, guest.id)}
+            className="size-6 text-2xs font-semibold ring-2 ring-background"
+          >
+            {initialOf(guest.name)}
+          </PersonDot>
+        ))}
+        {here.length > 3 ? (
+          <span className="inline-grid h-6 min-w-6 place-items-center rounded-full bg-muted px-1 text-2xs font-semibold text-muted-foreground tabular-nums ring-2 ring-background">
+            +{here.length - 2}
+          </span>
+        ) : null}
+      </button>
     );
   const shareMark: ReactNode = (
     <>
@@ -427,6 +456,7 @@ export function CloudBoardSharing({
         </Button>
       )}
       {faces}
+      {phoneFaces}
       {asSheet ? (
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger
