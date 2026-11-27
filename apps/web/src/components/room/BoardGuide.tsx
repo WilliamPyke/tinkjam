@@ -168,6 +168,7 @@ export function BoardGuide({
       {open ? (
         <div
           data-board-guide="open"
+          data-board-chrome="bottom"
           onKeyDown={(event) => {
             if (event.key !== "Escape") return;
             event.preventDefault();

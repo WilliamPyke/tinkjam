@@ -26,12 +26,20 @@ export function firstBoardView(input: {
   /** The chrome floating over the board's top and bottom, in screen pixels. */
   readonly covered: { readonly top: number; readonly bottom: number };
   readonly margin: number;
+  /** A board just made from a template opens whole, even when that is smaller than reading size. */
+  readonly forceFit?: boolean;
 }): { readonly view: BoardView; readonly whole: boolean } {
   const { rects, area, covered, margin } = input;
   const fit = fitBoardOnSurface(rects, area, covered, margin);
   const bounds = boardBounds(rects);
-  if (bounds === null || area.width < NARROW_WIDTH || fit.zoom >= BOARD_FIRST_VIEW_MIN_ZOOM)
+  if (
+    bounds === null ||
+    area.width < NARROW_WIDTH ||
+    input.forceFit === true ||
+    fit.zoom >= BOARD_FIRST_VIEW_MIN_ZOOM
+  ) {
     return { view: fit, whole: true };
+  }
   const target =
     input.start ??
     rects.reduce((first, rect) =>
