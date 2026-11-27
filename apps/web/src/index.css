@@ -1978,6 +1978,29 @@ body {
   background-image: none;
 }
 
+/* Clerk shows its own password feedback once the field is touched. Before then, the account form
+   still needs the rule in sight; the aria hook keeps this quiet once Clerk's live text takes over. */
+[data-sign-in-form]
+  .cl-formField__password:has(input[autocomplete="new-password"]:not([aria-describedby])) {
+  position: relative;
+  padding-bottom: 1.625rem;
+}
+
+[data-sign-in-form]
+  .cl-formField__password:has(input[autocomplete="new-password"]:not([aria-describedby]))::after {
+  content: "At least 15 characters.";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  text-align: left;
+}
+
 /* Selected text takes the theme's focus colour, so every theme selects in its own accent. */
 ::selection {
   background-color: color-mix(in srgb, var(--ring) 24%, transparent);
