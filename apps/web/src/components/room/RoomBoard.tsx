@@ -1316,6 +1316,9 @@ export function RoomBoard({
   const unsavedView = useRef<BoardView | null>(null);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const fitted = useRef(false);
+  // The view the board opened on, refitted as the surface settles (a sidebar folding as the board
+  // opens) until the viewer moves it.
+  const openedOn = useRef<BoardView | null>(null);
   // The view the board opened on when it showed only its start; a hint offers the rest until it moves.
   const [firstView, setFirstView] = useState<BoardView | null>(null);
   const canEdit = room !== null && onChange !== undefined;
@@ -1558,7 +1561,14 @@ export function RoomBoard({
     shown.notes.length >= fitAwaits;
   const fitFirst = useStableCallback(() => {
     const area = boardAreaOf(surfaceRef.current);
-    if (fitted.current || !fittable || area === null || area.width === 0 || area.height === 0) {
+    const refit = fitted.current && view === openedOn.current;
+    if (
+      (fitted.current && !refit) ||
+      !fittable ||
+      area === null ||
+      area.width === 0 ||
+      area.height === 0
+    ) {
       return;
     }
     fitted.current = true;
@@ -1572,16 +1582,17 @@ export function RoomBoard({
       covered: chromeCoverOf(surfaceRef.current),
       margin: FIT_MARGIN,
     });
+    const opens =
+      refit ||
+      view === INITIAL_BOARD_VIEW ||
+      (view === remembered && openingBoardView(view, area, rects) === null);
     setFirstView(first.whole ? null : first.view);
-    setView((current) =>
-      current === INITIAL_BOARD_VIEW ||
-      (current === remembered && openingBoardView(current, area, rects) === null)
-        ? first.view
-        : current,
-    );
+    if (!opens) return;
+    openedOn.current = first.view;
+    setView(first.view);
   });
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- the first view is measured from the cards and the surface as the browser laid them out
-  useLayoutEffect(fitFirst, [fitFirst, fittable]);
+  useLayoutEffect(fitFirst, [fitFirst, fittable, surfaceSize]);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keeps the view in this device's storage, written once it settles
   useEffect(() => {
     if (viewKey === undefined || !fitted.current) return;

@@ -186,6 +186,24 @@ describe("RoomBoard view", () => {
     await expect.element(screen.getByText("50%", { exact: true })).not.toBeInTheDocument();
   });
 
+  it("fits again when the board widens as it opens, as when the app's sidebar folds", async () => {
+    const board = renderBoard([{ id: "a", text: "First", x: 0, y: 0 }], undefined, {
+      containerSize: { width: 700, height: 500 },
+    });
+    await using screen = await board.screen;
+    const surface = screen.getByRole("application", { name: "Room board" }).element();
+    const card = screen.container.querySelector('[data-board-item="note:a"]');
+    if (card === null) throw new Error("The board did not draw the note");
+    // The fit centres the cards in what the floating chrome leaves, the same at either width.
+    const offCentre = () => middleOf(card).x - middleOf(surface).x;
+    await vi.waitFor(() => expect(card.getBoundingClientRect().width).toBeGreaterThan(0));
+    const fitted = offCentre();
+
+    screen.container.style.width = "1100px";
+    await vi.waitFor(() => expect(surface.clientWidth).toBeGreaterThan(1000));
+    await vi.waitFor(() => expect(Math.abs(offCentre() - fitted)).toBeLessThan(2));
+  });
+
   it("exposes the view switch as radios with the checked view as its tab stop after a reload", async () => {
     using _page = visit(`${window.location.pathname}?view=plan`);
     const board = renderBoard([]);
