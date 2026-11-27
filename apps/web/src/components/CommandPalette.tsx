@@ -189,6 +189,7 @@ import {
   browseInputEndPaddingClass,
   buildBrowseGroups,
   buildRootGroups,
+  buildBoardActionItems,
   buildLinkedThreadActionItems,
   buildCommandPaletteRows,
   enumerateCommandPaletteItems,
@@ -255,6 +256,8 @@ import { openLinkPullRequestDialog } from "./pullRequest/LinkPullRequestDialog";
 import { canShareWithGuestAtom } from "./chat/guestShareAvailability";
 import { openGuestShareDialog } from "./chat/guestShareDialogState";
 import { roomBoardLocation } from "./room/roomBoardNavigation";
+import { listHomeBoards } from "./boards/boardsHome.logic";
+import { openHomeBoard, useHomeBoardSources } from "./boards/homeBoards";
 import { openBoardTemplates, useStartNewBoard } from "./boards/newBoard";
 import { openUseInAnotherApp } from "./mcp/UseInAnotherAppDialogHost";
 import { openNewTeamDialog } from "./teams/NewTeamDialog";
@@ -877,6 +880,22 @@ function OpenCommandPaletteDialog(props: {
     (item) => projectJumpItems.get(item.value) ?? item,
   );
   const boardEntries = useBoardPaletteEntries(deferredQuery);
+  const homeBoardSources = useHomeBoardSources();
+  const boardListItems =
+    deferredQuery.trim() === ""
+      ? []
+      : buildBoardActionItems({
+          boards: listHomeBoards(homeBoardSources),
+          icon: <PanelsTopLeftIcon className={ITEM_ICON_CLASS} />,
+          openBoard: async (board) => {
+            const location = await openHomeBoard(board);
+            if (typeof location === "string") {
+              toastManager.add({ type: "error", title: location });
+              return;
+            }
+            await navigate(location);
+          },
+        });
 
   const {
     threadItems: allThreadItems,
@@ -1972,6 +1991,7 @@ function OpenCommandPaletteDialog(props: {
         : allThreadItems,
     threadMessageItems: simpleShell || isLinkedThreadSearch ? [] : threadMessageItems,
     boardSearchItems: boardEntries.finds,
+    boardListItems,
     now: searchNow,
   });
 
@@ -2574,7 +2594,9 @@ function OpenCommandPaletteDialog(props: {
     newProjectFlow !== null
       ? "Project name"
       : (remoteProjectInputPlaceholder(addProjectCloneFlow) ??
-        getCommandPaletteInputPlaceholder(paletteMode));
+        (simpleShell && paletteMode === "root"
+          ? "Search boards and commands..."
+          : getCommandPaletteInputPlaceholder(paletteMode)));
   const isSubmenu = paletteMode === "submenu" || paletteMode === "submenu-browse";
   const hasHighlightedBrowseItem = highlightedItemValue?.startsWith("browse:") ?? false;
   const canWriteSourceControl = useEnvironmentScope(
@@ -3155,7 +3177,9 @@ function OpenCommandPaletteDialog(props: {
                   }
                 : isThreadSearchPending
                   ? { emptyStateMessage: "Searching thread messages…" }
-                  : {})}
+                  : simpleShell
+                    ? { emptyStateMessage: "No matching boards or commands." }
+                    : {})}
       />
     </CommandPaletteContent>
   );
