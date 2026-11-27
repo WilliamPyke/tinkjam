@@ -83,7 +83,7 @@ function renderBoard(
       cursorLayer={null}
       onOpenThread={() => {}}
       onOpenReply={() => {}}
-      onChange={onChange}
+      onChange={(change) => onChange(change)}
       onCursor={onCursor}
       onUseNote={onUseNote}
       onTakeTask={onTakeTask}

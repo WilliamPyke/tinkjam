@@ -206,14 +206,15 @@ const boardChangeRetry = (tries: number, signal: AbortSignal) =>
   });
 
 /**
- * Sends one change to the room's board. Resolves to whether the owner's server took it. A host
- * that is down or busy gets the same change again until it answers, so the board's queue keeps
- * later changes to the same card behind it. A refusal, or leaving or ending the board, resolves
- * false at once.
+ * Sends one change to the room's board; resolves to whether it was taken. A host down or busy gets
+ * it again until it answers, unless `retry` says a newer change replaced it, which counts as taken.
+ * The board's queue keeps later changes to the card behind it. A refusal, or leaving or ending the
+ * board, resolves false at once.
  */
 export async function postBoardChange(
   endpoint: GuestShareEndpoint,
   change: RoomBoardChange,
+  retry?: () => boolean,
 ): Promise<boolean> {
   let settle: (() => void) | null = null;
   const controller = boardChangeRetryController(endpoint.shareId);
@@ -231,6 +232,7 @@ export async function postBoardChange(
       }
       if (settle === null) settle = holdBoardChange(endpoint.shareId);
       if (!(await boardChangeRetry(tries, controller.signal))) return false;
+      if (retry?.() === false) return true;
     }
   } finally {
     settle?.();
@@ -1078,7 +1080,9 @@ function GuestThreadSession({
                 revealRoomReply(messageId);
                 showRoomConversation();
               }}
-              onChange={viewOnly ? undefined : (change) => postBoardChange(endpoint, change)}
+              onChange={
+                viewOnly ? undefined : (change, retry) => postBoardChange(endpoint, change, retry)
+              }
               onChangeAsPageCloses={
                 viewOnly
                   ? undefined
