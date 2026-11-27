@@ -1527,14 +1527,34 @@ function PlanListRow({
       }}
     >
       <PlanStatusMark status={status} />
-      <span
-        className={cn(
-          "min-w-0 flex-1 truncate text-sm font-medium",
-          done && "text-muted-foreground line-through",
-          task.text.trim() === "" && "text-muted-foreground italic",
+      <span className="min-w-0 flex-1">
+        <span
+          className={cn(
+            "block truncate text-sm font-medium",
+            done && "text-muted-foreground line-through",
+            task.text.trim() === "" && "text-muted-foreground italic",
+          )}
+        >
+          {label}
+        </span>
+        {assignee === undefined && task.due === undefined ? null : (
+          <span className="mt-1 flex min-w-0 items-center gap-1.5 sm:hidden">
+            {assignee === undefined ? null : (
+              <span className="flex min-w-0 items-center gap-1 text-2xs text-muted-foreground">
+                <PersonDot
+                  color={boardCursorColor(guests, assignee.guestId)}
+                  className="size-4 text-4xs font-semibold"
+                >
+                  {boardPersonName(people, assignee.guestId).charAt(0).toUpperCase()}
+                </PersonDot>
+                <span className="truncate">{boardPersonName(people, assignee.guestId)}</span>
+              </span>
+            )}
+            {task.due === undefined ? null : (
+              <TaskDueChip due={task.due} today={today} done={done} />
+            )}
+          </span>
         )}
-      >
-        {label}
       </span>
       <span className="hidden w-28 min-w-0 items-center gap-1.5 text-xs text-muted-foreground sm:flex">
         {assignee === undefined ? null : (
@@ -1550,6 +1570,7 @@ function PlanListRow({
         )}
       </span>
       <span
+        data-plan-priority
         className={cn(
           task.priority === undefined ? "hidden sm:flex sm:w-20" : "flex w-auto sm:w-20",
         )}

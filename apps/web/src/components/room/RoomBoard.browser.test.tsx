@@ -1289,7 +1289,15 @@ describe("RoomBoard keys and pointer", () => {
     const longTitle = "Decide the launch story and every step the team still owes";
     const board = renderBoard(
       [
-        { id: "long", text: longTitle, x: 300, y: 300, kind: "task" },
+        {
+          id: "long",
+          text: longTitle,
+          x: 300,
+          y: 300,
+          kind: "task",
+          assignee: {},
+          due: "2099-01-15",
+        },
         { id: "second", text: "Second", x: 300, y: 300, kind: "task" },
       ],
       undefined,
@@ -1313,11 +1321,15 @@ describe("RoomBoard keys and pointer", () => {
 
     const title = screen.getByRole("list", { name: "Tasks" }).getByText(longTitle).element();
     const row = title.closest("li");
-    const priority = title.nextElementSibling?.nextElementSibling;
+    const priority = row?.querySelector("[data-plan-priority]");
     if (row === null || priority === null || priority === undefined) {
       throw new Error("The list row did not draw its priority cell");
     }
     expect(priority.getBoundingClientRect().width).toBe(0);
+
+    const rows = screen.getByRole("list", { name: "Tasks" });
+    await expect.element(rows.getByText("You").first()).toBeVisible();
+    await expect.element(rows.getByText(/2099/).first()).toBeVisible();
   });
 
   it("closes a Plan column's sort menu after a sort is chosen", async () => {
