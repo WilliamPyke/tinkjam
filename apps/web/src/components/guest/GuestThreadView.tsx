@@ -174,6 +174,30 @@ const BOARD_CLIENT = randomUUID();
 let boardSeq = 0;
 const nextBoardSeq = () => (boardSeq += 1);
 
+/**
+ * Changes this page sent to each board that the host has not answered, which a page closing sends
+ * again with the rest, as one may not have left the browser yet. Only those the host takes once by
+ * their place in the page's order, so a copy that arrives second changes nothing.
+ */
+const unansweredBoardChanges = new Map<
+  string,
+  Map<number, { readonly change: RoomBoardChange; resent: boolean }>
+>();
+const BOARD_CHANGES_SENT_AGAIN: ReadonlySet<RoomBoardChange["type"]> = new Set<
+  RoomBoardChange["type"]
+>([
+  "note.put",
+  "note.remove",
+  "card.move",
+  "card.resize",
+  "edge.put",
+  "edge.remove",
+  "edge.shape",
+  "edge.pin",
+]);
+// Keepalive requests share 64 KiB of body; the rest is left for the pointer leaving the board.
+const BOARD_CLOSE_MAX_BYTES = 60 * 1024;
+
 const boardChangeTaken = (status: number | null) =>
   status !== null && status >= 200 && status < 300;
 
@@ -207,7 +231,7 @@ const decodeChangesResult = Schema.decodeUnknownOption(RoomBoardChangesResult);
  * Sends changes as the page closes, in a way it outlives, and says which were taken. A cloud
  * board's host takes them in one request and in this order; a machine's room takes each alone.
  */
-async function sendBoardChangesAsPageCloses(
+export async function sendBoardChangesAsPageCloses(
   endpoint: GuestShareEndpoint,
   changes: ReadonlyArray<RoomBoardChange>,
   cloud: boolean,
@@ -221,10 +245,25 @@ async function sendBoardChangesAsPageCloses(
       ),
     );
   }
-  const request: RoomBoardChangesRequest = {
+  const fresh = changes.map((change) => ({ seq: nextBoardSeq(), change }));
+  const again = [...(unansweredBoardChanges.get(endpoint.shareId) ?? [])]
+    .filter(([, sent]) => !sent.resent)
+    .toSorted(([a], [b]) => a - b);
+  const requestOf = () => ({
     client: BOARD_CLIENT,
-    changes: changes.map((change) => ({ seq: nextBoardSeq(), change })),
-  };
+    changes: [...again.map(([seq, { change }]) => ({ seq, change })), ...fresh],
+  });
+  let request: RoomBoardChangesRequest = requestOf();
+  // Past the limit, the oldest sent before goes first: it most likely arrived already.
+  while (
+    again.length > 0 &&
+    new TextEncoder().encode(JSON.stringify(request)).byteLength > BOARD_CLOSE_MAX_BYTES
+  ) {
+    again.shift();
+    request = requestOf();
+  }
+  if (request.changes.length === 0) return [];
+  for (const [, sent] of again) sent.resent = true;
   try {
     const response = await guestShareRequest(endpoint, GUEST_BOARD_CHANGES_ROUTE, {
       init: {
@@ -239,7 +278,8 @@ async function sendBoardChangesAsPageCloses(
       : Option.none();
     return changes.map(
       (_, index) =>
-        Option.isSome(answer) && boardChangeTaken(answer.value.results[index]?.status ?? null),
+        Option.isSome(answer) &&
+        boardChangeTaken(answer.value.results[again.length + index]?.status ?? null),
     );
   } catch {
     return changes.map(() => false);
@@ -281,6 +321,11 @@ export async function postBoardChange(
   const controller = boardChangeRetryController(endpoint.shareId);
   // Its tries are the same change, so the host takes it once and never over a newer one.
   const seq = nextBoardSeq();
+  const unanswered = BOARD_CHANGES_SENT_AGAIN.has(change.type)
+    ? (unansweredBoardChanges.get(endpoint.shareId) ??
+      unansweredBoardChanges.set(endpoint.shareId, new Map()).get(endpoint.shareId))
+    : undefined;
+  unanswered?.set(seq, { change, resent: false });
   try {
     for (let tries = 0; ; tries += 1) {
       if (controller.signal.aborted) return false;
@@ -298,6 +343,7 @@ export async function postBoardChange(
       if (retry?.() === false) return true;
     }
   } finally {
+    unanswered?.delete(seq);
     settle?.();
   }
 }

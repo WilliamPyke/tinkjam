@@ -1186,7 +1186,7 @@ describe("boardChangeQueue", () => {
     expect(requests).toEqual([3]);
     expect(flushed).toEqual([undo, redo, put("d", "fourth")]);
     flushNow();
-    expect(requests).toEqual([3]);
+    expect(requests).toEqual([3, 0]);
     roomTakesAdd(true);
     await Promise.all([added, settle, ...results]);
     // A flushed change the room did not take is sent again in its turn, and so is the redo

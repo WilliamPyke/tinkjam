@@ -1553,10 +1553,10 @@ export function boardChangeQueue(hold?: () => () => void) {
     return next;
   }
   /**
-   * Sends every change still waiting its turn now, in the order they were queued, in one call of
-   * `sendNow`, which must survive the page going away and answers each. A change behind one that
-   * cannot go this way stays queued, and one sent here is not sent again unless it was not taken
-   * or a change ahead of it was sent again after it.
+   * Sends the changes waiting their turn now, in order, in one call of `sendNow`, which outlives
+   * the page and answers each (even with none waiting). One behind a change that cannot go this
+   * way stays queued; one sent here is not sent again unless it was not taken or a change ahead
+   * of it was sent again after it.
    */
   const flush = (
     sendNow: (changes: ReadonlyArray<RoomBoardChange>) => Promise<ReadonlyArray<boolean>>,
@@ -1585,7 +1585,6 @@ export function boardChangeQueue(hold?: () => () => void) {
       bytes += size;
       going.push({ entry, change });
     }
-    if (going.length === 0) return;
     const answers = sendNow(going.map(({ change }) => change)).catch(
       (): ReadonlyArray<boolean> => [],
     );
