@@ -11,17 +11,13 @@ export const BOARD_FIRST_VIEW_MIN_ZOOM = 0.7;
 /** How near a board too big to read whole opens on its start: readable, with what is around it. */
 const BOARD_FIRST_VIEW_ZOOM = 0.75;
 const NARROW_WIDTH = 640;
-const NARROW_GUTTER = 16;
 const CHROME_GAP = 12;
-// The "Showing where to start" hint sits under the header's end; the start opens clear of it. A
-// phone gets the same view, not the whole board, which is too small to read there.
+// The "Showing where to start" hint sits under the header's end; the start opens clear of it.
 const HINT_ROOM = 40;
 
 /**
- * The view a board opens with for someone who has no view of it saved. The whole board when it
- * reads at 70% or more; else its start (`start`: the card or section it marks, or null for its
- * first card) at about 75%, centred, but never past the board's own top and left edges, and from
- * the start's top-left when even that does not fit. `whole` says which, so a hint can offer the rest.
+ * The board's first view: the whole board when readable, and always on a phone; otherwise its
+ * start (or first card) at about 75%, clear of the board's edges and chrome. `whole` says which.
  */
 export function firstBoardView(input: {
   readonly rects: ReadonlyArray<BoardRect>;
@@ -34,13 +30,14 @@ export function firstBoardView(input: {
   const { rects, area, covered, margin } = input;
   const fit = fitBoardOnSurface(rects, area, covered, margin);
   const bounds = boardBounds(rects);
-  if (bounds === null || fit.zoom >= BOARD_FIRST_VIEW_MIN_ZOOM) return { view: fit, whole: true };
+  if (bounds === null || area.width < NARROW_WIDTH || fit.zoom >= BOARD_FIRST_VIEW_MIN_ZOOM)
+    return { view: fit, whole: true };
   const target =
     input.start ??
     rects.reduce((first, rect) =>
       rect.y < first.y || (rect.y === first.y && rect.x < first.x) ? rect : first,
     );
-  const side = area.width < NARROW_WIDTH ? NARROW_GUTTER : margin;
+  const side = margin;
   const top = Math.max(side, covered.top + CHROME_GAP + HINT_ROOM);
   const room = {
     width: Math.max(1, area.width - side * 2),
