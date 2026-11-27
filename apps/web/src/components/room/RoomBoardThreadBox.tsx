@@ -66,7 +66,7 @@ function BoxReply({
 }) {
   const [source, setSource] = useState(false);
   if (!isBoardHtmlArtifact(reply)) {
-    return <p className="line-clamp-4 whitespace-pre-wrap [overflow-wrap:anywhere]">{reply}</p>;
+    return <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{reply}</p>;
   }
   const title = boardHtmlTitle(reply);
   return (

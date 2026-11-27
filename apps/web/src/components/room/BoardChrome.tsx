@@ -136,7 +136,7 @@ export function BoardScrollTail({ className, children }: ComponentProps<"div">) 
           </Button>
         </div>
       ) : null}
-      <div className="mb-auto flex flex-col gap-2">{children}</div>
+      <div className="mb-auto flex shrink-0 flex-col gap-2">{children}</div>
     </div>
   );
 }
