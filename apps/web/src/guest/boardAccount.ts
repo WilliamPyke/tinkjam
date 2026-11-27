@@ -364,7 +364,7 @@ export async function openAccountBoard(
 ): Promise<JoinedGuestShare | string | { readonly temporary: true }> {
   const tagged = options?.temporary === "tagged";
   const unreachable = () =>
-    tagged ? { temporary: true as const } : "Could not reach the board service. Try again.";
+    tagged ? { temporary: true as const } : "Could not reach Tinkjam. Try again.";
   const unreadable = () =>
     tagged ? { temporary: true as const } : "Could not open this board. Try again.";
   const host = cloudBoardsHost();
@@ -422,7 +422,7 @@ export async function leaveAccountBoard(shareId: string): Promise<string | null>
     `${CLOUD_BOARD_ACCOUNT_ROUTE}?${GUEST_SHARE_PARAM}=${encodeURIComponent(shareId)}`,
     { method: "DELETE" },
   );
-  if (response === null || !response.ok) return "Could not reach the board service. Try again.";
+  if (response === null || !response.ok) return "Could not reach Tinkjam. Try again.";
   forgetGuestShare(shareId);
   return null;
 }

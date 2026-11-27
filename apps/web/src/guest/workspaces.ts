@@ -69,7 +69,7 @@ const decodePreview = Schema.decodeUnknownOption(CloudWorkspacePreview);
 const decodeOpened = Schema.decodeUnknownOption(CloudBoardAccountOpenResult);
 const decodeMessage = Schema.decodeUnknownOption(Schema.Struct({ message: Schema.String }));
 
-const UNREACHABLE = "Could not reach the board service. Try again.";
+const UNREACHABLE = "Could not reach Tinkjam. Try again.";
 
 /** The signed-in account's workspaces; null signed out, before they load, or without accounts. */
 export const useWorkspaces = () => useAtomValue(workspacesAtom);
@@ -305,7 +305,7 @@ export const endWorkspaceInvite = (workspaceId: string) =>
   change(
     scoped(CLOUD_WORKSPACE_INVITE_ROUTE, { [CLOUD_WORKSPACE_PARAM]: workspaceId }),
     jsonInit("DELETE"),
-    "Could not turn off the link. Try again.",
+    "Could not switch off the link. Try again.",
   );
 
 export const removeWorkspaceMember = (workspaceId: string, memberId: string) =>
@@ -447,10 +447,14 @@ export async function previewWorkspaceInvite(
       ...jsonInit("POST", { code }),
       credentials: "omit",
     });
-    if (!response.ok) return failureOf(response, "This invite link is not valid.");
+    if (!response.ok)
+      return failureOf(
+        response,
+        "This invite link is not valid. Ask whoever sent it for a new one.",
+      );
     return (
       Option.getOrNull(decodePreview(await response.json().catch(() => null))) ??
-      "This invite link is not valid."
+      "This invite link is not valid. Ask whoever sent it for a new one."
     );
   } catch {
     return UNREACHABLE;

@@ -62,7 +62,7 @@ const decodeTasks = Schema.decodeUnknownOption(CloudMyTasks);
 const decodeAsked = Schema.decodeUnknownOption(CloudBoardAccessResult);
 const decodeMessage = Schema.decodeUnknownOption(Schema.Struct({ message: Schema.String }));
 
-const UNREACHABLE = "Could not reach the board service. Try again.";
+const UNREACHABLE = "Could not reach Tinkjam. Try again.";
 
 const userNow = () => readBoardAccountProfile()?.userId ?? null;
 
@@ -207,11 +207,12 @@ export async function askEditAccess(
       }),
     },
   );
-  if (response?.ok !== true) return messageOf(response, "Could not ask. Try again.");
+  if (response?.ok !== true)
+    return messageOf(response, "Could not ask for edit access. Try again.");
   const json: unknown = await response.json().catch(() => null);
   if (userNow() !== account?.userId) return SIGN_IN_UNCONFIRMED;
   const asked = Option.getOrNull(decodeAsked(json));
-  if (asked === null) return "Could not ask. Try again.";
+  if (asked === null) return "Could not ask for edit access. Try again.";
   appAtomRegistry.update(askedAtom, (current) => ({ ...current, [shareId]: asked.request }));
   return null;
 }
@@ -241,7 +242,8 @@ export async function answerEditAccess(
   item: CloudInboxItem,
   approve: boolean,
 ): Promise<string | null> {
-  if (item.shareId === undefined || item.request === undefined) return "This request is gone.";
+  if (item.shareId === undefined || item.request === undefined)
+    return "It has already been answered.";
   const response = await accountRequest(
     `${CLOUD_BOARD_ACCESS_ANSWER_ROUTE}?${GUEST_SHARE_PARAM}=${encodeURIComponent(item.shareId)}`,
     {
@@ -251,7 +253,9 @@ export async function answerEditAccess(
     },
   );
   const failed =
-    response?.ok === true ? null : await messageOf(response, "Could not answer. Try again.");
+    response?.ok === true
+      ? null
+      : await messageOf(response, "Your answer was not sent. Try again.");
   await loadInbox();
   return failed;
 }

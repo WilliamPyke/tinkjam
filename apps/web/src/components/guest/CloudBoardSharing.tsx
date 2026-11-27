@@ -720,7 +720,7 @@ function AccessChangeDialog({
           </AlertDialogTitle>
           <AlertDialogDescription>
             {removing
-              ? "They lose it at once, with the cards they added."
+              ? "They can no longer open it. The cards they added are deleted for everyone."
               : "They keep the board but can no longer change it, and their agent stops."}
           </AlertDialogDescription>
           {note === null ? null : <AlertDialogDescription>{note}</AlertDialogDescription>}
@@ -741,7 +741,7 @@ function AccessChangeDialog({
               </label>
               <label className="flex items-center gap-2">
                 <Radio value="close" />
-                Also turn link sharing off
+                Also switch link sharing off
               </label>
               <label className="flex items-center gap-2">
                 <Radio value="renew" />

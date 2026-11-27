@@ -50,7 +50,7 @@ export function ViewOnlyBar({
       if (failed !== null) {
         toastManager.add({
           type: "error",
-          title: "Could not open the board to edit",
+          title: "Could not open the board for editing",
           description: failed,
         });
       }
@@ -121,7 +121,7 @@ function SignInToAsk({ signIn }: { readonly signIn: () => void }) {
         <div className="flex flex-col gap-2">
           <p className="text-xs text-muted-foreground">
             Sign in or create an account first, then press Ask for edit access. Whoever made this
-            board gets your request in their inbox and can let you edit.
+            board can let you edit.
           </p>
           <Button size="sm" onClick={signIn} data-view-only-sign-in-continue>
             Sign in
@@ -160,9 +160,7 @@ function AskForAccess({
       <PopoverPopup width="md" align="end">
         <PopoverTitle className="mb-2">Ask for edit access</PopoverTitle>
         <form className="flex flex-col gap-2" onSubmit={submit}>
-          <p className="text-xs text-muted-foreground">
-            Whoever made this board gets your request in their inbox.
-          </p>
+          <p className="text-xs text-muted-foreground">Whoever made this board can let you edit.</p>
           <Input
             aria-label="A short note, if you like"
             placeholder="A short note, if you like"

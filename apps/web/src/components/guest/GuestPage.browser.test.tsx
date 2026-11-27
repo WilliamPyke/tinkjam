@@ -145,7 +145,7 @@ describe("GuestPage", () => {
     await expect.element(screen.getByText("Link sharing is off for this board")).toBeVisible();
     expect(appAtomRegistry.get(endedShareNoticesAtom).get("share-3")).toEqual({
       title: "Link sharing is off for this board",
-      detail: "Ask whoever shared it to turn it on or add you.",
+      detail: "Ask whoever shared it to switch it on or add you.",
     });
   });
 

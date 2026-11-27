@@ -35,7 +35,7 @@ const COMPUTER_STATUS_TEXT: Record<BringAgentComputer["status"], string> = {
   ready: "Online",
   online: "Online",
   connecting: "Connecting…",
-  offline: "Offline. Wake it, or open Tinkjam Sync on it.",
+  offline: "Offline. Wake the computer, or open Tinkjam Sync on it.",
   unchecked: "Could not check. Try again in a moment.",
   unsupported: "Out of date. Open Tinkjam Sync on it and choose Check for Updates.",
   gone: "No longer connected. Remove it, or open Tinkjam Sync on it and choose Connect.",
@@ -198,7 +198,7 @@ export function useYourComputers(options: {
   };
 }
 
-const REMOVED = "It is signed out of your account and can no longer reach your boards";
+const REMOVED = "Your boards can no longer use it";
 const BRING_BACK = "Connect it again from that computer to bring it back.";
 
 /**
@@ -224,7 +224,7 @@ export function useRemoveComputer() {
     question: (name: string) =>
       browserOnly
         ? `Forget ${name} in this browser? You are signed out, so it stays on your account. Sign in first to remove it everywhere.`
-        : `Remove ${name}? ${REMOVED}. A board that has it open right now keeps that connection until it drops. ${BRING_BACK}`,
+        : `Remove ${name}? Your boards will no longer be able to use it. Boards using it now keep it until the computer disconnects. ${BRING_BACK}`,
     remove: async (computer: {
       readonly environmentId: EnvironmentId;
       readonly name: string;

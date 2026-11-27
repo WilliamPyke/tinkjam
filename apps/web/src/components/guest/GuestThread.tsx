@@ -486,7 +486,7 @@ function ContinueOnMyMachine({
         </span>
       )}
       <Button size="xs" variant="outline" disabled={busy} onClick={() => void start()}>
-        Continue on my machine
+        Continue on my computer
       </Button>
     </>
   );

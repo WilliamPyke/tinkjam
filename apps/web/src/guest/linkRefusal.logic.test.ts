@@ -13,7 +13,7 @@ describe("linkRefusalNotice", () => {
   it("names each refusal the board host can tell apart", () => {
     expect(linkRefusalNotice("sharing_off")).toEqual({
       title: "Link sharing is off for this board",
-      detail: "Ask whoever shared it to turn it on or add you.",
+      detail: "Ask whoever shared it to switch it on or add you.",
     });
     expect(linkRefusalNotice("view_only")).toEqual({
       title: "This board's link now only lets people look at it",
@@ -55,7 +55,7 @@ describe("knownRefusalNotice", () => {
 describe("linkRefusalMessage", () => {
   it("prefers this client's words for a detail it knows", () => {
     expect(linkRefusalMessage({ detail: "sharing_off", message: "Whatever the host wrote." })).toBe(
-      "Link sharing is off for this board. Ask whoever shared it to turn it on or add you.",
+      "Link sharing is off for this board. Ask whoever shared it to switch it on or add you.",
     );
     expect(linkRefusalMessage({ detail: "view_only" })).toBe(
       "This board's link now only lets people look at it. Ask whoever shared it for the view link.",
