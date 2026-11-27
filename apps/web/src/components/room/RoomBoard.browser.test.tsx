@@ -104,6 +104,29 @@ async function boardSizedViewport(width = 1100, height = 800) {
   return { [Symbol.asyncDispose]: () => page.viewport(was.width, was.height) };
 }
 
+/** Reduced motion for a test of where things are, not of how they move; put back when disposed. */
+function stillMotion(): Disposable {
+  const before = window.matchMedia;
+  window.matchMedia = ((query: string) => {
+    if (query !== "(prefers-reduced-motion: reduce)") return before(query);
+    return {
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    } as MediaQueryList;
+  }) as typeof window.matchMedia;
+  return {
+    [Symbol.dispose]: () => {
+      window.matchMedia = before;
+    },
+  };
+}
+
 /** The middle of an element, in the test frame's pixels. */
 function middleOf(element: Element) {
   const rect = element.getBoundingClientRect();
@@ -2030,6 +2053,8 @@ describe("RoomBoard lines", () => {
   });
 
   it("selects a line 6px off the line, where a card's grip band covers it", async () => {
+    await using _viewport = await boardSizedViewport();
+    using _motion = stillMotion();
     const board = render(
       <RoomBoard
         title="Launch"
@@ -2038,8 +2063,8 @@ describe("RoomBoard lines", () => {
           board: {
             positions: {},
             notes: [
-              { id: "a", text: "First", x: 0, y: 0 },
-              { id: "b", text: "Second", x: 212, y: 0 },
+              { id: "a", text: "First", x: 0, y: 0, size: { w: 192, h: 144 } },
+              { id: "b", text: "Second", x: 300, y: 0, size: { w: 192, h: 144 } },
             ],
             edges: [{ id: "line", from: "note:a", to: "note:b" }],
           },
@@ -2065,13 +2090,27 @@ describe("RoomBoard lines", () => {
     };
     const surface = screen.getByRole("application", { name: "Room board" });
     const under = surface.element().getBoundingClientRect();
+    // The board refits as its surface settles; compare successive layouts rather than waiting
+    // a fixed time, so the press uses the card's final position.
+    let before = "";
+    await vi.waitFor(
+      () => {
+        const now = JSON.stringify(rectOf("a").toJSON());
+        const stable = now === before;
+        before = now;
+        expect(stable).toBe(true);
+      },
+      { timeout: 5000 },
+    );
     const a = rectOf("a");
+    const x = a.right + 1;
+    const y = (a.top + a.bottom) / 2 + 6;
     // The card's east grip band reaches a couple of px past its edge, over the line's
     // hit path; 6px off the line the press is the line's, never a resize's.
     await userEvent.click(surface, {
       position: {
-        x: a.right + 1 - under.left,
-        y: (a.top + a.bottom) / 2 + 6 - under.top,
+        x: x - under.left,
+        y: y - under.top,
       },
     });
     await expect.element(screen.getByRole("button", { name: "Delete line" })).toBeVisible();
