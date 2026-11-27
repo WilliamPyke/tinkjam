@@ -7,6 +7,7 @@ import {
   CLOUD_BOARD_ROUTE,
   CLOUD_BOARD_SHARING_ROUTE,
   CLOUD_BOARD_TITLE_ROUTE,
+  GUEST_BOARD_CHANGES_ROUTE,
   GUEST_BOARD_CURSOR_ROUTE,
   GUEST_BOARD_ROUTE,
   GUEST_HANDOFF_ROUTE,
@@ -37,6 +38,8 @@ export const SESSION_ROUTES: Readonly<Record<string, { method: string; maxBytes:
   [STREAM_ROUTE]: { method: "GET", maxBytes: 0 },
   [CLOUD_BOARD_OUTLINE_ROUTE]: { method: "GET", maxBytes: 0 },
   [GUEST_BOARD_ROUTE]: { method: "POST", maxBytes: JSON_MAX_BODY_BYTES },
+  // A page's changes as it closes, which go as one keepalive request: 64 KiB at most.
+  [GUEST_BOARD_CHANGES_ROUTE]: { method: "POST", maxBytes: JSON_MAX_BODY_BYTES },
   [GUEST_BOARD_CURSOR_ROUTE]: { method: "POST", maxBytes: CURSOR_MAX_BODY_BYTES },
   [GUEST_HANDOFF_ROUTE]: { method: "POST", maxBytes: JSON_MAX_BODY_BYTES },
 };

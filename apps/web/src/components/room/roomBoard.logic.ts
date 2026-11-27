@@ -1560,16 +1560,18 @@ export function boardChangeQueue(hold?: () => () => void) {
     return next;
   }
   /**
-   * Sends every change still waiting its turn now, in the order they were queued, with `sendNow`,
-   * which must survive the page going away. A change behind one that cannot go this way stays
-   * queued, and one sent here is not sent again unless `sendNow` resolved false or a change ahead
+   * Sends the changes waiting their turn now, in order, in one call of `sendNow`, which outlives
+   * the page and answers each (even with none waiting). One behind a change that cannot go this
+   * way stays queued; one sent here is not sent again unless it was not taken or a change ahead
    * of it was sent again after it.
    */
   const flush = (
-    sendNow: (change: RoomBoardChange) => Promise<boolean>,
+    sendNow: (changes: ReadonlyArray<RoomBoardChange>) => Promise<ReadonlyArray<boolean>>,
     maxBytes = BOARD_FLUSH_MAX_BYTES,
   ) => {
     const stuck = new Set<string>();
+    const going: Array<{ readonly entry: WaitingBoardChange; readonly change: RoomBoardChange }> =
+      [];
     let bytes = 0;
     for (const entry of waiting) {
       if (entry.flushed !== undefined) continue;
@@ -1577,16 +1579,27 @@ export function boardChangeQueue(hold?: () => () => void) {
       const size =
         change === undefined || !BOARD_FLUSHABLE.has(change.type)
           ? Infinity
-          : new TextEncoder().encode(JSON.stringify(change)).byteLength;
-      if (change === undefined || keys.some((key) => stuck.has(key)) || bytes + size > maxBytes) {
+          : new TextEncoder().encode(JSON.stringify(change)).byteLength + BOARD_FLUSH_EACH_BYTES;
+      if (
+        change === undefined ||
+        keys.some((key) => stuck.has(key)) ||
+        bytes + size > maxBytes ||
+        going.length >= BOARD_FLUSH_MAX_CHANGES
+      ) {
         for (const key of keys) stuck.add(key);
         continue;
       }
       bytes += size;
+      going.push({ entry, change });
+    }
+    const answers = sendNow(going.map(({ change }) => change)).catch(
+      (): ReadonlyArray<boolean> => [],
+    );
+    going.forEach(({ entry }, index) => {
       clock += 1;
       entry.flushedAt = clock;
-      entry.flushed = sendNow(change);
-    }
+      entry.flushed = answers.then((taken) => taken[index] === true);
+    });
   };
   return Object.assign(queue, { flush });
 }
@@ -1629,6 +1642,9 @@ interface WaitingBoardChange {
 
 // Keepalive requests share 64 KiB of body; the rest is left for the pointer leaving the board.
 const BOARD_FLUSH_MAX_BYTES = 60 * 1024;
+// What each change adds around itself in the one request, and how many the board host takes.
+const BOARD_FLUSH_EACH_BYTES = 32;
+const BOARD_FLUSH_MAX_CHANGES = 500;
 
 // Changes that leave the board the same when the room takes them twice, as it may when a page
 // that sent them as it went away comes back. A reaction or restore sent twice undoes itself.

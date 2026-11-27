@@ -1216,8 +1216,13 @@ export function RoomBoard({
   readonly onChange:
     | ((change: RoomBoardChange, retry?: () => boolean) => Promise<boolean>)
     | undefined;
-  /** `onChange` in a way that still arrives once the page has closed, where there is one. */
-  readonly onChangeAsPageCloses?: ((change: RoomBoardChange) => Promise<boolean>) | undefined;
+  /**
+   * Sends changes in a way that still arrives once the page has closed, where there is one, in
+   * order, and says which were taken.
+   */
+  readonly onChangeAsPageCloses?:
+    | ((changes: ReadonlyArray<RoomBoardChange>) => Promise<ReadonlyArray<boolean>>)
+    | undefined;
   /** Tells the room where this person's pointer is and what their board shows. */
   readonly onCursor: ((presence: BoardPresence) => void) | undefined;
   /** Puts a card's text in this person's message box for the thread. It sends nothing. */

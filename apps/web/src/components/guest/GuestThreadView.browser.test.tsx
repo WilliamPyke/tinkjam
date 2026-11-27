@@ -22,7 +22,7 @@ import { forgetGuestShare, guestRoomAtom, rememberGuestShare } from "../../guest
 import { AppAtomRegistryProvider, appAtomRegistry } from "../../rpc/atomRegistry";
 import { makeThreadProjectionFixture } from "../../test-fixtures";
 import { SidebarProvider } from "../ui/sidebar";
-import { GuestThreadRoute, postBoardChange } from "./GuestThreadView";
+import { GuestThreadRoute, postBoardChange, sendBoardChangesAsPageCloses } from "./GuestThreadView";
 
 const thread = vi.hoisted(() => ({ state: null as unknown }));
 vi.mock(import("~/state/threads"), async (original) => ({
@@ -274,6 +274,9 @@ describe("postBoardChange", () => {
     expect(settledUnload.defaultPrevented).toBe(false);
     expect(host.sends()).toHaveLength(3);
     expect(new Set(host.sends().map(([, init]) => init?.body)).size).toBe(1);
+    // Each try is the same change in its page's order, so the host never takes it twice.
+    const tries = new Set(host.sends().map(([input]) => String(input)));
+    expect([...tries]).toEqual([expect.stringMatching(/[?&]client=[^&]+&seq=\d+/)]);
   });
 
   it("stops a waiting change when its board's retries stop", async () => {
@@ -303,6 +306,50 @@ describe("postBoardChange", () => {
       postBoardChange(endpoint, { type: "card.move", cardId: "c", x: 1, y: 2 }),
     ).resolves.toBe(false);
     expect(host.sends()).toHaveLength(1);
+  });
+
+  it("sends what the page still holds as it closes in one request, after changes not yet answered", async () => {
+    const realFetch = globalThis.fetch;
+    const sends: Array<{ url: string; body: string }> = [];
+    using _host = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (!toBoard(input)) return realFetch(input, init);
+      sends.push({ url: String(input), body: String(init?.body) });
+      if (String(input).includes("/board/changes")) {
+        return Promise.resolve(
+          Response.json({ results: [{ status: 204 }, { status: 204 }, { status: 409 }] }),
+        );
+      }
+      // The host has not answered, as when the request has not left the browser yet.
+      return new Promise<Response>(() => {});
+    });
+    const moved = { type: "card.move", cardId: "c", x: 1, y: 2 } as const;
+    const reacted = { type: "note.react", noteId: "n", emoji: "👍" } as const;
+    void postBoardChange(endpoint, moved);
+    void postBoardChange(endpoint, reacted);
+    await vi.waitFor(() => expect(sends).toHaveLength(2));
+    const movedSeq = Number(new URL(sends[0]!.url).searchParams.get("seq"));
+    const put = { type: "note.put", noteId: "n", text: "Typed", x: 0, y: 0 } as const;
+    const remove = { type: "note.remove", noteId: "m" } as const;
+
+    await expect(sendBoardChangesAsPageCloses(endpoint, [put, remove], true)).resolves.toEqual([
+      true,
+      false,
+    ]);
+    // The move goes again under its own place in the page's order, so whichever copy arrives
+    // second changes nothing. A reaction sent twice would undo itself, so it does not.
+    const request = JSON.parse(sends[2]!.body);
+    expect(request.changes.map((sent: { change: unknown }) => sent.change)).toEqual([
+      moved,
+      put,
+      remove,
+    ]);
+    expect(request.changes[0].seq).toBe(movedSeq);
+    expect(request.changes[1].seq).toBeGreaterThan(movedSeq);
+    expect(request.changes[2].seq).toBeGreaterThan(request.changes[1].seq);
+    // Sent once: hiding the page and then closing it does not send the move a third time.
+    await expect(sendBoardChangesAsPageCloses(endpoint, [], true)).resolves.toEqual([]);
+    expect(sends).toHaveLength(3);
+    stopBoardChangeRetries(SHARE_ID);
   });
 
   it("does not send a toggle again, which could land twice", async () => {

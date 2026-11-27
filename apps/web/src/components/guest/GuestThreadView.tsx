@@ -11,10 +11,13 @@ import { deriveThreadStructureRuntime } from "@t3tools/client-runtime/state/thre
 import { shouldShowLoadEarlierControl } from "@t3tools/client-runtime/state/threads";
 import {
   type EnvironmentId,
+  GUEST_BOARD_CHANGES_ROUTE,
+  GUEST_BOARD_CLIENT_PARAM,
   GUEST_BOARD_CODE_ROUTE,
   GUEST_BOARD_CURSOR_ROUTE,
   GUEST_BOARD_PULL_REQUEST_ROUTE,
   GUEST_BOARD_ROUTE,
+  GUEST_BOARD_SEQ_PARAM,
   GUEST_HANDOFF_ROUTE,
   GUEST_MESSAGE_MAX_LENGTH,
   GuestId,
@@ -22,6 +25,8 @@ import {
   GuestShareId,
   type RoomAgentActivity,
   type RoomBoardChange,
+  type RoomBoardChangesRequest,
+  RoomBoardChangesResult,
   RoomCodePatch,
   type RoomCodePatchScope,
   type RoomBoardNote,
@@ -163,15 +168,50 @@ function writeAwaitingRowIds(ids: ReadonlySet<GuestMessageId>) {
   } catch {}
 }
 
+// This page's changes in the order it sent them, so the board host can drop one that arrives
+// after a newer one from here replaced it.
+const BOARD_CLIENT = randomUUID();
+let boardSeq = 0;
+const nextBoardSeq = () => (boardSeq += 1);
+
+/**
+ * Changes this page sent to each board that the host has not answered, which a page closing sends
+ * again with the rest, as one may not have left the browser yet. Only those the host takes once by
+ * their place in the page's order, so a copy that arrives second changes nothing.
+ */
+const unansweredBoardChanges = new Map<
+  string,
+  Map<number, { readonly change: RoomBoardChange; resent: boolean }>
+>();
+const BOARD_CHANGES_SENT_AGAIN: ReadonlySet<RoomBoardChange["type"]> = new Set<
+  RoomBoardChange["type"]
+>([
+  "note.put",
+  "note.remove",
+  "card.move",
+  "card.resize",
+  "edge.put",
+  "edge.remove",
+  "edge.shape",
+  "edge.pin",
+]);
+// Keepalive requests share 64 KiB of body; the rest is left for the pointer leaving the board.
+const BOARD_CLOSE_MAX_BYTES = 60 * 1024;
+
+const boardChangeTaken = (status: number | null) =>
+  status !== null && status >= 200 && status < 300;
+
 /** The host's answer to one board change, or null when nothing answered. */
 async function sendBoardChange(
   endpoint: GuestShareEndpoint,
   change: RoomBoardChange,
   // `keepalive`: sent as the page closes, which it outlives.
   how: { readonly signal: AbortSignal } | { readonly keepalive: true },
+  seq: number,
 ): Promise<number | null> {
   try {
     const response = await guestShareRequest(endpoint, GUEST_BOARD_ROUTE, {
+      params: { [GUEST_BOARD_CLIENT_PARAM]: BOARD_CLIENT, [GUEST_BOARD_SEQ_PARAM]: String(seq) },
       init: {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -182,6 +222,67 @@ async function sendBoardChange(
     return response.status;
   } catch {
     return null;
+  }
+}
+
+const decodeChangesResult = Schema.decodeUnknownOption(RoomBoardChangesResult);
+
+/**
+ * Sends changes as the page closes, in a way it outlives, and says which were taken. A cloud
+ * board's host takes them in one request and in this order; a machine's room takes each alone.
+ */
+export async function sendBoardChangesAsPageCloses(
+  endpoint: GuestShareEndpoint,
+  changes: ReadonlyArray<RoomBoardChange>,
+  cloud: boolean,
+): Promise<ReadonlyArray<boolean>> {
+  if (!cloud) {
+    return Promise.all(
+      changes.map((change) =>
+        sendBoardChange(endpoint, change, { keepalive: true }, nextBoardSeq()).then(
+          boardChangeTaken,
+        ),
+      ),
+    );
+  }
+  const fresh = changes.map((change) => ({ seq: nextBoardSeq(), change }));
+  const again = [...(unansweredBoardChanges.get(endpoint.shareId) ?? [])]
+    .filter(([, sent]) => !sent.resent)
+    .toSorted(([a], [b]) => a - b);
+  const requestOf = () => ({
+    client: BOARD_CLIENT,
+    changes: [...again.map(([seq, { change }]) => ({ seq, change })), ...fresh],
+  });
+  let request: RoomBoardChangesRequest = requestOf();
+  // Past the limit, the oldest sent before goes first: it most likely arrived already.
+  while (
+    again.length > 0 &&
+    new TextEncoder().encode(JSON.stringify(request)).byteLength > BOARD_CLOSE_MAX_BYTES
+  ) {
+    again.shift();
+    request = requestOf();
+  }
+  if (request.changes.length === 0) return [];
+  for (const [, sent] of again) sent.resent = true;
+  try {
+    const response = await guestShareRequest(endpoint, GUEST_BOARD_CHANGES_ROUTE, {
+      init: {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(request),
+        keepalive: true,
+      },
+    });
+    const answer = response.ok
+      ? decodeChangesResult(await response.json().catch(() => null))
+      : Option.none();
+    return changes.map(
+      (_, index) =>
+        Option.isSome(answer) &&
+        boardChangeTaken(answer.value.results[again.length + index]?.status ?? null),
+    );
+  } catch {
+    return changes.map(() => false);
   }
 }
 
@@ -218,12 +319,19 @@ export async function postBoardChange(
 ): Promise<boolean> {
   let settle: (() => void) | null = null;
   const controller = boardChangeRetryController(endpoint.shareId);
+  // Its tries are the same change, so the host takes it once and never over a newer one.
+  const seq = nextBoardSeq();
+  const unanswered = BOARD_CHANGES_SENT_AGAIN.has(change.type)
+    ? (unansweredBoardChanges.get(endpoint.shareId) ??
+      unansweredBoardChanges.set(endpoint.shareId, new Map()).get(endpoint.shareId))
+    : undefined;
+  unanswered?.set(seq, { change, resent: false });
   try {
     for (let tries = 0; ; tries += 1) {
       if (controller.signal.aborted) return false;
-      const status = await sendBoardChange(endpoint, change, { signal: controller.signal });
+      const status = await sendBoardChange(endpoint, change, { signal: controller.signal }, seq);
       if (controller.signal.aborted) return false;
-      if (status !== null && status >= 200 && status < 300) return true;
+      if (boardChangeTaken(status)) return true;
       if (!boardChangeFailureIsTemporary(status)) return false;
       // A toggle sent twice would undo itself, and a failed answer does not say it did not land.
       if (change.type === "note.react" || change.type === "artifact.restore") {
@@ -235,6 +343,7 @@ export async function postBoardChange(
       if (retry?.() === false) return true;
     }
   } finally {
+    unanswered?.delete(seq);
     settle?.();
   }
 }
@@ -1086,10 +1195,7 @@ function GuestThreadSession({
               onChangeAsPageCloses={
                 viewOnly
                   ? undefined
-                  : (change) =>
-                      sendBoardChange(endpoint, change, { keepalive: true }).then(
-                        (status) => status !== null && status >= 200 && status < 300,
-                      )
+                  : (changes) => sendBoardChangesAsPageCloses(endpoint, changes, cloud)
               }
               onCursor={viewOnly ? undefined : (presence) => postBoardCursor(endpoint, presence)}
               onPromptBox={agents ? promptBox : undefined}

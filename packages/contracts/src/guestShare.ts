@@ -7,6 +7,7 @@ import {
   GuestShareId,
   IsoDateTime,
   MessageId,
+  NonNegativeInt,
   ThreadId,
   TrimmedNonEmptyString,
   TrimmedString,
@@ -1318,6 +1319,30 @@ export const RoomBoardChange = Schema.Union([
 export type RoomBoardChange = typeof RoomBoardChange.Type;
 
 /**
+ * Names one open page of a person's on the board, with `?client=<id>&seq=<n>` on
+ * `GUEST_BOARD_ROUTE` or in a `RoomBoardChangesRequest`. `seq` counts up with each change the page
+ * sends, so the host can drop a change that arrives after a newer one of the page's replaced it.
+ */
+export const GUEST_BOARD_CLIENT_PARAM = "client";
+export const GUEST_BOARD_SEQ_PARAM = "seq";
+export const RoomBoardClientId = TrimmedNonEmptyString.check(Schema.isMaxLength(64));
+
+/** Changes one page sends at once as it closes, which the host applies in this order. */
+export const RoomBoardChangesRequest = Schema.Struct({
+  client: RoomBoardClientId,
+  changes: Schema.Array(Schema.Struct({ seq: NonNegativeInt, change: RoomBoardChange })).check(
+    Schema.isMaxLength(500),
+  ),
+});
+export type RoomBoardChangesRequest = typeof RoomBoardChangesRequest.Type;
+
+/** Each change's answer, as `GUEST_BOARD_ROUTE` would have answered it alone. */
+export const RoomBoardChangesResult = Schema.Struct({
+  results: Schema.Array(Schema.Struct({ status: Schema.Number })),
+});
+export type RoomBoardChangesResult = typeof RoomBoardChangesResult.Type;
+
+/**
  * Live room state, held in the owner's server's memory and never stored: which guests' agents
  * are running a turn on their own machines, and where each person's pointer is on the board.
  */
@@ -2071,6 +2096,11 @@ export const GUEST_ROOM_ARTIFACT_ROUTE = `${GUEST_ROUTE_PREFIX}/room/artifact`;
 export const GUEST_ROOM_BOARD_ROUTE = `${GUEST_ROUTE_PREFIX}/room/board`;
 /** A guest's change to the room's board (POST), a `RoomBoardChange` as JSON: `?share=<id>`. */
 export const GUEST_BOARD_ROUTE = `${GUEST_ROUTE_PREFIX}/board`;
+/**
+ * A cloud board's host only: several changes to its board in one request (POST), applied in order,
+ * a `RoomBoardChangesRequest` answered with a `RoomBoardChangesResult`: `?share=<id>`.
+ */
+export const GUEST_BOARD_CHANGES_ROUTE = `${GUEST_ROUTE_PREFIX}/board/changes`;
 /** Where a guest's pointer is on the room's board (POST), a `GuestCursorRequest`: `?share=<id>`. */
 export const GUEST_BOARD_CURSOR_ROUTE = `${GUEST_ROUTE_PREFIX}/board/cursor`;
 /**
