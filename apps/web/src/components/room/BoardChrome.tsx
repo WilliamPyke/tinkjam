@@ -46,17 +46,17 @@ const BOARD_ROOMY_WIDTH = 1100;
 
 /**
  * On a window narrower than 1100px a board opens with the app's sidebar folded, one click from its
- * toggle, and unfolds it again when the board closes, so the rest of the app keeps its choice.
+ * toggle. The fold is never saved, so the rest of the app, and a reload, keep the person's choice.
  */
 export function useFoldSidebarOnNarrowBoard() {
   const sidebar = useOptionalSidebar();
   const fold = useEffectEvent(() => {
     if (sidebar === null || sidebar.isMobile || !sidebar.open) return false;
     if (window.innerWidth >= BOARD_ROOMY_WIDTH) return false;
-    sidebar.setOpen(false);
+    sidebar.setOpenUnsaved(false);
     return true;
   });
-  const unfold = useEffectEvent(() => sidebar?.setOpen(true));
+  const unfold = useEffectEvent(() => sidebar?.restoreSavedOpen());
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- the sidebar's open state lives in its own store, shared by every page.
   useEffect(() => {
     const folded = fold();
