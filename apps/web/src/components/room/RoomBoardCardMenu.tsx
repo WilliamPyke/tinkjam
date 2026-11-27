@@ -104,9 +104,22 @@ function CardMenuItems({ actions, assign, onReact, color }: CardMenu) {
  * header is left to grab, and none of them is pressed by a grab that lands a little off.
  */
 export function CardActionsMenu(menu: CardMenu) {
+  // Every card on a zoomed-out board has one, and the board renders them all as it pans: closed,
+  // the menu holds no items, so it renders again only when it opens.
+  const [open, setOpen] = useState(false);
+  const [showing, setShowing] = useState(false);
   if (isEmpty(menu)) return null;
   return (
-    <Menu>
+    <Menu
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setShowing(true);
+      }}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) setShowing(false);
+      }}
+    >
       <MenuTrigger
         render={
           <button
@@ -119,9 +132,7 @@ export function CardActionsMenu(menu: CardMenu) {
       >
         <EllipsisIcon className="size-3.5" />
       </MenuTrigger>
-      <MenuPopup align="end">
-        <CardMenuItems {...menu} />
-      </MenuPopup>
+      <MenuPopup align="end">{showing ? <CardMenuItems {...menu} /> : null}</MenuPopup>
     </Menu>
   );
 }

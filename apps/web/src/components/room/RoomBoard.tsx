@@ -4330,7 +4330,9 @@ export function RoomBoard({
     setLineTool((on) => !on);
     surfaceRef.current?.focus({ preventScroll: true });
   };
-  const link = canEdit ? { onStart: startLink } : undefined;
+  const startLinkNow = useStableCallback(startLink);
+  const [linkHandlers] = useState<LinkHandlers>(() => ({ onStart: startLinkNow }));
+  const link = canEdit ? linkHandlers : undefined;
 
   const closeComment = () => {
     setOpenComment(null);
@@ -8139,6 +8141,18 @@ function BoardNote({
   const [quoteOpen, setQuoteOpen] = useState(false);
   // The day the card was drawn on, which its due day is read against.
   const [today] = useState(() => boardPlanToday(new Date()));
+  // The board renders every card again as it pans: handlers that keep their identity let each
+  // card's menus, tooltips and grips skip that render.
+  const use = useStableCallback(() => onUse?.());
+  const give = useStableCallback(() => onGive?.());
+  const react = useStableCallback((emoji: RoomBoardReactionEmoji) => onReact?.(note, emoji));
+  const vote = useStableCallback(() => onReact?.(note, BOARD_VOTE));
+  const pickColor = useStableCallback((color: RoomBoardNoteColor) => onPickColor?.(note, color));
+  const resize = useStableCallback(
+    (edges: BoardResizeEdges, from: BoardRect, dx: number, dy: number) =>
+      onResize?.(note, edges, from, dx, dy),
+  );
+  const endResize = useStableCallback(() => onBlur(target));
   const selected = useBoardSelected(noteRef(note.id));
   const liveDrag = useBoardLiveDrag(noteRef(note.id));
   const live = boardLiveRect({ x: note.x, y: note.y, w: size?.w, h: size?.h }, liveDrag);
@@ -8320,7 +8334,7 @@ function BoardNote({
                     aria-label="Use as message"
                     className={BOARD_ICON_BUTTON_CLASS}
                     onPointerDown={stopPointer}
-                    onClick={onUse}
+                    onClick={use}
                   />
                 }
               >
@@ -8338,7 +8352,7 @@ function BoardNote({
                     aria-label="Give to my agent"
                     className={BOARD_ICON_BUTTON_CLASS}
                     onPointerDown={stopPointer}
-                    onClick={onGive}
+                    onClick={give}
                   />
                 }
               >
@@ -8348,17 +8362,11 @@ function BoardNote({
             </Tooltip>
           )}
           {folded || onReact === undefined || !paper ? null : (
-            <VoteButton
-              note={note}
-              viewer={people.viewer}
-              onVote={() => onReact(note, BOARD_VOTE)}
-            />
+            <VoteButton note={note} viewer={people.viewer} onVote={vote} />
           )}
-          {folded || onReact === undefined ? null : (
-            <AddReaction onReact={(emoji) => onReact(note, emoji)} />
-          )}
+          {folded || onReact === undefined ? null : <AddReaction onReact={react} />}
           {!folded && plain && onPickColor !== undefined ? (
-            <NoteColorPicker color={note.color} onPick={(color) => onPickColor(note, color)} />
+            <NoteColorPicker color={note.color} onPick={pickColor} />
           ) : null}
           {!folded && canDelete ? (
             <button
@@ -8634,12 +8642,8 @@ function BoardNote({
       <ItemHandles
         from={noteRef(note.id)}
         link={link}
-        onResize={
-          onResize === undefined
-            ? undefined
-            : (edges, from, dx, dy) => onResize(note, edges, from, dx, dy)
-        }
-        onEnd={() => onBlur(target)}
+        onResize={onResize === undefined ? undefined : resize}
+        onEnd={endResize}
       />
       {alone && paper && (onAddNext !== undefined || onReact !== undefined) ? (
         // A touch screen has no hover: the selected note's +1 and next note sit above it,
