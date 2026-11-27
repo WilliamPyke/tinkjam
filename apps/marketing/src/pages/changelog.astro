@@ -1,6 +1,21 @@
 ---
 import Layout from "../layouts/Layout.astro";
 
+const nov27 = [
+  {
+    title: "Search finds your boards",
+    text: "Press Ctrl+K (Cmd+K on a Mac) and type a board's name to open it.",
+  },
+  {
+    title: "Clearer when you lose access",
+    text: "If someone removes you from a workspace or a board, the board says you no longer have access, instead of saying it ended. Lists of boards and workspaces update without a reload.",
+  },
+  {
+    title: "Plainer names",
+    text: "A box where an agent works is an agent box, and the pull request tool is GitHub pull request.",
+  },
+];
+
 const today = [
   {
     title: "Faster boards",
@@ -197,6 +212,18 @@ const entries = [
     <article class="prose changelog">
       <h1>What's new</h1>
       <p>What is new in Tinkjam, in plain words.</p>
+
+      <h2>27 November</h2>
+      <ul class="changelog__list">
+        {
+          nov27.map((entry) => (
+            <li>
+              <b>{entry.title}</b>
+              <span>{entry.text}</span>
+            </li>
+          ))
+        }
+      </ul>
 
       <h2>26 November</h2>
       <ul class="changelog__list">

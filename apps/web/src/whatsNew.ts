@@ -12,6 +12,16 @@ export interface WhatsNewEntry {
 /** Newest first. Shortcuts are written for Windows and Linux with the Mac key in brackets. */
 export const WHATS_NEW: ReadonlyArray<WhatsNewEntry> = [
   {
+    date: "2026-11-27",
+    title: "Search finds your boards, and clearer access messages",
+    items: [
+      "Press Ctrl+K (Cmd+K) and type a board's name to open it.",
+      "If someone removes you from a workspace or a board, the board says you no longer have access, instead of saying it ended.",
+      "Your boards and workspaces update without a reload when a teammate adds a board or deletes a workspace.",
+      "A box where an agent works is now called an agent box, and the pull request tool is GitHub pull request.",
+    ],
+  },
+  {
     date: "2026-11-26",
     title: "Faster boards, and phones that work properly",
     items: [
