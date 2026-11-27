@@ -117,6 +117,7 @@ import {
   moveCursor,
   onlineOf,
   openingEvents,
+  REMOVED_FROM_WORKSPACE,
   removePerson,
   renameRoom,
   roomChunks,
@@ -138,7 +139,7 @@ import {
 import {
   accountBoardOf,
   accountGuestOf,
-  accountLockedOut,
+  lockedOutRefusal,
   accountOfGuest,
   accountsOn,
   linkAccount,
@@ -557,11 +558,8 @@ async function route(request: Request, env: Env): Promise<Response> {
       };
       return Response.json(result, { headers: NO_STORE });
     }
-    if (await board.locksOut(account)) {
-      return failureResponse(
-        roomFailure("not_member", "You are no longer in this board's workspace."),
-      );
-    }
+    const lockedOut = await board.lockedOut(account);
+    if (lockedOut !== null) return failureResponse(lockedOut);
     const redeemed = await board.fetch(url.toString(), { method: "POST", body });
     return linkedResponse(env, account, redeemed, (text) => {
       const result = Option.getOrNull(decodeRedeemed(text));
@@ -1154,8 +1152,10 @@ export class BoardRoom extends DurableObject<Env> {
     if (Result.isFailure(next)) return next.failure;
     if (next.success === current) return null;
     const account = accountOfGuest(current, guestId);
+    // Someone else took them off: the board goes on, without them.
+    const detail = by === guestId ? undefined : "removed";
     for (const stream of this.streams) {
-      if (stream.guestId === guestId) this.drop(stream, true);
+      if (stream.guestId === guestId) this.drop(stream, true, detail);
     }
     this.setAgents(agentsWithoutPerson(this.agents, guestId), Date.now());
     await this.save(next.success);
@@ -1263,8 +1263,8 @@ export class BoardRoom extends DurableObject<Env> {
   }
 
   /** Called by the Worker once it verified `account`, before it lets them join from a link. */
-  async locksOut(account: string): Promise<boolean> {
-    return accountLockedOut(this.room, account);
+  async lockedOut(account: string): Promise<RoomFailure | null> {
+    return lockedOutRefusal(this.room, account);
   }
 
   /** Called by the Worker once it verified `account`: a new session as the account's person here. */
@@ -1385,7 +1385,9 @@ export class BoardRoom extends DurableObject<Env> {
     const locked = lockOutAccount(this.room, account, workspaceId);
     if (locked === null) return;
     for (const stream of this.streams) {
-      if (stream.guestId === locked.guestId) this.drop(stream, true);
+      if (stream.guestId === locked.guestId) {
+        this.drop(stream, true, REMOVED_FROM_WORKSPACE.detail);
+      }
     }
     this.setAgents(agentsWithoutPerson(this.agents, locked.guestId), Date.now());
     await this.save(locked.room);

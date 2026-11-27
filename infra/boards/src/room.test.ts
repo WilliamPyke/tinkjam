@@ -28,7 +28,7 @@ import {
   checkAccess,
 } from "./access.ts";
 import { askAccess } from "./accessRequests.ts";
-import { accountLockedOut, withAccountSession } from "./account.ts";
+import { lockedOutRefusal, withAccountSession } from "./account.ts";
 import { EMPTY_AGENTS, machineGuestOf } from "./machines.ts";
 import {
   CLOUD_BOARD_MAX_GUESTS,
@@ -1008,7 +1008,7 @@ describe("link sharing", () => {
       // Removed, her account opens nothing; only the link, as it lets anyone, brings her back.
       const removed = Result.getOrThrow(removePerson(room, maker, grace, NOW));
       expect(Result.isFailure(withAccountSession(removed, "account-grace", "again"))).toBe(true);
-      expect(accountLockedOut(removed, "account-grace")).toBe(false);
+      expect(lockedOutRefusal(removed, "account-grace")).toBeNull();
       expect(Result.isSuccess(join(removed, "guest-two-again"))).toBe(editJoins);
       // Taken out of the workspace instead, her account stays locked out whatever the links do.
       const locked = {
@@ -1017,7 +1017,7 @@ describe("link sharing", () => {
           guest.id === grace ? { ...guest, locked: true as const } : guest,
         ),
       };
-      expect(accountLockedOut(locked, "account-grace")).toBe(true);
+      expect(lockedOutRefusal(locked, "account-grace")).not.toBeNull();
       // Only the links that let people in are handed out, so an older client offers no other.
       expect(viewFor(room, room.guests[1]!)).toMatchObject({ links, sharing });
       expect(viewFor(room, null)).not.toHaveProperty("sharing");

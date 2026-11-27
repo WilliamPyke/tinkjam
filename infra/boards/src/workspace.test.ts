@@ -9,7 +9,7 @@ import {
 import * as Result from "effect/Result";
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { accountLockedOut, linkAccount, withAccountSession } from "./account.ts";
+import { linkAccount, lockedOutRefusal, withAccountSession } from "./account.ts";
 import { machineGuestOf } from "./machines.ts";
 import { changeBoard, createRoom, guestBySession, joinRoom, type CloudRoom } from "./room.ts";
 vi.mock("cloudflare:workers", () => ({
@@ -239,10 +239,11 @@ describe("boards in a workspace", () => {
     expect(machineGuestOf(locked.room, "grace-machine", "room", Date.parse(NOW))).toBeUndefined();
     expect(Result.isFailure(withAccountSession(locked.room, "user_grace", "grace-2"))).toBe(true);
     // Nor may the account join again as a spare seat from the edit link.
-    expect([
-      accountLockedOut(locked.room, "user_grace"),
-      accountLockedOut(noted, "user_grace"),
-    ]).toEqual([true, false]);
+    expect(lockedOutRefusal(locked.room, "user_grace")).toMatchObject({
+      status: 403,
+      detail: "removed_from_workspace",
+    });
+    expect(lockedOutRefusal(noted, "user_grace")).toBeNull();
     expect(locked.room.board?.notes.find((note) => note.id === "note-1")?.guestId).toBe(graceId);
     expect(locked.room.guests.map((guest) => guest.name)).toEqual(["Ada", "Grace"]);
     // Again, or on a board not in that workspace, there is nothing to take.
