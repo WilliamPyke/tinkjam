@@ -1969,8 +1969,24 @@ a {
 }
 
 @media (max-width: 720px) {
+  .nav {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    row-gap: 12px;
+  }
+  .nav::after {
+    content: "";
+    order: 1;
+    flex-basis: 100%;
+  }
+  .nav__links {
+    display: contents;
+  }
+  .nav__links > .navlink:not(.navlink--wide) {
+    margin-left: auto;
+  }
   .nav__links .navlink--wide {
-    display: none;
+    order: 2;
   }
   .samples__body {
     padding: 22px 16px 16px;
