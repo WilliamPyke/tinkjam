@@ -1167,7 +1167,10 @@ export function RoomBoard({
   readonly sharing?: ReactNode;
   /** A sharing state the board keeps visible under its header at every width. */
   readonly sharingBanner?: ReactNode;
-  /** `sharing` narrows itself on a narrow board; the narrowest still folds it behind a menu. */
+  /**
+   * `sharing` narrows itself to its Share button on a narrow board, and the rest folds behind a
+   * menu; a phone keeps Share alone (its sheet has the invite link, the sidebar the inbox).
+   */
   readonly sharingFolds?: boolean;
   /** Shown in place of the title in the header, to rename the board there. */
   readonly titleEditor?: ReactNode;
@@ -5706,14 +5709,16 @@ export function RoomBoard({
                   <div
                     className={cn(
                       "flex min-w-0 items-center justify-end gap-2 overflow-hidden @max-xl/board:gap-1",
-                      sharingFolds ? "@max-[62rem]/board:hidden" : "@max-xl/board:hidden",
+                      !sharingFolds && "@max-xl/board:hidden",
                     )}
                   >
                     {sharing}
                   </div>
                   <div
                     className={
-                      sharingFolds ? "hidden @max-[62rem]/board:flex" : "flex @xl/board:hidden"
+                      sharingFolds
+                        ? "hidden @xl/board:@max-[62rem]/board:flex"
+                        : "flex @xl/board:hidden"
                     }
                   >
                     <Popover>
@@ -5730,7 +5735,9 @@ export function RoomBoard({
                         <EllipsisIcon />
                       </PopoverTrigger>
                       <PopoverPopup side="bottom" align="end" sideOffset={8}>
-                        <div className="flex flex-wrap items-center gap-1.5">{sharing}</div>
+                        <div className="flex flex-wrap items-center gap-1.5 [&_:is([data-board-share],[data-cloud-board-people])]:hidden">
+                          {sharing}
+                        </div>
                       </PopoverPopup>
                     </Popover>
                   </div>
@@ -6135,7 +6142,8 @@ export function RoomBoard({
               onDismiss={catchUp.dismiss}
             />
           )}
-          <div className="flex items-end gap-2.5">
+          {/* A narrow board stacks the minimap above the zoom bar, so the bar stays on screen. */}
+          <div className="flex items-end gap-2.5 @max-xl/board:flex-col @max-xl/board:items-start">
             {minimapShown ? (
               // A selection docked above the toolbar would sit under it.
               <div className="group-has-[[data-selection-docked]]/room:hidden">
