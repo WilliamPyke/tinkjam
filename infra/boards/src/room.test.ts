@@ -39,6 +39,7 @@ import {
   boardAlarmAt,
   canChange,
   changeBoard,
+  changeBoardInOrder,
   checkDelete,
   checkInvite,
   checkViewLink,
@@ -60,11 +61,13 @@ import {
   renameRoom,
   roomFailure,
   sseFrame,
+  staleBoardChange,
   viewFor,
   withLink,
   withRole,
   withSharing,
   withoutPerson,
+  type BoardChangeMarks,
   type CloudRoom,
 } from "./room.ts";
 import { hashSecret, makeSecret, makeViewSecret, shareOfSecret } from "./secrets.ts";
@@ -179,6 +182,68 @@ describe("cloud room", () => {
     expect(view.guests.map((guest) => guest.name)).toEqual(["Ada", "Grace"]);
     expect(view).not.toHaveProperty("guests.0.sessionHash");
     expect(view.cloud).toBe(true);
+  });
+
+  it("applies one page's changes in order, each answered alone, and drops older ones arriving late", () => {
+    const marks: BoardChangeMarks = new Map();
+    const at = { now: NOW, nowMs: 1_000 };
+    const applied = changeBoardInOrder(
+      newRoom(),
+      maker,
+      {
+        client: "page-1",
+        changes: [
+          { seq: 3, change: notePut("note-1", { text: "" } as Partial<RoomBoardChange>) },
+          { seq: 4, change: notePut("note-1", { text: "Typed" } as Partial<RoomBoardChange>) },
+          {
+            seq: 5,
+            change: { type: "edge.put", edgeId: "line-1", from: "note:gone", to: "note:note-1" },
+          },
+          { seq: 6, change: notePut("note-2") },
+        ],
+      },
+      at,
+      marks,
+      () => true,
+    );
+    // The line to a note that is not there is refused; the note after it still goes on.
+    expect(applied.answer.results.map((result) => result.status)).toEqual([204, 204, 409, 204]);
+    expect(applied.room.board?.notes.map((note) => [note.id, note.text])).toEqual([
+      ["note-1", "Typed"],
+      ["note-2", "Hello"],
+    ]);
+    // The empty note and a removal sent before the batch, still on their way, change nothing now.
+    const late = (seq: number, change: RoomBoardChange, client = "page-1", by = maker) =>
+      staleBoardChange(marks, by, { client, seq }, change);
+    expect(late(2, notePut("note-1", { text: "" } as Partial<RoomBoardChange>))).toBe(true);
+    expect(late(1, { type: "note.remove", noteId: "note-1" })).toBe(true);
+    expect(late(4, notePut("note-1"))).toBe(true);
+    // A newer change, another page's, another card's or another kind of change still goes.
+    expect(late(7, notePut("note-1"))).toBe(false);
+    expect(late(2, notePut("note-1"), "page-2")).toBe(false);
+    expect(late(2, notePut("note-1"), "page-1", GuestId.make("guest-two"))).toBe(false);
+    expect(late(2, notePut("note-3"))).toBe(false);
+    expect(late(2, { type: "card.move", cardId: "note:note-1", x: 0, y: 0 })).toBe(false);
+  });
+
+  it("answers each change past the rate limit as too fast", () => {
+    let left = 1;
+    const applied = changeBoardInOrder(
+      newRoom(),
+      maker,
+      {
+        client: "page-1",
+        changes: [
+          { seq: 1, change: notePut("note-1") },
+          { seq: 2, change: notePut("note-2") },
+        ],
+      },
+      { now: NOW, nowMs: 1_000 },
+      new Map(),
+      () => left-- > 0,
+    );
+    expect(applied.answer.results).toEqual([{ status: 204 }, { status: 429 }]);
+    expect(applied.room.board?.notes.map((note) => note.id)).toEqual(["note-1"]);
   });
 
   it("names a rejoining person apart, as a new guest", () => {

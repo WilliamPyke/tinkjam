@@ -39,7 +39,10 @@ import {
   CloudBoardRemovePersonRequest,
   CloudBoardTitleRequest,
   GUEST_BOARD_CURSOR_ROUTE,
+  GUEST_BOARD_CHANGES_ROUTE,
+  GUEST_BOARD_CLIENT_PARAM,
   GUEST_BOARD_ROUTE,
+  GUEST_BOARD_SEQ_PARAM,
   GUEST_EXPORT_ROUTE,
   GUEST_HANDOFF_ROUTE,
   GUEST_ROOM_ACTIVITY_ROUTE,
@@ -58,6 +61,8 @@ import {
   isCloudBoardViewCredential,
   RoomBoardAgentChangeRequest,
   RoomBoardChange,
+  RoomBoardChangesRequest,
+  RoomBoardClientId,
   ThreadId,
 } from "@t3tools/contracts";
 import { boardOutline } from "@t3tools/shared/boardOutline";
@@ -101,6 +106,7 @@ import {
   boardAlarmAt,
   canChange,
   changeBoard,
+  changeBoardInOrder,
   checkDelete,
   checkInvite,
   checkViewLink,
@@ -113,6 +119,7 @@ import {
   isViewLink,
   joinRoom,
   managesBoard,
+  markBoardChange,
   mentionedMembers,
   moveCursor,
   onlineOf,
@@ -124,12 +131,15 @@ import {
   roomFailure,
   roomOfChunks,
   sseFrame,
+  staleBoardChange,
   viewFor,
   withCopies,
   withLink,
   withSharing,
   withRole,
   withoutPerson,
+  type BoardChangeFrom,
+  type BoardChangeMarks,
   type CloudGuest,
   type CloudRoom,
   type CloudStreamEvent,
@@ -243,6 +253,17 @@ const decodeInvite = Schema.decodeUnknownOption(
 );
 const decodeRedeem = Schema.decodeUnknownOption(Schema.fromJsonString(GuestRedeemRequest));
 const decodeChange = Schema.decodeUnknownOption(Schema.fromJsonString(RoomBoardChange));
+const decodeChanges = Schema.decodeUnknownOption(Schema.fromJsonString(RoomBoardChangesRequest));
+const decodeClient = Schema.decodeUnknownOption(RoomBoardClientId);
+
+/** The page and place a change names with `?client=&seq=`, or null from a page that names none. */
+function boardChangeFromOf(url: URL): BoardChangeFrom | null {
+  const client = decodeClient(url.searchParams.get(GUEST_BOARD_CLIENT_PARAM));
+  const seq = Number(url.searchParams.get(GUEST_BOARD_SEQ_PARAM) ?? Number.NaN);
+  return Option.isSome(client) && Number.isSafeInteger(seq) && seq >= 0
+    ? { client: client.value, seq }
+    : null;
+}
 const decodeCursor = Schema.decodeUnknownOption(Schema.fromJsonString(GuestCursorRequest));
 const decodeTurn = Schema.decodeUnknownOption(Schema.fromJsonString(GuestTurnRequest));
 const decodeActivity = Schema.decodeUnknownOption(Schema.fromJsonString(GuestAgentActivityRequest));
@@ -692,6 +713,7 @@ export class BoardRoom extends DurableObject<Env> {
   private agents: AgentsLive = EMPTY_AGENTS;
   private agentsShown = "";
   private readonly recent = new Map<string, ReadonlyArray<number>>();
+  private readonly marks: BoardChangeMarks = new Map();
   private readonly streams = new Set<OpenStream>();
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   /** When the board is set to be deleted, epoch ms. */
@@ -970,12 +992,37 @@ export class BoardRoom extends DurableObject<Env> {
         if (!allowRequest(this.recent, `board:${guest.id}`, BOARD_CHANGE_RATE_LIMIT, Date.now())) {
           return failureResponse(roomFailure("too_fast"));
         }
-        const members = await this.membersFor(this.room ?? room, change.value);
+        const from = boardChangeFromOf(url);
+        if (from !== null && staleBoardChange(this.marks, guest.id, from, change.value)) {
+          return noContent();
+        }
+        const members = await this.membersFor(this.room ?? room, [change.value]);
         const before = this.room ?? room;
         const next = changeBoard(before, guest.id, change.value, nowIso(), members);
         if (Result.isFailure(next)) return failureResponse(next.failure);
+        if (from !== null) markBoardChange(this.marks, guest.id, from, change.value, Date.now());
         await this.saveChange(before, next.success);
         return noContent();
+      }
+      case GUEST_BOARD_CHANGES_ROUTE: {
+        const body = decodeChanges(await request.text());
+        if (Option.isNone(body)) return failureResponse(roomFailure("bad_request"));
+        const members = await this.membersFor(
+          this.room ?? room,
+          body.value.changes.map(({ change }) => change),
+        );
+        const before = this.room ?? room;
+        const applied = changeBoardInOrder(
+          before,
+          guest.id,
+          body.value,
+          { now: nowIso(), nowMs: Date.now() },
+          this.marks,
+          () => allowRequest(this.recent, `board:${guest.id}`, BOARD_CHANGE_RATE_LIMIT, Date.now()),
+          members,
+        );
+        await this.saveChange(before, applied.room);
+        return Response.json(applied.answer, { headers: NO_STORE });
       }
       case GUEST_BOARD_CURSOR_ROUTE: {
         const body = decodeCursor(await request.text());
@@ -1420,8 +1467,16 @@ export class BoardRoom extends DurableObject<Env> {
   }
 
   /** The member ids of the board's workspace, read only when the change mentions a member. */
-  private async membersFor(room: CloudRoom, change: RoomBoardChange): Promise<ReadonlySet<string>> {
-    if (room.workspaceId === undefined || mentionedMembers(change).length === 0) return new Set();
+  private async membersFor(
+    room: CloudRoom,
+    changes: ReadonlyArray<RoomBoardChange>,
+  ): Promise<ReadonlySet<string>> {
+    if (
+      room.workspaceId === undefined ||
+      !changes.some((change) => mentionedMembers(change).length > 0)
+    ) {
+      return new Set();
+    }
     const ids = await workspaceOf(this.env, room.workspaceId)
       .memberIds()
       .catch((): ReadonlyArray<string> => []);

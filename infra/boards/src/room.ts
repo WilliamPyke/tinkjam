@@ -12,6 +12,8 @@ import {
   type GuestShareView,
   type RoomBoard,
   type RoomBoardChange,
+  type RoomBoardChangesRequest,
+  type RoomBoardChangesResult,
   type RoomAgentsEvent,
   type RoomBoardDrag,
   type RoomCursorsEvent,
@@ -522,6 +524,104 @@ export function changeBoard(
       ? room
       : { ...room, board: applied.success, updatedAt: now },
   );
+}
+
+/**
+ * The newest change each open page of a person's had taken, by what it overwrites, so one that
+ * arrives after a newer one from the same page replaced it is dropped: a page closing sends what
+ * it still holds at once, past changes of its own still on their way. Kept in memory, as those
+ * arrive within seconds of each other; a page idle for a while is forgotten.
+ */
+export type BoardChangeMarks = Map<string, { at: number; readonly seqs: Map<string, number> }>;
+
+const MARKS_IDLE_MS = 10 * 60_000;
+
+/** Which page of the person's sent a change, and its place among the page's changes. */
+export interface BoardChangeFrom {
+  readonly client: string;
+  readonly seq: number;
+}
+
+// What a change writes whole, so a later one with the same slot leaves nothing of an earlier one.
+function boardChangeSlot(change: RoomBoardChange): string | null {
+  switch (change.type) {
+    case "note.put":
+    case "note.remove":
+      return `note:${change.noteId}`;
+    case "card.move":
+      return `move:${change.cardId}`;
+    case "card.resize":
+      return `size:${change.cardId}`;
+    case "edge.put":
+    case "edge.remove":
+      return `edge:${change.edgeId}`;
+    case "edge.shape":
+      return `shape:${change.edgeId}`;
+    case "edge.pin":
+      return `pin:${change.edgeId}`;
+    default:
+      return null;
+  }
+}
+
+const pageKey = (author: GuestId, from: BoardChangeFrom) => `${author} ${from.client}`;
+
+/** Whether a newer change from the same page, already taken, replaces `change`. */
+export function staleBoardChange(
+  marks: BoardChangeMarks,
+  author: GuestId,
+  from: BoardChangeFrom,
+  change: RoomBoardChange,
+): boolean {
+  const slot = boardChangeSlot(change);
+  const newest = slot === null ? undefined : marks.get(pageKey(author, from))?.seqs.get(slot);
+  return newest !== undefined && newest >= from.seq;
+}
+
+/** Notes that the room took `change`. */
+export function markBoardChange(
+  marks: BoardChangeMarks,
+  author: GuestId,
+  from: BoardChangeFrom,
+  change: RoomBoardChange,
+  nowMs: number,
+): void {
+  for (const [key, page] of marks) if (page.at < nowMs - MARKS_IDLE_MS) marks.delete(key);
+  const slot = boardChangeSlot(change);
+  if (slot === null) return;
+  const key = pageKey(author, from);
+  const page = marks.get(key) ?? { at: nowMs, seqs: new Map<string, number>() };
+  page.at = nowMs;
+  page.seqs.set(slot, Math.max(page.seqs.get(slot) ?? -1, from.seq));
+  marks.set(key, page);
+}
+
+/**
+ * One page's changes applied in their order, each by `changeBoard`'s rules and answered as it
+ * would be alone. A refused change leaves the rest to go on; one that needed it is refused by
+ * those rules too, as a line to a note that was not added.
+ */
+export function changeBoardInOrder(
+  room: CloudRoom,
+  author: GuestId,
+  request: RoomBoardChangesRequest,
+  at: { readonly now: string; readonly nowMs: number },
+  marks: BoardChangeMarks,
+  allow: () => boolean,
+  members?: ReadonlySet<string>,
+): { readonly room: CloudRoom; readonly answer: RoomBoardChangesResult } {
+  let current = room;
+  const results = request.changes.map(({ seq, change }) => {
+    const from = { client: request.client, seq };
+    if (!allow()) return { status: roomFailure("too_fast").status };
+    if (staleBoardChange(marks, author, from, change)) return { status: 204 };
+    const next = changeBoard(current, author, change, at.now, members);
+    if (Result.isFailure(next)) return { status: next.failure.status };
+    current = next.success;
+    markBoardChange(marks, author, from, change, at.nowMs);
+    return { status: 204 };
+  });
+  return { room: current, answer: { results } };
 }
 
 /** Only the board's maker deletes it. */
