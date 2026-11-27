@@ -87,7 +87,7 @@ const FILE_STEP: Readonly<Record<SyncOs, SyncStep>> = {
   mac: { text: "Download Tinkjam Sync and open the file" },
   windows: {
     text: "Download Tinkjam Sync and open the file",
-    note: "Windows does not recognise Tinkjam Sync yet, so it says it protected your PC. Choose More info, then Run anyway.",
+    note: "Windows does not recognise Tinkjam Sync yet, so it may say Windows protected your PC. Choose More info, then Run anyway.",
   },
   linux: {
     text: "Download Tinkjam Sync. Open the AppImage, or install the package and open Tinkjam Sync.",
