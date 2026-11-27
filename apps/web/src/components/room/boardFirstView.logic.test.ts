@@ -69,6 +69,28 @@ describe("the first view of a board", () => {
     });
   });
 
+  it("opens a template on a phone on its first section, readable, with the rest to pan to", () => {
+    const phone = { width: 390, height: 755 };
+    const well = { x: 40, y: 40, width: 480, height: 400 };
+    const retro = [
+      well,
+      { x: 560, y: 40, width: 480, height: 400 },
+      { x: 1080, y: 40, width: 480, height: 400 },
+    ];
+    const { view, whole } = firstBoardView({
+      rects: retro,
+      start: well,
+      area: phone,
+      covered: { top: 0, bottom: 60 },
+      margin: 72,
+      fromTemplate: true,
+    });
+    expect(whole).toBe(false);
+    expect(view.zoom).toBeGreaterThanOrEqual(BOARD_FIRST_VIEW_MIN_ZOOM);
+    expect(view.x + well.x * view.zoom).toBeCloseTo(16, 0);
+    expect(view.x + (well.x + well.width) * view.zoom).toBeLessThanOrEqual(phone.width - 15);
+  });
+
   it("starts at the first card when the board marks no start", () => {
     const rects = [{ x: 400, y: 900, width: 200, height: 100 }, ...sample.slice(1)];
     const { view } = firstBoardView({ rects, start: null, area, covered, margin: 72 });

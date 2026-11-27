@@ -11,6 +11,7 @@ export const BOARD_FIRST_VIEW_MIN_ZOOM = 0.7;
 /** How near a board too big to read whole opens on its start: readable, with what is around it. */
 const BOARD_FIRST_VIEW_ZOOM = 0.75;
 const NARROW_WIDTH = 640;
+const NARROW_GUTTER = 16;
 const CHROME_GAP = 12;
 // The "Showing where to start" hint sits under the header's end; the start opens clear of it.
 const HINT_ROOM = 40;
@@ -26,17 +27,18 @@ export function firstBoardView(input: {
   /** The chrome floating over the board's top and bottom, in screen pixels. */
   readonly covered: { readonly top: number; readonly bottom: number };
   readonly margin: number;
-  /** A board just made from a template opens whole, even when that is smaller than reading size. */
-  readonly forceFit?: boolean;
+  /** A board just made from a template opens whole, unless a phone reads its start better. */
+  readonly fromTemplate?: boolean;
 }): { readonly view: BoardView; readonly whole: boolean } {
   const { rects, area, covered, margin } = input;
   const fit = fitBoardOnSurface(rects, area, covered, margin);
   const bounds = boardBounds(rects);
+  const narrow = area.width < NARROW_WIDTH;
   if (
     bounds === null ||
-    area.width < NARROW_WIDTH ||
-    input.forceFit === true ||
-    fit.zoom >= BOARD_FIRST_VIEW_MIN_ZOOM
+    fit.zoom >= BOARD_FIRST_VIEW_MIN_ZOOM ||
+    (narrow && input.fromTemplate !== true) ||
+    (!narrow && input.fromTemplate === true)
   ) {
     return { view: fit, whole: true };
   }
@@ -45,7 +47,7 @@ export function firstBoardView(input: {
     rects.reduce((first, rect) =>
       rect.y < first.y || (rect.y === first.y && rect.x < first.x) ? rect : first,
     );
-  const side = margin;
+  const side = narrow ? NARROW_GUTTER : margin;
   const top = Math.max(side, covered.top + CHROME_GAP + HINT_ROOM);
   const room = {
     width: Math.max(1, area.width - side * 2),
