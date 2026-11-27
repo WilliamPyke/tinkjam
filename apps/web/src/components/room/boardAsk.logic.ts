@@ -73,8 +73,8 @@ export function boardAskSuggestions(
       suggestion("Rewrite this", "Rewrite this artifact so it reads clearly."),
       suggestion("Make it shorter", "Make this artifact shorter, keeping what matters."),
       isBoardHtmlArtifact(body)
-        ? suggestion("Turn into a document", "Turn this page into a plain markdown document.")
-        : suggestion("Turn into a web page", "Turn this artifact into a complete web page."),
+        ? suggestion("Make it a document", "Rewrite this page as a plain markdown document.")
+        : suggestion("Make it a web page", "Write this artifact as a complete web page."),
       ...(withCards
         ? [suggestion("Work in the cards", "Rewrite this artifact to take in the cards I sent.")]
         : []),
@@ -88,7 +88,7 @@ export function boardAskSuggestions(
   const missing = suggestion("Find what's missing", `Say what is missing from ${these}.`);
   if (all(undefined)) {
     return [
-      suggestion("Turn into tasks", `Turn ${one ? "this note" : "these notes"} into tasks.`),
+      suggestion("Make tasks", `Make tasks from ${one ? "this note" : "these notes"}.`),
       one
         ? suggestion("Expand on this", "Expand on this note.")
         : suggestion("Group by theme", "Group these notes by theme."),
@@ -108,7 +108,7 @@ export function boardAskSuggestions(
   if (any("code") || any("pull-request")) {
     return [suggestion("Review the changes", "Review these changes."), summarise];
   }
-  return [summarise, suggestion("Turn into tasks", `Turn ${these} into tasks.`), missing];
+  return [summarise, suggestion("Make tasks", `Make tasks from ${these}.`), missing];
 }
 
 export interface BoardAskTarget {

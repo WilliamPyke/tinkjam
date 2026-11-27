@@ -2407,7 +2407,7 @@ export function boardPromptCard(
       case "link":
         return roomLinkLabel(note.url, by);
       case "comment":
-        return `Comment thread from ${by}`;
+        return `Comments from ${by}`;
       default:
         return comment ? `Comment from ${by} on a reply` : `Note from ${by}`;
     }
@@ -2483,7 +2483,7 @@ export function boardCommentPromptCard(
 }
 
 /** What an agent asked from a comment thread is sent when the person asking typed nothing. */
-export const BOARD_COMMENT_ASK_TEXT = "Respond to this comment thread.";
+export const BOARD_COMMENT_ASK_TEXT = "Respond to the comments.";
 
 /** What a box is asked when someone puts the HTML page its agent last wrote in a new artifact. */
 export const BOARD_PAGE_TO_ARTIFACT_TEXT =

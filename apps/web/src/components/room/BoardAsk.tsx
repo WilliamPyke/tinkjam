@@ -199,7 +199,7 @@ export function BoardAskPopover({
           </div>
           {failed ? (
             <p role="alert" className="text-2xs text-error-foreground">
-              Could not send it. Nothing was added to the board.
+              Could not send it. Nothing was added to the board. Try again.
             </p>
           ) : null}
         </div>

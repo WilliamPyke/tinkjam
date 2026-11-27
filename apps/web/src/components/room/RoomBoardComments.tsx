@@ -484,7 +484,7 @@ export function CommentThreadPanel({
   return (
     <section
       ref={panel}
-      aria-label={draft ? "New comment" : "Comment thread"}
+      aria-label={draft ? "New comment" : "Comments"}
       data-board-overlay
       data-board-text
       className={cn(
@@ -531,7 +531,11 @@ export function CommentThreadPanel({
           <Button
             size={deleteArmed ? "compact" : "icon-xs"}
             variant={deleteArmed ? "destructive-outline" : "ghost-muted"}
-            aria-label={deleteArmed ? "Confirm delete thread" : "Delete thread"}
+            aria-label={
+              deleteArmed
+                ? `Confirm delete ${replies.length === 0 ? "comment" : "comments"}`
+                : `Delete ${replies.length === 0 ? "comment" : "comments"}`
+            }
             {...(replies.length === 0 ? { onClick: onDelete } : confirm.props("thread", onDelete))}
           >
             <Trash2Icon />
@@ -586,7 +590,7 @@ export function CommentThreadPanel({
       )}
       {!canEdit ? null : full ? (
         <p className="shrink-0 border-t border-board-hairline px-3 py-2 text-2xs text-muted-foreground">
-          This thread holds {ROOM_BOARD_MAX_REPLIES} replies. Start a new one to keep talking.
+          This comment has {ROOM_BOARD_MAX_REPLIES} replies. Start a new one to keep talking.
         </p>
       ) : (
         <form

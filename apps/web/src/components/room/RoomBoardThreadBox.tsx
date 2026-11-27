@@ -2,7 +2,6 @@ import { useAtomValue } from "@effect/atom-react";
 import {
   type AtomCommandResult,
   isAtomCommandInterrupted,
-  squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 import {
   AuthOrchestrationOperateScope,
@@ -323,7 +322,11 @@ export function BoxStopButton({ onStop }: { readonly onStop: StopBoxAgent }) {
               const result = await onStop();
               setStopping(false);
               if (result !== undefined && result._tag === "Failure") {
-                toastManager.add({ type: "error", title: "The agent could not be stopped." });
+                toastManager.add({
+                  type: "error",
+                  title: "Could not stop the agent",
+                  description: "Try again.",
+                });
               }
             }}
           />
@@ -389,7 +392,7 @@ export function BoxRequests({
                   size="micro"
                   variant="ghost-muted"
                   disabled={busy}
-                  aria-label={`Dismiss request from ${who}`}
+                  aria-label={`Dismiss message from ${who}`}
                   onPointerDown={stopPointer}
                   onClick={() => onResolve(message, "dismiss")}
                 >
@@ -398,7 +401,7 @@ export function BoxRequests({
                 <Button
                   size="micro"
                   disabled={busy}
-                  aria-label={`Send request from ${who}`}
+                  aria-label={`Send message from ${who}`}
                   onPointerDown={stopPointer}
                   onClick={() => onResolve(message, "send")}
                 >
@@ -469,10 +472,7 @@ export function BoxApproval({
               input: { threadId: threadRef.threadId, requestId, decision },
             });
             if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
-              const failure = squashAtomCommandFailure(result);
-              setError(
-                failure instanceof Error ? failure.message : "Could not answer the approval.",
-              );
+              setError("Could not send your answer. Try again.");
             }
             setResponding(false);
             return result;

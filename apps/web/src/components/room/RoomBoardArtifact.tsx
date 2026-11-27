@@ -64,7 +64,12 @@ const openInNewTab = (url: string) => {
 const copyLink = (text: string) =>
   void navigator.clipboard.writeText(text).then(
     () => toastManager.add({ type: "info", title: "Link copied" }),
-    () => toastManager.add({ type: "info", title: "Could not copy the link" }),
+    () =>
+      toastManager.add({
+        type: "error",
+        title: "Could not copy the link",
+        description: "Your browser did not allow it.",
+      }),
   );
 
 /** Pointing at parts of an artifact's page: its numbered marks, and how one is added. */

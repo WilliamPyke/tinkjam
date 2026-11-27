@@ -70,9 +70,9 @@ describe("boardAskSuggestions", () => {
   it.each([
     [
       [{}, {}],
-      ["Turn into tasks", "Group by theme", "Summarise"],
+      ["Make tasks", "Group by theme", "Summarise"],
     ],
-    [[{}], ["Turn into tasks", "Expand on this", "Summarise"]],
+    [[{}], ["Make tasks", "Expand on this", "Summarise"]],
     [
       [{ kind: "task" }, { kind: "task" }],
       ["Order by priority", "Split into smaller steps", "Find what's missing"],
@@ -84,7 +84,7 @@ describe("boardAskSuggestions", () => {
     ],
     [
       [{}, { kind: "link" }],
-      ["Summarise", "Turn into tasks", "Find what's missing"],
+      ["Summarise", "Make tasks", "Find what's missing"],
     ],
   ] as const)("fits what is selected: %j", (kinds, labels) => {
     expect(boardAskSuggestions(kinds).map((one) => one.label)).toEqual(labels);
@@ -103,13 +103,13 @@ describe("boardAskSuggestions", () => {
       "a document",
       [],
       content("# Plan"),
-      ["Rewrite this", "Make it shorter", "Turn into a web page"],
+      ["Rewrite this", "Make it shorter", "Make it a web page"],
     ],
     [
       "a page with cards",
       [{ kind: "task" }],
       content("<!doctype html><html></html>"),
-      ["Rewrite this", "Make it shorter", "Turn into a document", "Work in the cards"],
+      ["Rewrite this", "Make it shorter", "Make it a document", "Work in the cards"],
     ],
   ] as const)("edits the artifact asked about: %s", (_, kinds, artifact, labels) => {
     expect(boardAskSuggestions(kinds, artifact).map((one) => one.label)).toEqual(labels);

@@ -34,8 +34,8 @@ const BOARD_PULL_REQUEST_STATE = {
 const PROBLEMS: Record<RoomPullRequestProblem, string> = {
   not_found:
     "Not found. It may have been deleted, or the board owner's GitHub account cannot see it.",
-  signed_out: "GitHub is not signed in on the board owner's machine, so it cannot be read.",
-  unavailable: "This pull request could not be read just now.",
+  signed_out: "GitHub is not signed in on the board owner's computer, so it cannot be read.",
+  unavailable: "This pull request could not be read just now. Try again in a moment.",
 };
 
 /**

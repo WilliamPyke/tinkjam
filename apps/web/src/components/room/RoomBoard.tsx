@@ -917,9 +917,9 @@ function ResizeHandle({
 }
 
 const THREAD_DROP = "thread";
-const CLOUD_NO_AGENTS = "Agents cannot join this board.";
+const CLOUD_NO_AGENTS = "This board cannot run agents. Make a board on your computer to use them.";
 const CLOUD_NO_WINDOWS =
-  "Needs a board kept on your computer. Connect your computer, then start one from New board with On this computer switched on.";
+  "This needs a board on a computer. Make a new board with On this computer switched on.";
 const OWN_AGENT_DROP = "own-agent";
 
 /**
@@ -2077,9 +2077,9 @@ export function RoomBoard({
       if (boardChangeOutgrowsOlderHosts(change)) {
         toastManager.add({
           type: "info",
-          title: "Could not make it that big",
+          title: "That card cannot be made bigger",
           description:
-            "If this board is kept by an older version of Tinkjam, update it to go past 1,600 pixels.",
+            "The computer keeping this board has an older version of Tinkjam. Update it there, then try again.",
         });
       }
     });
@@ -2805,7 +2805,7 @@ export function RoomBoard({
   // Why the toolbar cannot add a card for this person now, said on its disabled buttons.
   const cannotAdd =
     room === null
-      ? "Share this chat to add to its board"
+      ? "Share this board before adding cards."
       : !canEdit
         ? "This link lets you look at the board, not change it"
         : full
@@ -2822,11 +2822,13 @@ export function RoomBoard({
     (!holds.agents
       ? CLOUD_NO_AGENTS
       : threadsFull
-        ? `The board holds ${ROOM_BOARD_MAX_THREADS} agent boxes at most`
+        ? `The board holds ${ROOM_BOARD_MAX_THREADS} agent boxes at most. Delete one to add another.`
         : null);
   const cannotAddArtifact =
     cannotAdd ??
-    (artifactsFull ? `The board holds ${ROOM_BOARD_MAX_ARTIFACTS} artifacts at most` : null);
+    (artifactsFull
+      ? `The board holds ${ROOM_BOARD_MAX_ARTIFACTS} artifacts at most. Delete one to add another.`
+      : null);
   const codeFull =
     shown.notes.filter((note) => note.kind === "code").length >= ROOM_BOARD_MAX_CODE_WINDOWS;
   // A cloud board has no machine to read code or pull requests from; its tools show disabled.
@@ -2836,7 +2838,7 @@ export function RoomBoard({
     (noMachineWindows
       ? CLOUD_NO_WINDOWS
       : codeFull
-        ? `The board holds ${ROOM_BOARD_MAX_CODE_WINDOWS} code windows at most`
+        ? `The board holds ${ROOM_BOARD_MAX_CODE_WINDOWS} code windows at most. Delete one to add another.`
         : null);
   const pullRequestsFull =
     shown.notes.filter((note) => note.kind === "pull-request").length >=
@@ -2846,7 +2848,7 @@ export function RoomBoard({
     (noMachineWindows
       ? CLOUD_NO_WINDOWS
       : pullRequestsFull
-        ? `The board holds ${ROOM_BOARD_MAX_PULL_REQUESTS} pull request windows at most`
+        ? `The board holds ${ROOM_BOARD_MAX_PULL_REQUESTS} pull request windows at most. Delete one to add another.`
         : null);
   const machineTools = cards === undefined && holds.windows;
   const machineToolsShown = cards === undefined;
@@ -4054,8 +4056,8 @@ export function RoomBoard({
         viewer === null
           ? "Adds an agent box beside this artifact. What you prompt it runs on your agent, and its replies rewrite the artifact for everyone."
           : holds.room
-            ? "Adds an agent box of yours beside this artifact. What you prompt it runs on your own agent, on your machine, or asks the owner's agent when yours is not connected. Its replies rewrite the artifact for everyone."
-            : "Adds an agent box of yours beside this artifact. What you prompt it runs on your own agent, on your machine. Its replies rewrite the artifact for everyone.",
+            ? "Adds an agent box of yours beside this artifact. What you prompt it runs on your own agent, on your computer, or asks the owner's agent when yours is not connected. Its replies rewrite the artifact for everyone."
+            : "Adds an agent box of yours beside this artifact. What you prompt it runs on your own agent, on your computer. Its replies rewrite the artifact for everyone.",
       run: bringAgent ?? (() => addBeside(noteRef(note.id), "thread", "to")),
     };
   };
@@ -6949,7 +6951,7 @@ export function RoomBoard({
                       kind={
                         now !== undefined
                           ? "working"
-                          : `${turns.length} turn${turns.length === 1 ? "" : "s"}`
+                          : `${turns.length} ${turns.length === 1 ? "answer" : "answers"}`
                       }
                       id={id}
                       size={sizes[id]}
@@ -6962,7 +6964,7 @@ export function RoomBoard({
                       onMove={dragBy}
                       onDrop={dropItem}
                     >
-                      <p className="text-2xs text-muted-foreground">Runs on their machine</p>
+                      <p className="text-2xs text-muted-foreground">Runs on their computer</p>
                       {now !== undefined ? (
                         <p
                           role="status"
@@ -7399,7 +7401,7 @@ export function RoomBoard({
                   {deletingDoneNotes
                     ? "An agent finished with them. Undo brings them back."
                     : deletingBoxes.length === 0
-                      ? "What an agent wrote, a code window or a pull request window cannot be brought back with Undo."
+                      ? "Undo cannot bring back cards written by an agent, code windows, or pull request windows."
                       : `Undo can't bring ${deletingBoxes.length === 1 ? "the box" : "the boxes"} back. ${
                           boxChats.length > 0
                             ? `${boxChats.length === 1 ? "The chat stays" : "The chats stay"} in your list.`
@@ -7551,7 +7553,7 @@ export function RoomBoard({
           {room === null ? (
             <p className="pointer-events-none absolute inset-x-0 bottom-20 flex justify-center px-4">
               <span className="rounded-full border border-board-hairline bg-card px-3 py-1.5 text-center text-xs text-muted-foreground shadow-board">
-                Share this thread with guests and each person who joins gets a card here.
+                Share this board and each person who joins gets a card here.
               </span>
             </p>
           ) : null}
@@ -7774,7 +7776,7 @@ function LineLegend() {
         <div className="flex flex-col gap-1.5 text-2xs text-muted-foreground">
           <span className="flex items-center gap-2">
             <span aria-hidden className={cn(swatch, "border-primary")} />
-            Into a thread box, or into an artifact its agent rewrites: the card goes to the agent
+            Into an agent box, or into an artifact its agent rewrites: the card goes to the agent
             with the next message. From a section, every card in it goes.
           </span>
           <span className="flex items-center gap-2">
@@ -7787,7 +7789,7 @@ function LineLegend() {
           </span>
           <span className="flex items-center gap-2">
             <span aria-hidden className={cn(swatch, "border-person-2")} />
-            From a thread box to an artifact, in its owner's colour: the agent's answers rewrite the
+            From an agent box to an artifact, in its owner's colour: the agent's answers rewrite the
             artifact. To a code window: the window shows the files the agent changed.
           </span>
           <span className="flex items-center gap-2">

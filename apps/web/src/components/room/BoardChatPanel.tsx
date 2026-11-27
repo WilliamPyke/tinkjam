@@ -41,7 +41,7 @@ export function BoardChatPanel({
       toastManager.add({
         type: "info",
         title: "Command copied",
-        description: "Open the full chat to run it in its terminal.",
+        description: "Open the full chat to run it there.",
       }),
   });
   // The board has no diff panel or terminal of its own: a diff opens in the full thread.

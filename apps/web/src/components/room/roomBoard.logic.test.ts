@@ -1932,8 +1932,8 @@ describe("boardPromptContext", () => {
       })),
     ).toEqual([
       {
-        label: "Comment thread from You",
-        sharedLabel: "Comment thread from Sam",
+        label: "Comments from You",
+        sharedLabel: "Comments from Sam",
         text: "Sam: Ship it?\nThe owner: Not yet\nTests fail\nSam: Fixed\nSam's agent: Tests pass now.\nThe owner's agent: Ship it.",
         excerpt: "Ship it?",
       },

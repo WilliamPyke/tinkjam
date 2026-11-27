@@ -96,7 +96,8 @@ const FRAME_ALLOW = "fullscreen; clipboard-write; picture-in-picture; encrypted-
 // A page someone chose to show is any site: its forms work, and it never navigates the board.
 const PAGE_SANDBOX = `${FRAME_SANDBOX} allow-forms`;
 const PAGE_ALLOW = "fullscreen";
-const REFUSED = "This site does not allow being shown inside other pages.";
+const REFUSED =
+  "This site does not let other pages show it. You can open it instead, or try anyway.";
 
 /** The board surface's size, which the part of the board in view is worked out from. */
 export function useBoardSurfaceSize(surfaceRef: RefObject<HTMLElement | null>) {
