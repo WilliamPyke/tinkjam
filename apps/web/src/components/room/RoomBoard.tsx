@@ -253,6 +253,7 @@ import {
   boardDuplicateSpot,
   boardLineSlots,
   boardLineControlSpot,
+  boardLineEnds,
   boardNoteRestorable,
   boardThreadBoxes,
   BOARD_COMMENT_ASK_TEXT,
@@ -7446,6 +7447,7 @@ export function RoomBoard({
                     middle,
                     view,
                     surfaceSize ?? { width: 600, height: 400 },
+                    boardLineEnds(from, to, { slots: lineSlots.get(edge.id) }),
                   );
                   return (
                     <div

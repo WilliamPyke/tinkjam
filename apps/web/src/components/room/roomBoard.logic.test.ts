@@ -1443,6 +1443,19 @@ describe("boardLineControlSpot", () => {
     });
   });
 
+  it("sits above the whole of a sloping line, so its far end and handle stay in view", () => {
+    const ends = { start: { x: 200, y: 190 }, end: { x: 300, y: 120 } };
+    const spot = boardLineControlSpot(
+      horizontalFrom,
+      { x: 300, y: 80, width: 100, height: 80 },
+      { x: 250, y: 155 },
+      view,
+      area,
+      ends,
+    );
+    expect(spot).toEqual({ x: 250, y: 92 });
+  });
+
   it("goes below a horizontal line without room above", () => {
     const middle = { x: 250, y: 30 };
     expect(boardLineControlSpot(horizontalFrom, horizontalTo, middle, view, area).y).toBe(58);

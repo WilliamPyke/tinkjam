@@ -1286,8 +1286,9 @@ const LINE_CONTROL_MARGIN = 8;
 
 /**
  * Where the selected line's controls go, in board pixels: across the line from it, never over
- * the line itself, beside a vertical line and above or below a horizontal one. The controls are
- * scaled as lines are, so their size here scales too; the spot stays inside the visible board.
+ * the line itself, beside a vertical line and above or below a horizontal one, clear of its
+ * `ends` too where given. The controls are scaled as lines are, so their size here scales too;
+ * the spot stays inside the visible board.
  */
 export function boardLineControlSpot(
   from: BoardRect,
@@ -1295,6 +1296,7 @@ export function boardLineControlSpot(
   middle: BoardPoint,
   view: BoardView,
   area: { readonly width: number; readonly height: number },
+  ends?: { readonly start: BoardPoint; readonly end: BoardPoint },
 ): BoardPoint {
   const scale = boardLineScale(view.zoom);
   const width = LINE_CONTROL_WIDTH * scale;
@@ -1310,19 +1312,24 @@ export function boardLineControlSpot(
   const acrossX =
     Math.abs(to.x + to.width / 2 - (from.x + from.width / 2)) >=
     Math.abs(to.y + to.height / 2 - (from.y + from.height / 2));
+  const points = ends === undefined ? [middle] : [middle, ends.start, ends.end];
+  const ys = points.map((point) => point.y);
+  const xs = points.map((point) => point.x);
   const spot = { ...middle };
   if (acrossX) {
-    const above = middle.y - visible.top;
-    const below = visible.bottom - middle.y;
+    const top = Math.min(...ys);
+    const bottom = Math.max(...ys);
+    const above = top - visible.top;
+    const below = visible.bottom - bottom;
     const room = height + gap + margin;
     const over = above >= room || above >= below;
-    spot.y = middle.y + (over ? -1 : 1) * (height / 2 + gap);
+    spot.y = over ? top - (height / 2 + gap) : bottom + height / 2 + gap;
   } else {
-    const left = middle.x - visible.left;
-    const right = visible.right - middle.x;
+    const left = Math.min(...xs);
+    const right = Math.max(...xs);
     const room = width + gap + margin;
-    const after = right >= room || right >= left;
-    spot.x = middle.x + (after ? 1 : -1) * (width / 2 + gap);
+    const after = visible.right - right >= room || visible.right - right >= left - visible.left;
+    spot.x = after ? right + width / 2 + gap : left - (width / 2 + gap);
   }
   const clamp = (value: number, low: number, high: number) => Math.max(low, Math.min(value, high));
   const lowX = visible.left + width / 2 + margin;
