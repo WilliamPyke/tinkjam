@@ -6408,8 +6408,16 @@ export function RoomBoard({
             if (held === null || held.moved) return;
             const distance = Math.hypot(event.clientX - held.x, event.clientY - held.y);
             if (distance >= pressSlop(event.pointerType)) return;
-            setSelection(held.on === null ? NO_SELECTION : new Set([held.on]));
-            if (held.on !== null) lastCard.current = held.on;
+            if (held.on === null) {
+              const additive =
+                event.shiftKey ||
+                event.metaKey ||
+                (event.ctrlKey && !isMacPlatform(navigator.platform));
+              if (!additive) setSelection(NO_SELECTION);
+            } else {
+              setSelection(new Set([held.on]));
+              lastCard.current = held.on;
+            }
           }}
           onPointerCancelCapture={(event) => {
             delete event.currentTarget.dataset.boardBusy;

@@ -137,6 +137,33 @@ describe("cloud board worker", () => {
     expect(response.status).toBe(429);
     expect(copyFor).not.toHaveBeenCalled();
   });
+
+  it("accepts localhost web app ports only when the local-origins variable is on", async () => {
+    const preflight = (origin: string, localOrigins?: string) =>
+      worker.fetch(
+        new Request("https://boards/api/boards", {
+          method: "OPTIONS",
+          headers: { origin },
+        }) as never,
+        {
+          ALLOWED_ORIGINS: "https://app.tinkjam.com,https://app.trellium.org,http://localhost:5733",
+          ...(localOrigins === undefined ? {} : { ALLOW_LOCALHOST_ORIGINS: localOrigins }),
+        } as never,
+      );
+
+    for (const origin of ["http://localhost:6001", "http://127.0.0.1:6002"]) {
+      const response = await preflight(origin, "true");
+      expect(response.headers.get("access-control-allow-origin")).toBe(origin);
+    }
+    for (const origin of ["https://localhost:6001", "http://localhost.example:6001"]) {
+      const response = await preflight(origin, "true");
+      expect(response.headers.get("access-control-allow-origin")).toBeNull();
+    }
+    const disabled = await preflight("http://localhost:6001");
+    expect(disabled.headers.get("access-control-allow-origin")).toBeNull();
+    const deployed = await preflight("https://app.tinkjam.com");
+    expect(deployed.headers.get("access-control-allow-origin")).toBe("https://app.tinkjam.com");
+  });
 });
 
 describe("cloud room", () => {

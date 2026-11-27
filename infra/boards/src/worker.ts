@@ -199,6 +199,8 @@ interface Env {
   readonly WORKSPACES: DurableObjectNamespace<BoardWorkspace>;
   /** Pages that may call this host from a browser, separated by commas. */
   readonly ALLOWED_ORIGINS: string;
+  /** Local development only: also allow a web app on any localhost port. */
+  readonly ALLOW_LOCALHOST_ORIGINS?: string | boolean;
   /**
    * The Clerk instance's Frontend API origin, whose published keys verify a person's session.
    * Empty turns accounts off: everything works as for someone signed out.
@@ -323,7 +325,7 @@ async function accountOf(request: Request, env: Env): Promise<string | RoomFailu
   }
   const account = await verifyClerkSession(bearerOf(request), {
     issuer,
-    allowedOrigins: allowedOrigins(env),
+    allowedOrigin: (origin) => originAllowed(env, origin),
     now: Math.floor(Date.now() / 1000),
     keyFor,
   });
@@ -586,10 +588,22 @@ async function route(request: Request, env: Env): Promise<Response> {
   return failureResponse(roomFailure("unavailable"));
 }
 
+const localOriginsEnabled = (env: Env) =>
+  env.ALLOW_LOCALHOST_ORIGINS === true || env.ALLOW_LOCALHOST_ORIGINS === "true";
+
+const localhostOrigin = (origin: string) => {
+  if (!URL.canParse(origin)) return false;
+  const url = new URL(origin);
+  return url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+};
+
+const originAllowed = (env: Env, origin: string) =>
+  allowedOrigins(env).includes(origin) || (localOriginsEnabled(env) && localhostOrigin(origin));
+
 const allowedOrigin = (request: Request, env: Env) => {
   const origin = request.headers.get("origin");
   if (origin === null) return null;
-  return allowedOrigins(env).includes(origin) ? origin : null;
+  return originAllowed(env, origin) ? origin : null;
 };
 
 /** Pages on the allowed origins call with a bearer token and no cookies. */

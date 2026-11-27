@@ -9,8 +9,8 @@ export type ClerkKeyLookup = (kid: string) => Promise<CryptoKey | null>;
 export interface ClerkCheck {
   /** The instance's Frontend API origin, which every session token names as `iss`. */
   readonly issuer: string;
-  /** Pages allowed to call the host; a token made for another page (`azp`) is refused. */
-  readonly allowedOrigins: ReadonlyArray<string>;
+  /** Whether a page may call the host; a token made for another page (`azp`) is refused. */
+  readonly allowedOrigin: (origin: string) => boolean;
   /** Epoch seconds. */
   readonly now: number;
   readonly keyFor: ClerkKeyLookup;
@@ -64,7 +64,7 @@ export async function verifyClerkSession(token: string, check: ClerkCheck): Prom
   if (iss !== check.issuer) return null;
   if (typeof exp !== "number" || exp + CLOCK_SKEW_S < check.now) return null;
   if (nbf !== undefined && (typeof nbf !== "number" || nbf - CLOCK_SKEW_S > check.now)) return null;
-  if (azp !== undefined && (typeof azp !== "string" || !check.allowedOrigins.includes(azp))) {
+  if (azp !== undefined && (typeof azp !== "string" || !check.allowedOrigin(azp))) {
     return null;
   }
   return typeof sub === "string" && sub !== "" ? sub : null;
