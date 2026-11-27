@@ -1,9 +1,10 @@
 import { ArrowDownIcon } from "lucide-react";
-import { type ComponentProps, type ReactNode, useState } from "react";
+import { type ComponentProps, type ReactNode, useEffect, useEffectEvent, useState } from "react";
 
 import { cn } from "~/lib/utils";
 
 import { Button } from "../ui/button";
+import { useOptionalSidebar } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
 /**
@@ -39,6 +40,31 @@ export const BOARD_SELECTED_CHROME_CLASS =
  */
 export const BOARD_ICON_BUTTON_CLASS =
   "relative grid size-6 shrink-0 place-items-center rounded-md opacity-60 pointer-coarse:mx-2 pointer-coarse:after:absolute pointer-coarse:after:-inset-2 transition-[opacity,background-color] hover:bg-current/10 hover:opacity-100 focus-visible:bg-current/10 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none";
+
+/** Below this window width a board opens with the app's sidebar folded away. */
+const BOARD_ROOMY_WIDTH = 1100;
+
+/**
+ * On a window narrower than 1100px a board opens with the app's sidebar folded, one click from its
+ * toggle, and unfolds it again when the board closes, so the rest of the app keeps its choice.
+ */
+export function useFoldSidebarOnNarrowBoard() {
+  const sidebar = useOptionalSidebar();
+  const fold = useEffectEvent(() => {
+    if (sidebar === null || sidebar.isMobile || !sidebar.open) return false;
+    if (window.innerWidth >= BOARD_ROOMY_WIDTH) return false;
+    sidebar.setOpen(false);
+    return true;
+  });
+  const unfold = useEffectEvent(() => sidebar?.setOpen(true));
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- the sidebar's open state lives in its own store, shared by every page.
+  useEffect(() => {
+    const folded = fold();
+    return () => {
+      if (folded) unfold();
+    };
+  }, []);
+}
 
 /** Floating chrome over the canvas: the tool rail, the zoom pill, passing notices. */
 export function BoardFloat({ className, ...props }: ComponentProps<"div">) {

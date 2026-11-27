@@ -458,6 +458,7 @@ import {
   boardRailReach,
   BoardScrollTail,
   PersonDot,
+  useFoldSidebarOnNarrowBoard,
 } from "./BoardChrome";
 import {
   BoxBoardWork,
@@ -2753,6 +2754,7 @@ export function RoomBoard({
     for (const note of boardVoteToggles(notes, viewer)) reactTo(note, BOARD_VOTE);
   };
   const [minimapShown, toggleMinimap] = useBoardMinimap();
+  useFoldSidebarOnNarrowBoard();
   const [agentsOpen, setAgentsOpen] = useState(false);
   const zoomBy = (factor: number) => {
     const area = boardAreaOf(surfaceRef.current);
