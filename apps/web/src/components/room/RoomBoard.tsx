@@ -1410,7 +1410,7 @@ export function RoomBoard({
     readonly y: number;
     moved: boolean;
   } | null>(null);
-  const marquee = useBoardMarquee((rect) => {
+  const marquee = useBoardMarquee((rect, additive) => {
     const area = boardAreaOf(surfaceRef.current);
     if (area === null) return;
     // A section is selected by its title bar, so a marquee over one picks out its cards.
@@ -1423,7 +1423,8 @@ export function RoomBoard({
       return ref === undefined ? [] : [{ ref, rect: drawnRect(element) }];
     });
     const touched = boardItemsInRect(items, clientRectToBoard(view, area, rect));
-    setSelection((current) => new Set([...current, ...touched]));
+    // Plain drag replaces the selection, as in FigJam; Shift, Ctrl or Cmd adds to it.
+    setSelection((current) => (additive ? new Set([...current, ...touched]) : new Set(touched)));
   });
   const sendCursor = useStableCallback((presence: BoardPresence) => onCursor?.(presence));
   const [cursor] = useState(() => cursorSender(sendCursor));
@@ -6240,7 +6241,10 @@ export function RoomBoard({
           // focusing a card at the edge cannot scroll the board out from under the pointer.
           tabIndex={0}
           className={cn(
-            "relative min-h-0 flex-1 cursor-grab touch-none overflow-clip bg-board-canvas outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:cursor-grabbing",
+            "relative min-h-0 flex-1 touch-none overflow-clip bg-board-canvas outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+            // Select mode's drag draws the box; the grab cursor is only for boards one cannot edit,
+            // where a drag still pans, and while the hand tool or Space overrides it inline.
+            canEdit ? "cursor-default" : "cursor-grab active:cursor-grabbing",
             // A resting finger never selects text or opens the browser's callout; a card it picked
             // up lifts a little.
             "data-[board-resting]:select-none data-[board-resting]:[-webkit-touch-callout:none] [&_[data-board-resting]]:select-none [&_[data-board-resting]]:[-webkit-touch-callout:none] [&_[data-board-lifted]]:shadow-lg [&_[data-board-lifted]]:outline-2 [&_[data-board-lifted]]:-outline-offset-2 [&_[data-board-lifted]]:outline-primary/60",
@@ -6366,7 +6370,15 @@ export function RoomBoard({
             if (!isInside(event)) return;
             setSelectedEdge(null);
             if (boardPressKind(event.target) !== "gesture") return;
-            if (event.shiftKey && canEdit && event.button === 0) return marquee.start(event);
+            // A mouse or pen drag on the empty board draws the selection box, as in FigJam;
+            // moving around is the hand tool, Space, or the wheel. A finger's drag still pans.
+            if (
+              canEdit &&
+              event.button === 0 &&
+              (event.pointerType === "mouse" || event.pointerType === "pen" || event.shiftKey)
+            ) {
+              return marquee.start(event);
+            }
             pan.onPointerDown(event);
           }}
           // Escape leaves a note's text with the note selected; the note gives the board focus.

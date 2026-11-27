@@ -54,12 +54,13 @@ interface ClientRect {
 }
 
 /**
- * A rectangle dragged on the empty board with Shift held. It is drawn straight to the page while
- * the pointer moves, so the board does not render again until it is let go.
+ * A rectangle dragged on the empty board. It is drawn straight to the page while the pointer
+ * moves, so the board does not render again until it is let go.
  */
-export function useBoardMarquee(onSelect: (rect: ClientRect) => void) {
+export function useBoardMarquee(onSelect: (rect: ClientRect, additive: boolean) => void) {
   const box = useRef<HTMLDivElement | null>(null);
   const from = useRef<{ readonly x: number; readonly y: number } | null>(null);
+  const additive = useRef(false);
   const rectTo = (event: PointerEvent<HTMLElement>): ClientRect | null => {
     const start = from.current;
     if (start === null) return null;
@@ -80,6 +81,7 @@ export function useBoardMarquee(onSelect: (rect: ClientRect) => void) {
     ),
     start: (event: PointerEvent<HTMLElement>) => {
       from.current = { x: event.clientX, y: event.clientY };
+      additive.current = event.shiftKey || event.ctrlKey || event.metaKey;
       holdPointer(event);
     },
     /** Drops a marquee being drawn, selecting nothing. */
@@ -111,7 +113,11 @@ export function useBoardMarquee(onSelect: (rect: ClientRect) => void) {
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
-      if (event.type === "pointerup") onSelect(rect);
+      // Shift, Ctrl or Cmd held at the start or the end of the drag adds to the selection;
+      // a plain drag replaces it.
+      if (event.type === "pointerup") {
+        onSelect(rect, additive.current || event.shiftKey || event.ctrlKey || event.metaKey);
+      }
       return true;
     },
   };
