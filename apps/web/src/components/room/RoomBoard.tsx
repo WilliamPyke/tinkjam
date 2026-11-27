@@ -1698,7 +1698,7 @@ export function RoomBoard({
       area,
       covered: chromeCoverOf(surfaceRef.current),
       margin: FIT_MARGIN,
-      forceFit: fitAwaits > 0,
+      fromTemplate: fitAwaits > 0,
     });
     const opens =
       refit ||

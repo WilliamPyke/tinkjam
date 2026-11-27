@@ -29,7 +29,7 @@ import {
 } from "./boardTemplates";
 import { UNTITLED_BOARD } from "./boardsHome.logic";
 import { useFirstRunFocusOffered } from "./homeFocus";
-import { useNewBoardWaiting, useStartNewBoard } from "./newBoard";
+import { openBoardTemplates, useNewBoardWaiting, useStartNewBoard } from "./newBoard";
 import { CreateWorkspaceButton } from "./Workspaces";
 
 const STARTER_IDS = STARTER_BOARD_TEMPLATES.map((choice) => choice.id);
@@ -203,7 +203,17 @@ export function StartBoardForm({
             );
           })}
         </ul>
-        <p className="mt-2 text-xs text-quiet">{describe(template)}</p>
+        <div className="mt-2 flex items-start justify-between gap-3">
+          <p className="text-xs text-quiet">{describe(template)}</p>
+          <InlineButton
+            tone="accent"
+            className="shrink-0"
+            onClick={openBoardTemplates}
+            data-welcome-more-templates
+          >
+            More templates
+          </InlineButton>
+        </div>
       </fieldset>
       {heading}
       <div className="flex flex-col gap-3.5">
