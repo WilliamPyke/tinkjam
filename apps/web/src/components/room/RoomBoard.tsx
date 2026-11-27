@@ -5860,18 +5860,7 @@ export function RoomBoard({
                 <BoardViewSwitch view={planShown ? pickedView : "board"} onView={switchView} />
               </div>
             ) : null}
-            <div
-              className="flex min-w-0 flex-1 basis-0 items-center justify-end gap-2 @max-xl/board:flex-none"
-              // Copying the invite link, from here or from the guide, is the guide's invite step.
-              onClickCapture={(event) => {
-                if (
-                  event.target instanceof Element &&
-                  event.target.closest("[data-cloud-board-invite]") !== null
-                ) {
-                  markBoardGuideStep("invite");
-                }
-              }}
-            >
+            <div className="flex min-w-0 flex-1 basis-0 items-center justify-end gap-2 @max-xl/board:flex-none">
               {cards !== undefined || room === null ? null : (
                 <BoardAgents
                   entries={agentEntries}
