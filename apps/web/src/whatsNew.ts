@@ -27,6 +27,9 @@ export const WHATS_NEW: ReadonlyArray<WhatsNewEntry> = [
       "An artifact you write by hand has Save and Cancel buttons.",
       "The sign-in page shows the password rule before you type, explains the wait while it checks your connection, and offers Try again if it cannot load.",
       "A board opens with less to download.",
+      "Typing in a note and dragging a card stay smooth on a board full of cards.",
+      "With a screen reader, cards, sections, tasks and their buttons say what they are and what they act on.",
+      "Shift-clicking empty space on the board keeps your selection.",
     ],
   },
   {
