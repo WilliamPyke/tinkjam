@@ -378,6 +378,7 @@ import {
 import {
   BoardSelectionContext,
   SelectionBar,
+  useSelectionDocked,
   boardKeyFocus,
   isBoardKey,
   useBoardMarquee,
@@ -1386,6 +1387,7 @@ export function RoomBoard({
   // The pages people chose to show that this viewer asked to load, for this visit to the board.
   const [pagesShown, setPagesShown] = useState<ReadonlySet<string>>(() => new Set());
   const surfaceSize = useBoardSurfaceSize(surfaceRef);
+  const selectionDocked = useSelectionDocked(surfaceSize?.width);
   const liveEmbeds = boardLiveEmbeds(
     shown.notes,
     surfaceSize === null ? null : visibleBoardRect(view, surfaceSize),
@@ -5660,6 +5662,7 @@ export function RoomBoard({
           "group/room relative flex min-h-0 flex-1 flex-col",
           planShown && "bg-background",
         )}
+        data-selection-docked={selectionDocked && selected.size > 0 ? "" : undefined}
       >
         {power.overlay}
         <div className="relative z-30 shrink-0">
@@ -6187,7 +6190,7 @@ export function RoomBoard({
           <div className="flex items-end gap-2.5 @max-xl/board:flex-col @max-xl/board:items-start">
             {minimapShown ? (
               // A selection docked above the toolbar would sit under it.
-              <div className="group-has-[[data-selection-docked]]/room:hidden">
+              <div className="group-data-[selection-docked]/room:hidden">
                 <BoardMinimap
                   board={shown}
                   cardIds={cardIds}
@@ -7308,6 +7311,7 @@ export function RoomBoard({
             <SelectionBar
               refs={selected}
               hidden={moving}
+              docked={selectionDocked}
               count={selected.size}
               removable={canEdit ? removal.noteIds.length : 0}
               kept={canEdit ? removal.left : 0}
