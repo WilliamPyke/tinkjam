@@ -49,10 +49,12 @@ function renderBoard(
     takes = async () => true,
     withCommandMenu = false,
     containerSize,
+    cards,
   }: {
     /** Renders the app's command menu around the board, as the app does. */
     readonly withCommandMenu?: boolean;
     readonly containerSize?: { readonly width: number; readonly height: number };
+    readonly cards?: ComponentProps<typeof RoomBoard>["cards"];
     readonly messages?: ComponentProps<typeof RoomBoard>["messages"];
     readonly onCursor?: ComponentProps<typeof RoomBoard>["onCursor"];
     readonly onUseNote?: ComponentProps<typeof RoomBoard>["onUseNote"];
@@ -86,6 +88,7 @@ function renderBoard(
       onUseNote={onUseNote}
       onTakeTask={onTakeTask}
       onOpenConversation={onOpenConversation}
+      {...(cards === undefined ? {} : { cards })}
     />
   );
   const screen = render(withCommandMenu ? <CommandPalette>{element}</CommandPalette> : element, {
@@ -202,6 +205,41 @@ describe("RoomBoard view", () => {
     screen.container.style.width = "1100px";
     await vi.waitFor(() => expect(surface.clientWidth).toBeGreaterThan(1000));
     await vi.waitFor(() => expect(Math.abs(offCentre() - fitted)).toBeLessThan(2));
+  });
+
+  it("pans a card into view when keyboard focus reaches it", async () => {
+    await using _viewport = await boardSizedViewport();
+    rememberRoomBoardView("view-test:keyboard-focus", { x: 0, y: 0, zoom: 1 });
+    const board = renderBoard(
+      [
+        { id: "near", text: "Near", x: 0, y: 0 },
+        { id: "far", text: "Far", x: 1800, y: 0 },
+      ],
+      "view-test:keyboard-focus",
+      { cards: [] },
+    );
+    await using screen = await board.screen;
+    const surface = screen.getByRole("application", { name: "Room board" }).element();
+    const far = screen.container.querySelector<HTMLElement>('[data-board-item="note:far"]');
+    if (!(surface instanceof HTMLElement) || far === null) throw new Error("No board or far note");
+    await vi.waitFor(() => expect(far.getBoundingClientRect().width).toBeGreaterThan(0));
+    expect(far.getBoundingClientRect().left).toBeGreaterThan(surface.getBoundingClientRect().right);
+
+    surface.focus();
+    for (let count = 0; count < 60 && !far.contains(document.activeElement); count += 1) {
+      await userEvent.tab();
+    }
+    expect(far.contains(document.activeElement)).toBe(true);
+    const focused = document.activeElement;
+    if (!(focused instanceof HTMLElement)) throw new Error("No focus in the far note");
+    await vi.waitFor(() => {
+      const drawn = focused.getBoundingClientRect();
+      const area = surface.getBoundingClientRect();
+      expect(drawn.left).toBeGreaterThanOrEqual(area.left);
+      expect(drawn.right).toBeLessThanOrEqual(area.right);
+      expect(drawn.top).toBeGreaterThanOrEqual(area.top);
+      expect(drawn.bottom).toBeLessThanOrEqual(area.bottom);
+    });
   });
 
   it("exposes the view switch as radios with the checked view as its tab stop after a reload", async () => {
