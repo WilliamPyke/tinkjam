@@ -653,14 +653,25 @@ function BoardTool({
   label,
   hint,
   children,
+  className,
+  variant = "ghost-strong",
   ...props
 }: ComponentProps<typeof Button> & { readonly label: string; readonly hint?: string }) {
+  const buttonVariant = variant === "ghost" ? "ghost-strong" : variant;
   return (
     <Tooltip>
       {/* A tool's name shows soon after the pointer rests on it: the tools are icons only. */}
       <TooltipTrigger
         delay={200}
-        render={<Button size="icon" variant="ghost" aria-label={label} {...props} />}
+        render={
+          <Button
+            size="icon"
+            variant={buttonVariant}
+            aria-label={label}
+            className={className}
+            {...props}
+          />
+        }
       >
         {children}
       </TooltipTrigger>

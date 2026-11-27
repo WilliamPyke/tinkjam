@@ -142,7 +142,7 @@ export function RoomArtifactBody({
   if (artifact === undefined) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-start gap-2 px-3 pb-3">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {links?.unmade === true
             ? "This page isn't made yet. Ask your agent to write it: the first page goes along as context."
             : "A page on the board that an agent writes, or you write yourself. Everyone sees it. To have an agent write it, use Attach my agent, or draw a line from an agent box to this card and ask it to write."}

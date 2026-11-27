@@ -45,7 +45,7 @@ export function BoardHistoryButtons({
         render={
           <Button
             size="icon-sm"
-            variant="ghost"
+            variant="ghost-strong"
             aria-label={label}
             aria-keyshortcuts={
               label === "Undo" ? "Control+Z Meta+Z" : "Control+Shift+Z Meta+Shift+Z Control+Y"
