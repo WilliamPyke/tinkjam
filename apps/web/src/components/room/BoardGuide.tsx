@@ -9,9 +9,10 @@ import {
   SplineIcon,
   XIcon,
 } from "lucide-react";
-import { type MouseEvent, type ReactNode, useRef, useState } from "react";
+import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
 
 import { useBoardAccount } from "~/guest/boardAccount";
+import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { cn } from "~/lib/utils";
 
 import { Button } from "../ui/button";
@@ -77,6 +78,13 @@ export function BoardGuide({
 }) {
   const [initial] = useState(initialBoardGuideState);
   const state = useBoardGuideState(initial);
+  const narrow = useMediaQuery("(max-width: 640px)");
+  const wasNarrow = useRef(false);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keeps the guide's stored fold state in step with the screen width
+  useEffect(() => {
+    if (narrow && !wasNarrow.current) collapseBoardGuide(true);
+    wasNarrow.current = narrow;
+  }, [narrow]);
   const collapsedGuide = useRef<HTMLButtonElement | null>(null);
   const openGuide = useRef<HTMLDivElement | null>(null);
   // Until sign-in says who this is, what this browser keeps may be the last person's.
