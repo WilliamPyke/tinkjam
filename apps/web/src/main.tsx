@@ -11,6 +11,7 @@ import { startAppServices } from "./appInit";
 import { AppRoot } from "./AppRoot";
 import { needsClerkAtStartup } from "./components/clerk/lazyClerk.logic";
 import { configureManagedAuth, ManagedAuthRoot, requestClerk } from "./components/clerk/lazyClerk";
+import { syncBoardAccount } from "./guest/boardAccount";
 import { wasSignedInHere } from "./guest/browserIdentity";
 import { reloadingForChunkLoadError } from "./lib/chunkReloadGuard";
 import { installSoftwareKeyboardAssist } from "./lib/softwareKeyboard";
@@ -47,7 +48,8 @@ const accountReady =
           signedInHere: wasSignedInHere(),
         })
       ? requestClerk()
-      : import("./guest/boardAccount").then((module) => module.syncBoardAccount(null));
+      : // Not import(): its preload list would fetch the Clerk chunk the sign-in shells share with it.
+        syncBoardAccount(null);
 
 export const startup = Promise.all([accountReady, router.load()]).then(() => {
   // Route chunk failures resolve router.load() and surface later through the error boundary.
