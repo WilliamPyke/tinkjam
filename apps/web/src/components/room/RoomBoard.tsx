@@ -7948,6 +7948,12 @@ function TouchNoteControls({ children }: { readonly children: ReactNode }) {
   );
 }
 
+/** A card's first words, short enough to be part of a control's accessible name. */
+const boardCardExcerpt = (text: string) => {
+  const words = text.trim().replace(/\s+/g, " ");
+  return words.length > 80 ? `${words.slice(0, 79)}…` : words;
+};
+
 function BoardNote({
   note,
   people,
@@ -8141,6 +8147,7 @@ function BoardNote({
   // Once this person types here, their own draft shows until they leave it, whoever else types.
   const [drafting, setDrafting] = useState(false);
   const text = (drafting ? null : boardLiveText(note.text, liveDrag)) ?? note.text;
+  const excerpt = boardCardExcerpt(text);
   const mention = useMentionPicker((pick) =>
     onText(note, pick.text.slice(0, ROOM_BOARD_NOTE_MAX_LENGTH), pick.mention),
   );
@@ -8241,7 +8248,7 @@ function BoardNote({
             onPointerDown={stopPointer}
           >
             <Checkbox
-              aria-label="Done"
+              aria-label={excerpt === "" ? "Done" : `Done: ${excerpt}`}
               checked={note.done === true}
               disabled={!canEdit}
               onCheckedChange={(done) => onTick(note, done)}
