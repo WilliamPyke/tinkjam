@@ -15,13 +15,14 @@ export function SplitScreen({
   children,
 }: {
   readonly art: ReactNode;
-  /** Top right of the task half, such as a way to close it. */
+  /** Top right of the page, such as a way to close it. */
   readonly corner?: ReactNode;
   readonly footer?: ReactNode;
   readonly children: ReactNode;
 }) {
   return (
-    <div className="grid min-h-dvh grid-cols-1 bg-background text-foreground min-[900px]:h-dvh min-[900px]:grid-cols-2">
+    <div className="relative grid min-h-dvh grid-cols-1 bg-background text-foreground min-[900px]:h-dvh min-[900px]:grid-cols-2">
+      {corner ? <div className="absolute end-4 top-6 z-20 sm:end-10 sm:top-8">{corner}</div> : null}
       <main className="flex min-w-0 flex-col px-4 pt-6 pb-6 sm:px-10 sm:pt-8 min-[900px]:min-h-0 min-[900px]:overflow-y-auto">
         <div className="flex items-center justify-between gap-3">
           <TinkjamWordmark
@@ -29,7 +30,6 @@ export function SplitScreen({
             markClassName="size-8 shrink-0"
             wordClassName="text-wordmark"
           />
-          {corner}
         </div>
         <div className="flex flex-1 items-center justify-center py-10 min-[900px]:py-12">
           <div className="w-full max-w-105">{children}</div>

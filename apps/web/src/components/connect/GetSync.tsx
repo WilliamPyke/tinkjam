@@ -56,7 +56,12 @@ export function SyncInstallAction({
               Download for {SYNC_OS_NAMES[os]}
             </Button>
           ) : (
-            <a key={file.href} href={file.href} download className={splitLinkClassName}>
+            <a
+              key={file.href}
+              href={file.href}
+              download
+              className={cn(splitLinkClassName, "inline-flex min-h-10 items-center")}
+            >
               {file.kind}
             </a>
           ),
@@ -81,7 +86,7 @@ export function SyncInstallAction({
         <button
           key={other}
           type="button"
-          className={splitLinkClassName}
+          className={cn(splitLinkClassName, "inline-flex min-h-10 items-center")}
           onClick={() => onChoose(other)}
         >
           Get it for {SYNC_OS_NAMES[other]}

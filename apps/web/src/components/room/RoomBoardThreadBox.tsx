@@ -124,12 +124,12 @@ export function BoxTurns({
 }) {
   const running = useBoxProgress(boxId);
   if (turns.length === 0 && running === undefined) {
-    return <p className="text-xs text-muted-foreground">No prompts yet.</p>;
+    return <p className="text-sm text-muted-foreground">No prompts yet.</p>;
   }
   return (
     <ol className="flex flex-col gap-2.5">
       {turns.map((turn, index) => (
-        <li key={turn.id} className="flex flex-col gap-1 text-xs">
+        <li key={turn.id} className="flex flex-col gap-1 text-sm">
           <span className="text-2xs font-medium text-muted-foreground">
             {boardPersonName(people, turn.askedBy ?? turn.guestId)}
             {turn.model === undefined ? "" : ` · ${turn.model}`}
@@ -151,7 +151,7 @@ export function BoxTurns({
         </li>
       ))}
       {running?.prompt === undefined || running.prompt === "" ? null : (
-        <li className="flex flex-col gap-1 text-xs">
+        <li className="flex flex-col gap-1 text-sm">
           <span className="text-2xs font-medium text-muted-foreground">
             {boardPersonName(people, running.askedBy ?? running.guestId)}
           </span>

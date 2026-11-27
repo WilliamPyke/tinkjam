@@ -322,7 +322,7 @@ function RecentChanges({
       aria-label="Recent changes by agents"
       className="flex flex-col gap-0.5 border-t pt-1.5"
     >
-      <h3 className="px-1.5 text-2xs font-medium text-muted-foreground">Recent changes</h3>
+      <h3 className="px-1.5 text-xs font-medium text-muted-foreground">Recent changes</h3>
       <ol className="flex flex-col">
         {recent.map((item) => {
           const summary = item.undone
@@ -332,7 +332,7 @@ function RecentChanges({
             <li
               key={item.id}
               className={cn(
-                "flex min-w-0 items-center gap-2 px-1.5 py-0.5 text-2xs",
+                "flex min-w-0 items-center gap-2 px-1.5 py-0.5 text-xs",
                 item.undone ? "text-muted-foreground/70" : "text-muted-foreground",
               )}
             >
@@ -580,7 +580,7 @@ export function BoardAgents({
         <div className="flex max-h-[min(32rem,70dvh)] flex-col gap-1.5">
           <div className="flex items-center justify-between px-1.5">
             <PopoverTitle>Agents</PopoverTitle>
-            <span className="text-2xs text-muted-foreground">{boardAgentsShortcut()}</span>
+            <span className="text-xs text-muted-foreground">{boardAgentsShortcut()}</span>
           </div>
           <ol className="flex min-h-0 flex-col gap-0.5 overflow-y-auto">
             {rows.map(({ entry, run, status }) => (
@@ -596,18 +596,18 @@ export function BoardAgents({
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       <PersonDot color={entry.color} className="size-2" />
-                      <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                      <span className="min-w-0 flex-1 truncate text-ui-sm font-medium">
                         {entry.name}
                       </span>
                       <StatusChip status={status} run={run} offlineOwn={entry.offlineOwn} />
                     </span>
-                    <span className="truncate ps-4 text-2xs text-muted-foreground">
+                    <span className="truncate ps-4 text-xs text-muted-foreground">
                       {[entry.whose, run?.model ?? entry.model]
                         .filter((part) => part !== undefined && part !== "")
                         .join(" · ")}
                     </span>
                     {entry.work === undefined ? null : (
-                      <span className="truncate ps-4 text-2xs text-muted-foreground">
+                      <span className="truncate ps-4 text-xs text-muted-foreground">
                         {entry.work}
                       </span>
                     )}
@@ -619,7 +619,7 @@ export function BoardAgents({
                   ) : null}
                 </div>
                 {run !== undefined && entry.tasks[0] !== undefined ? (
-                  <p className="flex min-w-0 items-baseline gap-1 ps-5.5 pe-1.5 text-2xs text-muted-foreground">
+                  <p className="flex min-w-0 items-baseline gap-1 ps-5.5 pe-1.5 text-xs text-muted-foreground">
                     <span className="shrink-0">Working on:</span>
                     <button
                       type="button"
@@ -646,7 +646,7 @@ export function BoardAgents({
           </ol>
           {takeAgentAway === undefined ? null : (
             <div className="flex items-center gap-2 px-1.5 pb-1">
-              <p className="min-w-0 flex-1 text-2xs text-muted-foreground">
+              <p className="min-w-0 flex-1 text-ui-sm text-muted-foreground">
                 Your agent is on this board. Only you can send it work.
               </p>
               <Button
@@ -666,7 +666,7 @@ export function BoardAgents({
           )}
           {hasThreadBoxes ? null : bringAgent !== undefined ? (
             <div className="flex items-center gap-2 px-1.5 pb-1">
-              <p className="min-w-0 flex-1 text-2xs text-muted-foreground">
+              <p className="min-w-0 flex-1 text-ui-sm text-muted-foreground">
                 Agents here come from people's own computers. Bring yours to add one.
               </p>
               <Button
@@ -681,7 +681,7 @@ export function BoardAgents({
               </Button>
             </div>
           ) : (
-            <p className="px-1.5 pb-1 text-2xs text-muted-foreground">
+            <p className="px-1.5 pb-1 text-ui-sm text-muted-foreground">
               {viewing
                 ? "You are viewing this board. Agents join when you can edit it."
                 : cloud

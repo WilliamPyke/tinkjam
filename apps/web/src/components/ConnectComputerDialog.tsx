@@ -10,6 +10,7 @@ import { type ReactNode, useEffect, useEffectEvent, useRef, useState } from "rea
 import { create } from "zustand";
 
 import { environmentCatalog } from "~/connection/catalog";
+import { cn } from "~/lib/utils";
 import { useEnvironmentProviders } from "~/state/environments";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { detectSyncOs } from "~/syncDownloads";
@@ -233,7 +234,11 @@ function GetSyncScreen({
         </>
       )}
       <p className="mt-6 text-sm text-muted-foreground">
-        <button type="button" className={splitLinkClassName} onClick={flow.onSkip}>
+        <button
+          type="button"
+          className={cn(splitLinkClassName, "inline-flex min-h-10 items-center")}
+          onClick={flow.onSkip}
+        >
           Skip for now
         </button>
         . You can connect it later in Settings.
