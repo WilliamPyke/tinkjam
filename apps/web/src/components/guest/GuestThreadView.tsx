@@ -1046,7 +1046,9 @@ function GuestThreadSession({
                     ),
                     sharing: (
                       <>
-                        <InboxBell nudge={view.inboxAt} />
+                        <span className="contents @max-[62rem]/board:hidden">
+                          <InboxBell nudge={view.inboxAt} />
+                        </span>
                         {sharing}
                       </>
                     ),

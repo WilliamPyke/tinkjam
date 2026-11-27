@@ -458,6 +458,7 @@ import {
   boardRailReach,
   BoardScrollTail,
   PersonDot,
+  useFoldSidebarOnNarrowBoard,
 } from "./BoardChrome";
 import {
   BoxBoardWork,
@@ -1167,7 +1168,10 @@ export function RoomBoard({
   readonly sharing?: ReactNode;
   /** A sharing state the board keeps visible under its header at every width. */
   readonly sharingBanner?: ReactNode;
-  /** `sharing` narrows itself on a narrow board; the narrowest still folds it behind a menu. */
+  /**
+   * `sharing` narrows itself to its Share button on a narrow board, and the rest folds behind a
+   * menu; a phone keeps Share alone (its sheet has the invite link, the sidebar the inbox).
+   */
   readonly sharingFolds?: boolean;
   /** Shown in place of the title in the header, to rename the board there. */
   readonly titleEditor?: ReactNode;
@@ -2750,6 +2754,7 @@ export function RoomBoard({
     for (const note of boardVoteToggles(notes, viewer)) reactTo(note, BOARD_VOTE);
   };
   const [minimapShown, toggleMinimap] = useBoardMinimap();
+  useFoldSidebarOnNarrowBoard();
   const [agentsOpen, setAgentsOpen] = useState(false);
   const zoomBy = (factor: number) => {
     const area = boardAreaOf(surfaceRef.current);
@@ -5706,14 +5711,16 @@ export function RoomBoard({
                   <div
                     className={cn(
                       "flex min-w-0 items-center justify-end gap-2 overflow-hidden @max-xl/board:gap-1",
-                      sharingFolds ? "@max-[62rem]/board:hidden" : "@max-xl/board:hidden",
+                      !sharingFolds && "@max-xl/board:hidden",
                     )}
                   >
                     {sharing}
                   </div>
                   <div
                     className={
-                      sharingFolds ? "hidden @max-[62rem]/board:flex" : "flex @xl/board:hidden"
+                      sharingFolds
+                        ? "hidden @xl/board:@max-[62rem]/board:flex"
+                        : "flex @xl/board:hidden"
                     }
                   >
                     <Popover>
@@ -5730,7 +5737,9 @@ export function RoomBoard({
                         <EllipsisIcon />
                       </PopoverTrigger>
                       <PopoverPopup side="bottom" align="end" sideOffset={8}>
-                        <div className="flex flex-wrap items-center gap-1.5">{sharing}</div>
+                        <div className="flex flex-wrap items-center gap-1.5 [&_:is([data-board-share],[data-cloud-board-people])]:hidden">
+                          {sharing}
+                        </div>
                       </PopoverPopup>
                     </Popover>
                   </div>
@@ -6137,7 +6146,8 @@ export function RoomBoard({
               onDismiss={catchUp.dismiss}
             />
           )}
-          <div className="flex items-end gap-2.5">
+          {/* A narrow board stacks the minimap above the zoom bar, so the bar stays on screen. */}
+          <div className="flex items-end gap-2.5 @max-xl/board:flex-col @max-xl/board:items-start">
             {minimapShown ? (
               // A selection docked above the toolbar would sit under it.
               <div className="group-has-[[data-selection-docked]]/room:hidden">
@@ -6155,7 +6165,10 @@ export function RoomBoard({
             ) : null}
             <BoardFloat
               data-board-chrome="bottom"
-              className={cn("h-9 gap-0.5 rounded-full px-1", BOARD_TOUCH_ROW)}
+              className={cn(
+                "h-9 gap-0.5 rounded-full px-1 pointer-coarse:[&_button]:w-10",
+                BOARD_TOUCH_ROW,
+              )}
             >
               <Button
                 size="icon-xs"
@@ -7775,9 +7788,11 @@ function LinkHandle({
       type="button"
       data-board-grip
       data-board-link
+      // Pointer only: the keyboard draws a line with the Line tool.
+      tabIndex={-1}
       aria-label="Drag to another card to draw a line"
       className={cn(
-        "group/link pointer-events-none absolute z-10 grid size-7 cursor-crosshair touch-none place-items-center opacity-0 transition-opacity group-hover/item:pointer-events-auto group-hover/item:opacity-100 group-data-[board-selected]/item:pointer-events-auto group-data-[board-selected]/item:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100",
+        "group/link pointer-events-none absolute z-10 grid size-7 cursor-crosshair touch-none place-items-center opacity-0 transition-opacity group-hover/item:pointer-events-auto group-hover/item:opacity-100 group-data-[board-selected]/item:pointer-events-auto group-data-[board-selected]/item:opacity-100",
         // A pin's touches its right side, so the pointer reaches it without leaving the pin.
         pin ? "-right-7 top-0.5" : LINK_HANDLE_SPOTS[side],
       )}
@@ -8473,7 +8488,12 @@ function BoardNote({
           <div className="flex shrink-0 flex-wrap gap-1 px-3 pb-1.5">
             {onAsk === undefined ? null : (
               <WhatItDoes hint="Ask one of your agent boxes to change this artifact. Its reply replaces what it shows, for everyone; Restore previous brings this version back.">
-                <Button size="micro" variant="outline" onPointerDown={stopPointer} onClick={onAsk}>
+                <Button
+                  size="micro-touch"
+                  variant="outline"
+                  onPointerDown={stopPointer}
+                  onClick={onAsk}
+                >
                   Ask an agent
                 </Button>
               </WhatItDoes>
@@ -8481,7 +8501,7 @@ function BoardNote({
             {onAttachAgent === undefined ? null : (
               <WhatItDoes hint={onAttachAgent.hint}>
                 <Button
-                  size="micro"
+                  size="micro-touch"
                   variant="outline"
                   onPointerDown={stopPointer}
                   onClick={onAttachAgent.run}

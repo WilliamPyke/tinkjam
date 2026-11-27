@@ -291,7 +291,7 @@ export function CloudBoardSharing({
     here.length === 0 ? null : (
       <span
         aria-hidden
-        className="flex shrink-0 items-center -space-x-1.5 @max-[22rem]/board:hidden"
+        className="flex shrink-0 items-center -space-x-1.5 @max-[62rem]/board:hidden"
         data-cloud-board-faces
       >
         {here.slice(0, 4).map((guest, index) => (
@@ -411,6 +411,7 @@ export function CloudBoardSharing({
         <Button
           size="sm"
           variant="ghost"
+          className="@max-[62rem]/board:hidden"
           onClick={() => copyToClipboard(editLink)}
           data-cloud-board-invite
         >
@@ -471,7 +472,14 @@ export function CloudBoardSharing({
       )}
       <Menu>
         <MenuTrigger
-          render={<Button size="icon-xs" variant="ghost-muted" aria-label="Board options" />}
+          render={
+            <Button
+              size="icon-xs"
+              variant="ghost-muted"
+              className="@xl/board:@max-[62rem]/board:hidden"
+              aria-label="Board options"
+            />
+          }
           data-cloud-board-menu
         >
           <EllipsisIcon />
