@@ -522,14 +522,14 @@ export function CommentThreadPanel({
           {draft ? "New comment" : resolved ? "Resolved" : "Comment"}
         </h2>
         {draft || !canEdit ? null : (
-          <Button size="micro" variant="outline" onClick={() => onResolve(!resolved)}>
+          <Button size="compact" variant="outline" onClick={() => onResolve(!resolved)}>
             {resolved ? <RotateCcwIcon /> : <CircleCheckIcon />}
             {resolved ? "Reopen" : "Resolve"}
           </Button>
         )}
         {draft || onDelete === undefined ? null : (
           <Button
-            size={deleteArmed ? "micro" : "icon-micro"}
+            size={deleteArmed ? "compact" : "icon-xs"}
             variant={deleteArmed ? "destructive-outline" : "ghost-muted"}
             aria-label={deleteArmed ? "Confirm delete thread" : "Delete thread"}
             {...(replies.length === 0 ? { onClick: onDelete } : confirm.props("thread", onDelete))}
@@ -538,7 +538,7 @@ export function CommentThreadPanel({
             {deleteArmed ? "Delete?" : null}
           </Button>
         )}
-        <Button size="icon-micro" variant="ghost-muted" aria-label="Close" onClick={close}>
+        <Button size="icon-xs" variant="ghost-muted" aria-label="Close" onClick={close}>
           <XIcon />
         </Button>
       </header>
