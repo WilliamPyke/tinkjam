@@ -8572,6 +8572,7 @@ function BoardNote({
         {artifact ? (
           <RoomArtifactLive
             noteId={(artifactSource ?? note).id}
+            title={text}
             artifact={(artifactSource ?? note).artifact}
             onKeep={onKeepArtifact}
             author={artifactAuthor}

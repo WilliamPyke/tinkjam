@@ -90,6 +90,7 @@ export function RoomArtifactBody({
   onRelease = nothing,
   marking,
   links,
+  title,
 }: {
   /** What its page's links open, and where its page starts. */
   readonly links?: ArtifactLinks | undefined;
@@ -106,6 +107,8 @@ export function RoomArtifactBody({
   readonly draft?: string | undefined;
   /** Opens the field to write it by hand, offered while it is empty. */
   readonly onWrite?: (() => void) | undefined;
+  /** What the artifact is called, used to name its page's frame. */
+  readonly title?: string | undefined;
 }) {
   const bodyRef = useBoardPageRelease(active, onRelease);
   if (draft !== undefined) {
@@ -172,6 +175,7 @@ export function RoomArtifactBody({
             marking={marking}
             links={links}
             onRelease={onRelease}
+            title={title}
           />
         ) : (
           <ArtifactText body={artifact.body} links={links} />
@@ -203,12 +207,14 @@ function ArtifactPage({
   marking,
   links,
   onRelease,
+  title,
 }: {
   readonly body: string;
   readonly active: boolean;
   readonly marking: (ArtifactMarking & { readonly onStop: () => void }) | undefined;
   readonly links: ArtifactLinks | undefined;
   readonly onRelease: () => void;
+  readonly title: string | undefined;
 }) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const linkMenu = usePressedLink();
@@ -287,7 +293,8 @@ function ArtifactPage({
     <>
       <iframe
         ref={frameRef}
-        aria-label="Artifact page"
+        aria-label={title?.trim() ? `${title.trim()} artifact page` : "Artifact page"}
+        title={title?.trim() ? `${title.trim()} artifact page` : "Artifact page"}
         sandbox="allow-scripts"
         srcDoc={boardPageWithMarks(body)}
         className={cn(
@@ -512,6 +519,7 @@ export function RoomArtifactLive({
   onRelease,
   marks,
   links,
+  title,
 }: {
   /** What its page's links open, where its page starts, and whether it is a page not yet made. */
   readonly links?: ArtifactLinks | undefined;
@@ -525,6 +533,8 @@ export function RoomArtifactLive({
   /** What tells this card from another of the same box: "Same version as …", or null. */
   readonly versionNote?: string | null;
   readonly noteId: string;
+  /** What the artifact is called, used to name its page's frame. */
+  readonly title?: string | undefined;
   readonly artifact: RoomArtifactContent | undefined;
   /** Whose agent wrote the current version; absent before anything was written. */
   readonly author: string | undefined;
@@ -623,6 +633,7 @@ export function RoomArtifactLive({
         onRelease={onRelease}
         marking={marking}
         links={links}
+        title={title}
       />
       <RoomArtifactMeta author={author} artifact={artifact} people={people} />
     </>
