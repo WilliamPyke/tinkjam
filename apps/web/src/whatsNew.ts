@@ -15,6 +15,11 @@ export const WHATS_NEW: ReadonlyArray<WhatsNewEntry> = [
     date: "2026-11-27",
     title: "Search finds your boards, and clearer access messages",
     items: [
+      "An agent box says what its agent is doing in plain words, such as Adding to the board, instead of a tool's code name.",
+      "When an agent asks a question, its box shows the question with a button to answer it.",
+      "A note waiting for someone to press Send says so and names who, instead of Waiting for approval.",
+      "An agent box's Stop button says Stop.",
+      "The start page leads with what Tinkjam is, and copying an invite link tells you what to do with it. Getting started ticks the invite step only once the link is really copied.",
       "Press Ctrl+K (Cmd+K) and type a board's name to open it.",
       "If someone removes you from a workspace or a board, the board says you no longer have access, instead of saying it ended.",
       "Your boards and workspaces update without a reload when a teammate adds a board or deletes a workspace.",
