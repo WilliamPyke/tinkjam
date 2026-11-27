@@ -147,7 +147,7 @@ export function BoardGuide({
           place, as on a phone, leaves the pill, never nothing. */}
       <div
         data-board-guide="collapsed"
-        className={cn(corner, open && "hidden group-has-[[data-selection-docked]]/room:block")}
+        className={cn(corner, open && "hidden group-data-[selection-docked]/room:block")}
       >
         <BoardFloat className="p-1">
           <Button
@@ -177,7 +177,7 @@ export function BoardGuide({
           className={cn(
             corner,
             // On a phone the open card sits above the zoom controls, which share its row.
-            "group-has-[[data-selection-docked]]/room:hidden @max-md/board:bottom-28",
+            "group-data-[selection-docked]/room:hidden @max-md/board:bottom-28",
           )}
         >
           <BoardFloat

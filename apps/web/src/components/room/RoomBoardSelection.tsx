@@ -6,11 +6,9 @@ import {
   use,
   useLayoutEffect,
   useRef,
-  useState,
 } from "react";
 
 import { useMediaQuery } from "~/hooks/useMediaQuery";
-import { observeResize } from "~/lib/observeResize";
 import { cn } from "~/lib/utils";
 
 import { Button } from "../ui/button";
@@ -136,6 +134,16 @@ const DOCKED_BELOW_WIDTH = 640;
 const DOCK_GAP = 8;
 
 /**
+ * Whether the selection's bar docks, on a board surface this wide. The board marks its root with
+ * it rather than the rest of the board asking with `:has()`, which made the browser restyle every
+ * card on each change inside the board.
+ */
+export function useSelectionDocked(surfaceWidth: number | undefined): boolean {
+  const coarse = useMediaQuery(COARSE_QUERY);
+  return coarse || (surfaceWidth !== undefined && surfaceWidth < DOCKED_BELOW_WIDTH);
+}
+
+/**
  * How many cards are selected, what they can do, Delete for the ones this viewer may remove (or
  * why there is none, when every card is someone else's) and Clear. It sits beside the selected cards and steps out of the way while they move;
  * on a phone it docks above the toolbar, clear of the cards' own controls, with icons and a menu.
@@ -143,6 +151,7 @@ const DOCK_GAP = 8;
 export function SelectionBar({
   refs,
   hidden,
+  docked,
   count,
   removable,
   kept = 0,
@@ -155,6 +164,8 @@ export function SelectionBar({
   readonly refs: ReadonlySet<string>;
   /** Cards are being moved. */
   readonly hidden: boolean;
+  /** From `useSelectionDocked`. */
+  readonly docked: boolean;
   readonly count: number;
   readonly removable: number;
   /** How many this viewer may not remove, as they are someone else's. */
@@ -165,18 +176,7 @@ export function SelectionBar({
   readonly onDelete: () => void;
   readonly onClear: () => void;
 }) {
-  const coarse = useMediaQuery(COARSE_QUERY);
-  const [narrow, setNarrow] = useState(false);
-  const docked = coarse || narrow;
   const barRef = useRef<HTMLDivElement | null>(null);
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- follows the board surface's own width, which a split pane or narrow window sets, before the bar is painted
-  useLayoutEffect(() => {
-    const board = barRef.current?.offsetParent;
-    if (!(board instanceof HTMLElement)) return;
-    const measure = () => setNarrow(board.clientWidth < DOCKED_BELOW_WIDTH);
-    measure();
-    return observeResize(board, measure);
-  }, []);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- placed against the cards where the browser drew them, after every render that may have moved them or the view
   useLayoutEffect(() => {
     const bar = barRef.current;
