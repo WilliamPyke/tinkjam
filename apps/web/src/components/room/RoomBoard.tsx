@@ -1319,6 +1319,9 @@ export function RoomBoard({
   const [view, setView] = useState<BoardView>(remembered ?? INITIAL_BOARD_VIEW);
   const unsavedView = useRef<BoardView | null>(null);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
+  // Laid over the cards while the wheel moves the view, so cards sliding under the pointer do not
+  // each fade in their hover controls.
+  const wheelShieldRef = useRef<HTMLDivElement | null>(null);
   const fitted = useRef(false);
   // The view the board opened on, refitted as the surface settles (a sidebar folding as the board
   // opens) until the viewer moves it.
@@ -1495,6 +1498,11 @@ export function RoomBoard({
     // A wheel gesture that is panning the board keeps panning when it passes over a card that
     // scrolls, as the browser latches a scroll to where it began.
     let pannedAt = Number.NEGATIVE_INFINITY;
+    let shieldTimer: ReturnType<typeof setTimeout> | undefined;
+    const shield = (shown: boolean) => {
+      const element = wheelShieldRef.current;
+      if (element !== null) element.hidden = !shown;
+    };
     const onWheel = (event: WheelEvent) => {
       // An open comment thread scrolls itself, and is never zoomed with the board.
       if (event.target instanceof Element && event.target.closest("[data-board-overlay]")) {
@@ -1514,9 +1522,15 @@ export function RoomBoard({
           ? zoomBoardAt(current, anchor, wheelZoomFactor(event.deltaY, event.deltaMode))
           : panBoardBy(current, -event.deltaX, -event.deltaY),
       );
+      shield(true);
+      clearTimeout(shieldTimer);
+      shieldTimer = setTimeout(() => shield(false), 150);
     };
     surface.addEventListener("wheel", onWheel, { passive: false });
-    return () => surface.removeEventListener("wheel", onWheel);
+    return () => {
+      surface.removeEventListener("wheel", onWheel);
+      clearTimeout(shieldTimer);
+    };
   }, []);
   // A phone's keyboard covers the lower part of the board: the field typed in is panned into what
   // it leaves in sight, below the header.
@@ -7306,6 +7320,14 @@ export function RoomBoard({
               </div>
             </BoardScaleContext>
           </BoardSelectionContext>
+          <div
+            ref={wheelShieldRef}
+            hidden
+            className="absolute inset-0"
+            onPointerMove={(event) => {
+              event.currentTarget.hidden = true;
+            }}
+          />
           {marquee.layer}
           {selected.size === 0 ? null : (
             <SelectionBar
