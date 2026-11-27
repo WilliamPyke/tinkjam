@@ -82,14 +82,26 @@ describe("openBoardAsAccount", () => {
 
 describe("a page that comes back", () => {
   it("reads the account's workspaces again, and stops once signed out", async () => {
+    const start = Date.UTC(2026, 10, 27);
+    using now = vi.spyOn(Date, "now").mockReturnValue(start);
     setup(["share-w"]);
     await vi.waitFor(() => expect(host.requests).toContain(CLOUD_WORKSPACES_ROUTE));
     host.requests.length = 0;
+    // Clicking into a page on the board and back focuses the window too: that waits a while.
     window.dispatchEvent(new Event("focus"));
+    expect(host.requests).toEqual([]);
+    now.mockReturnValue(start + 30_000);
+    window.dispatchEvent(new Event("focus"));
+    expect(host.requests).toContain(CLOUD_WORKSPACES_ROUTE);
+    host.requests.length = 0;
+    now.mockReturnValue(start + 35_000);
+    document.dispatchEvent(new Event("visibilitychange"));
     expect(host.requests).toContain(CLOUD_WORKSPACES_ROUTE);
     syncWorkspaces(null);
     host.requests.length = 0;
+    now.mockReturnValue(start + 120_000);
     window.dispatchEvent(new Event("focus"));
+    document.dispatchEvent(new Event("visibilitychange"));
     expect(host.requests).toEqual([]);
   });
 });

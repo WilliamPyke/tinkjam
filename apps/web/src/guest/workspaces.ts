@@ -128,6 +128,7 @@ export function syncWorkspaces(userId: string | null) {
   appAtomRegistry.set(workspacesAtom, null);
   stopWatching();
   if (userId !== null && boardAccountsEnabled()) {
+    readAt = Date.now();
     void refreshWorkspaces();
     startWatching();
   }
@@ -136,19 +137,22 @@ export function syncWorkspaces(userId: string | null) {
 // The board host has no push for workspace changes (a teammate's new board, a deleted
 // workspace): the list is read again when the page comes back, and now and then while it shows.
 const WORKSPACES_STEP_MS = 60_000;
+// Clicking into an artifact's page and back focuses the window, so focus alone reads rarely.
+const FOCUS_STEP_MS = 30_000;
 let watchTimer: ReturnType<typeof setInterval> | null = null;
-let pageBackAt = 0;
+let readAt = 0;
 
-const onPageBack = () => {
-  // Coming back to the tab fires both focus and visibilitychange: one read is enough.
-  if (Date.now() - pageBackAt < 2_000) return;
-  pageBackAt = Date.now();
+const readAgain = (after: number) => {
+  if (Date.now() - readAt < after) return;
+  readAt = Date.now();
   void refreshWorkspaces();
   void refreshAccountBoards();
 };
+const onFocus = () => readAgain(FOCUS_STEP_MS);
 const onShown = () => {
   if (document.visibilityState === "visible") {
-    onPageBack();
+    // Coming back to the tab may fire focus first: one read is enough.
+    readAgain(2_000);
     watchTimer ??= setInterval(() => void refreshWorkspaces(), WORKSPACES_STEP_MS);
   } else if (watchTimer !== null) {
     clearInterval(watchTimer);
@@ -157,7 +161,7 @@ const onShown = () => {
 };
 
 function startWatching() {
-  window.addEventListener("focus", onPageBack);
+  window.addEventListener("focus", onFocus);
   document.addEventListener("visibilitychange", onShown);
   if (document.visibilityState === "visible") {
     watchTimer = setInterval(() => void refreshWorkspaces(), WORKSPACES_STEP_MS);
@@ -165,7 +169,7 @@ function startWatching() {
 }
 
 function stopWatching() {
-  window.removeEventListener("focus", onPageBack);
+  window.removeEventListener("focus", onFocus);
   document.removeEventListener("visibilitychange", onShown);
   if (watchTimer !== null) clearInterval(watchTimer);
   watchTimer = null;
