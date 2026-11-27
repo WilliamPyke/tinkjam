@@ -2309,6 +2309,49 @@ describe("RoomBoard live lines", () => {
     await screen.rerender(board({ items: [{ ref: "note:b", x: 400, y: 300 }] }));
     await vi.waitFor(() => expect(line()).not.toBe(still));
   });
+
+  it("keeps a line still when its cards grow without moving", async () => {
+    const board = (h: number) => (
+      <RoomBoard
+        title="Launch"
+        room={{
+          messages: [],
+          board: {
+            positions: {},
+            notes: [
+              { id: "a", text: "First", x: 0, y: -400, size: { w: 192, h } },
+              { id: "b", text: "Second", x: 400, y: -400, size: { w: 192, h } },
+            ],
+            edges: [{ id: "line", from: "note:a", to: "note:b" }],
+          },
+        }}
+        online={[]}
+        messages={[]}
+        viewer={null}
+        ownerName={undefined}
+        cursorLayer={null}
+        onOpenThread={() => {}}
+        onOpenReply={() => {}}
+        onChange={async () => true}
+        onCursor={undefined}
+        onUseNote={undefined}
+      />
+    );
+    await using screen = await render(board(144), { container: sizedContainer() });
+    // A level line between level cards, unless it is swinging: then its bend points leave the level.
+    const heights = () =>
+      (screen.container.querySelector('[data-board-edge="line"]')?.getAttribute("d") ?? "")
+        .split(/[MC,]/)
+        .flatMap((point) => {
+          const y = point.trim().split(" ")[1];
+          return y === undefined ? [] : [Number(y)];
+        });
+    await vi.waitFor(() => expect(heights()).toHaveLength(4));
+    await screen.rerender(board(320));
+    const level = heights();
+    expect(level).toHaveLength(4);
+    expect(new Set(level).size).toBe(1);
+  });
 });
 
 describe("RoomBoard note colour", () => {

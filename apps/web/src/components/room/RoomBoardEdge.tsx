@@ -114,7 +114,8 @@ interface Sway {
   from: BoardBox;
   to: BoardBox;
   ends: { readonly sides: readonly [BoardSide, BoardSide]; readonly slots: BoardLineSlots };
-  middle: { readonly x: number; readonly y: number };
+  /** Midway between its cards' corners: it moves as they move, never as they grow. */
+  spot: { readonly x: number; readonly y: number };
   frame: number;
   at: number;
   /** The path last written, so a frame that changes nothing writes nothing. */
@@ -252,10 +253,11 @@ export const BoardEdgeLine = memo(function BoardEdgeLine({
   const around = elbow
     ? obstacles?.filter((other) => other.ref !== fromRef && other.ref !== toRef)
     : undefined;
-  const { path, middle } = boardLine(shape, start, end, { sides, slots }, around);
+  const { path } = boardLine(shape, start, end, { sides, slots }, around);
   const group = useRef<SVGGElement>(null);
   const ghost = useRef<SVGPathElement>(null);
   const sway = useRef<Sway | null>(null);
+  const spot = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- the spring writes paths to the DOM between renders, and stops once settled
   useLayoutEffect(() => {
@@ -268,19 +270,19 @@ export const BoardEdgeLine = memo(function BoardEdgeLine({
         from: start,
         to: end,
         ends: { sides, slots },
-        middle,
+        spot,
         frame: 0,
         at: 0,
         drawn: "",
       };
     }
     const state = sway.current;
-    const dx = middle.x - state.middle.x;
-    const dy = middle.y - state.middle.y;
+    const dx = spot.x - state.spot.x;
+    const dy = spot.y - state.spot.y;
     state.from = start;
     state.to = end;
     state.ends = { sides, slots };
-    state.middle = middle;
+    state.spot = spot;
     const draw = (rest: boolean) => {
       const d = boardConnector(state.from, state.to, rest ? undefined : state, state.ends).path;
       if (d === state.drawn) return;
