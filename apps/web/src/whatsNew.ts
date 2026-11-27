@@ -35,6 +35,7 @@ export const WHATS_NEW: ReadonlyArray<WhatsNewEntry> = [
       "A change you make just before closing or reloading the page is still saved, even on a slow connection. Tinkjam asks first if one has not reached the board yet.",
       "Undo and redo straight after typing in a new note keep the note.",
       "A board made from a template is named after it and opens with every card in view.",
+      "Template boards open clear of Getting started, and on a phone they open on their first section. The start page has a More templates link.",
       "Tasks added in Plan no longer land on top of others, and comment pins sit beside a note's text.",
       "Tab moves the board to the card you reach, and a note shows when it has keyboard focus.",
     ],
