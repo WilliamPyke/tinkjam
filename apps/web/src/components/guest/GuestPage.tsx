@@ -279,7 +279,14 @@ interface JoinProps {
  */
 function JoinStep(props: JoinProps) {
   const account = useBoardAccount();
-  const [failed, setFailed] = useState<string | null>(null);
+  const [failed, setFailed] = useState<RefusalNotice | string | null>(null);
+  if (failed !== null && typeof failed !== "string") {
+    return (
+      <GuestNotice title={failed.title} detail={failed.detail}>
+        <GoToTinkjam />
+      </GuestNotice>
+    );
+  }
   const step = inviteJoinStep({
     cloud: isCloudBoardsHost(props.host),
     account,
@@ -298,9 +305,12 @@ function JoinAsAccount({
   name,
   onJoined,
   onFailed,
-}: JoinProps & { readonly name: string; readonly onFailed: (message: string) => void }) {
-  const settle = useEffectEvent((joined: JoinedGuestShare | string) => {
-    if (typeof joined === "string") onFailed(joined);
+}: JoinProps & {
+  readonly name: string;
+  readonly onFailed: (refusal: RefusalNotice | string) => void;
+}) {
+  const settle = useEffectEvent((joined: JoinedGuestShare | RefusalNotice | string) => {
+    if (typeof joined === "string" || !("shareId" in joined)) onFailed(joined);
     else onJoined(joined);
   });
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- joins the board on its host once, as the signed-in account
@@ -417,6 +427,10 @@ function NameForm({
     setSubmitting(false);
     if (typeof joined === "string") {
       setError(joined);
+      return;
+    }
+    if (!("shareId" in joined)) {
+      setTold(joined);
       return;
     }
     // The board first: once this browser has it, nothing here can join it a second time.

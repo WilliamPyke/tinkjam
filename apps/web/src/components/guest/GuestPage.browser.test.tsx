@@ -96,6 +96,28 @@ describe("GuestPage", () => {
     expect(readGuestShares()).toEqual([]);
   });
 
+  it("says why a join was refused instead of offering the same button again", async () => {
+    using _page = visit("/guest?host=sam.trellium.org#share-5.signature");
+    using _fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) =>
+        Promise.resolve(
+          String(input).endsWith("/invite")
+            ? Response.json({})
+            : Response.json(
+                { reason: "not_member", message: "No.", detail: "removed_from_workspace" },
+                { status: 403 },
+              ),
+        ),
+      );
+    await using screen = await render(<GuestPage />);
+    await userEvent.fill(screen.getByLabelText("Your name"), "Sam");
+    await userEvent.click(screen.getByRole("button", { name: "Join the board" }));
+    await expect.element(screen.getByText("You no longer have access to this board")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Join the board" }).query()).toBeNull();
+    expect(readGuestShares()).toEqual([]);
+  });
+
   it("says why the host refused a stored session's check, and forgets that share", async () => {
     rememberGuestShare({
       host: "sam.trellium.org",

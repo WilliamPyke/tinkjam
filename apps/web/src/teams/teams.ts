@@ -26,6 +26,7 @@ import { AsyncResult, Atom } from "effect/reactivity";
 
 import { hasCloudPublicConfig, resolveCloudPublicConfig } from "../cloud/publicConfig";
 import { guestLinkHost, type JoinedGuestShare, rememberGuestShare } from "../guest/guestShares";
+import { refusalSentence } from "../guest/linkRefusal.logic";
 import { redeemInvite } from "../guest/redeemInvite";
 import { configuredHostedAppUrl } from "../hostedPairing";
 import { appAtomRegistry } from "../rpc/atomRegistry";
@@ -269,6 +270,7 @@ export async function joinTeamThread(
     memberAssertion: assertion.value.token,
   });
   if (typeof joined === "string") return { ok: false, message: joined };
+  if (!("shareId" in joined)) return { ok: false, message: refusalSentence(joined) };
   const share = {
     ...joined,
     title: thread.title || joined.title,
