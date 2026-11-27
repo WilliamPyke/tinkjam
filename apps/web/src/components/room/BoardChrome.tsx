@@ -23,10 +23,11 @@ export const BOARD_TITLE_BAR_CLASS =
 /**
  * Chrome on a card that shows only while it is hovered, focused or has a menu open: its action
  * row and resize grips. Faded, not removed, so it keeps its hit area and keyboard reach; touch
- * screens, which cannot hover, always show it.
+ * screens, which cannot hover, always show it. Focus shows it at once, so a focus ring is never
+ * drawn on a button still fading in.
  */
 export const BOARD_HOVER_CHROME_CLASS =
-  "transition-opacity [@media(hover:hover)]:opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100 has-[[data-popup-open]]:opacity-100";
+  "transition-opacity [@media(hover:hover)]:opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100 group-focus-within/item:transition-none has-[[data-popup-open]]:opacity-100";
 
 /** On a selected card or section: its resize and line grips show, and work, without a hover. */
 export const BOARD_SELECTED_CHROME_CLASS =
@@ -37,7 +38,7 @@ export const BOARD_SELECTED_CHROME_CLASS =
  * finger gets a 40px target, spaced so it never takes a tap meant for its neighbour.
  */
 export const BOARD_ICON_BUTTON_CLASS =
-  "relative grid size-6 shrink-0 place-items-center rounded-md opacity-60 pointer-coarse:mx-2 pointer-coarse:after:absolute pointer-coarse:after:-inset-2 transition-[opacity,background-color] hover:bg-current/10 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none";
+  "relative grid size-6 shrink-0 place-items-center rounded-md opacity-60 pointer-coarse:mx-2 pointer-coarse:after:absolute pointer-coarse:after:-inset-2 transition-[opacity,background-color] hover:bg-current/10 hover:opacity-100 focus-visible:bg-current/10 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none";
 
 /** Floating chrome over the canvas: the tool rail, the zoom pill, passing notices. */
 export function BoardFloat({ className, ...props }: ComponentProps<"div">) {
