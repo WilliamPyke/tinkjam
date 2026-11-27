@@ -58,7 +58,7 @@ export async function redeemInvite(input: {
     }
     if (!response.ok) {
       return Option.match(decodeRefusalBody(json), {
-        onNone: () => "Something went wrong. Try again.",
+        onNone: () => "Could not open this board. Try again.",
         onSome: (refusal) => knownRefusalNotice(refusal.detail) ?? linkRefusalMessage(refusal),
       });
     }
@@ -74,13 +74,13 @@ export async function redeemInvite(input: {
       threadId: result.threadId,
       token: result.token,
       // A stand-in until the stream names it: a cloud board is never called a thread.
-      title: result.title?.trim() || (cloud ? "Shared board" : "Shared thread"),
+      title: result.title?.trim() || "Shared board",
       joinedAt: new Date().toISOString(),
       // Anyone on a cloud board can invite others with the link they came in on.
       ...(cloud ? { credential: input.credential } : {}),
       ...(account === null ? {} : { accountId: account.userId }),
     };
   } catch {
-    return "Could not reach the server.";
+    return "Could not open this board. Try again.";
   }
 }

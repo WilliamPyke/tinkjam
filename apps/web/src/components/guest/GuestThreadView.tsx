@@ -163,9 +163,6 @@ function writeAwaitingRowIds(ids: ReadonlySet<GuestMessageId>) {
   } catch {}
 }
 
-const messageOfFailure = (error: unknown) =>
-  error instanceof Error && error.message ? error.message : "Try again.";
-
 /** The host's answer to one board change, or null when nothing answered. */
 async function sendBoardChange(
   endpoint: GuestShareEndpoint,
@@ -404,7 +401,7 @@ function GuestThreadSession({
   const projection = Option.getOrNull(thread.data);
   const pendingRequests = useAtomValue(environmentThreadDetails.pendingRequestsAtom(threadRef));
   const loadEarlier = useAtomCommand(threadEnvironment.loadEarlierHistory, {
-    label: "load earlier thread history",
+    label: "load earlier messages",
     reportFailure: false,
   });
   // The room thread's conversation beside the board; closing it hides it without unmounting it.
@@ -564,13 +561,13 @@ function GuestThreadSession({
           struggling
             ? "Retrying..."
             : Option.isSome(thread.error)
-              ? "Could not load this thread"
+              ? "Could not load this board"
               : "Connecting..."
         }
         {...(struggling
           ? {
               detail: isCloudShare(share)
-                ? "The board service has not answered yet. Trying again."
+                ? "Tinkjam has not answered yet. Trying again."
                 : "The owner's computer has not answered yet. Trying again.",
             }
           : Option.isSome(thread.error)
@@ -602,7 +599,11 @@ function GuestThreadSession({
   const guestId = view.guestId;
   const reportOpenFailure = (error: string | null) => {
     if (error !== null) {
-      toastManager.add({ type: "error", title: "Could not open your Tinkjam", description: error });
+      toastManager.add({
+        type: "error",
+        title: "Could not open Tinkjam on your computer",
+        description: error,
+      });
     }
   };
   // This guest's own box's changes are on their machine; anyone else's the owner's server reads.
@@ -610,7 +611,7 @@ function GuestThreadSession({
     if (changes.guestId === undefined) return readRoomCodePatch(endpoint, note.id, path, scope);
     const own = boxOn(changes.boxId).machine;
     if (own === null) {
-      return { error: "Open this on your machine, where your thread box's changes are." };
+      return { error: "Open this on your computer, where your agent box's changes are." };
     }
     const result = await readOwnBoxPatch({
       environmentId: own.environmentId,
@@ -755,7 +756,7 @@ function GuestThreadSession({
             )
           : isCloudShare(share) || view.cloud === true
             ? "Your agent is no longer on this board. Press Bring my agent to bring it back."
-            : "Your computer is no longer on this board. Choose Continue on my machine again.",
+            : "Your computer is no longer on this board. Choose Continue on my computer again.",
     });
     return false;
   };
@@ -795,11 +796,14 @@ function GuestThreadSession({
     if (result !== null && isAtomCommandInterrupted(result)) return false;
     toastManager.add({
       type: "error",
-      title: "Could not add the thread to the board",
+      title: "Could not add your agent box",
       description:
         result === null
-          ? "The board did not take it. It may be full."
-          : messageOfFailure(squashAtomCommandFailure(result)),
+          ? "The board may be full. Make room, then try again."
+          : ownAgentFailureMessage(
+              squashAtomCommandFailure(result),
+              "Your computer could not add it. Try again.",
+            ),
     });
     return false;
   };
@@ -818,7 +822,8 @@ function GuestThreadSession({
       toastManager.add({
         type: "error",
         title: `${on.stranded} is not connected`,
-        description: `This agent's chat is on ${on.stranded}. Wake it, or add a new agent to use another computer.`,
+        description:
+          "This agent's chat is on that computer. Start Tinkjam Sync there, or add a new agent on another computer.",
       });
       return false;
     }

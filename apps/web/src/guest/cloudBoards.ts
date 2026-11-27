@@ -106,7 +106,7 @@ export async function createCloudBoard(input: {
 }): Promise<JoinedGuestShare | string> {
   const origin = cloudBoardsOrigin();
   const host = cloudBoardsHost();
-  if (origin === null || host === null) return "Could not reach the board service. Try again.";
+  if (origin === null || host === null) return "Could not reach Tinkjam. Try again.";
   try {
     // Signed in, the board is the account's from the start, on every device it signs in on.
     const account = await boardJoinAuth();
@@ -133,7 +133,7 @@ export async function createCloudBoard(input: {
     if (account !== null && readBoardAccountProfile()?.userId !== account.userId) {
       return SIGN_IN_UNCONFIRMED;
     }
-    if (created === null) return "Could not reach the board service. Try again.";
+    if (created === null) return "Could not reach Tinkjam. Try again.";
     if (account !== null) {
       // Made while the home shows a workspace, it is that workspace's board from the start. Not
       // waited for: the person is already on the board by then.
@@ -159,7 +159,7 @@ export async function createCloudBoard(input: {
       ...(account === null ? {} : { accountId: account.userId }),
     };
   } catch {
-    return "Could not reach the board service. Try again.";
+    return "Could not reach Tinkjam. Try again.";
   }
 }
 
@@ -173,7 +173,7 @@ export async function copyCloudBoard(
 ): Promise<JoinedGuestShare | string> {
   const origin = cloudBoardsOrigin();
   const host = cloudBoardsHost();
-  if (origin === null || host === null) return "Could not reach the board service. Try again.";
+  if (origin === null || host === null) return "Could not reach Tinkjam. Try again.";
   try {
     const account = await boardJoinAuth();
     if (account === "unconfirmed") return SIGN_IN_UNCONFIRMED;
@@ -214,7 +214,7 @@ export async function copyCloudBoard(
     rememberGuestShare(copy);
     return copy;
   } catch {
-    return "Could not reach the board service. Try again.";
+    return "Could not reach Tinkjam. Try again.";
   }
 }
 
@@ -238,9 +238,9 @@ export async function setCloudBoardCopies(
     if (response.ok) return null;
     return response.status === 403
       ? "Only the person who made this board can change this."
-      : "The board service did not take that. Try again.";
+      : "Tinkjam did not save that change. Try again.";
   } catch {
-    return "Could not reach the board service. Try again.";
+    return "Could not reach Tinkjam. Try again.";
   }
 }
 
@@ -259,11 +259,11 @@ export async function renameCloudBoard(
         body: JSON.stringify({ title: kept }),
       },
     });
-    if (!response.ok) return "The board service did not take the new name. Try again.";
+    if (!response.ok) return "Tinkjam did not save the new name. Try again.";
     if (kept !== "") noteWorkspaceBoardTitle(share.shareId, kept);
     return null;
   } catch {
-    return "Could not reach the board service. Try again.";
+    return "Could not reach Tinkjam. Try again.";
   }
 }
 
@@ -276,9 +276,9 @@ export async function deleteCloudBoard(share: JoinedGuestShare): Promise<string 
     if (response.ok) return null;
     return response.status === 403
       ? "Only the person who made this board can delete it."
-      : "The board service did not delete the board. Try again.";
+      : "Tinkjam did not delete the board. Try again.";
   } catch {
-    return "Could not reach the board service. Try again.";
+    return "Could not reach Tinkjam. Try again.";
   }
 }
 
@@ -306,9 +306,9 @@ export async function removeFromCloudBoard(
     if (response.ok || response.status === 410) return null;
     return response.status === 403
       ? "Only the person who made this board can remove people."
-      : "The board service did not take that. Try again.";
+      : "Tinkjam did not save that change. Try again.";
   } catch {
-    return "Could not reach the board service. Try again.";
+    return "Could not reach Tinkjam. Try again.";
   }
 }
 
@@ -434,9 +434,9 @@ export async function setCloudBoardLink(
     const result = response.ok
       ? Option.getOrNull(decodeLinkResult(await response.json().catch(() => null)))
       : null;
-    return result ?? "The board service did not take that. Try again.";
+    return result ?? "Tinkjam did not save that change. Try again.";
   } catch {
-    return "Could not reach the board service. Try again.";
+    return "Could not reach Tinkjam. Try again.";
   }
 }
 
@@ -464,10 +464,10 @@ export async function setCloudBoardSharing(
     if (response.ok) return null;
     if (response.status === 403) return "Only the person who made this board can change its links.";
     return response.status === 404
-      ? "The board service does not have link sharing yet. Try again later."
-      : "The board service did not take that. Try again.";
+      ? "Link sharing is not available yet. Try again later."
+      : "Tinkjam did not save that change. Try again.";
   } catch {
-    return "Could not reach the board service. Try again.";
+    return "Could not reach Tinkjam. Try again.";
   }
 }
 
@@ -492,8 +492,8 @@ export async function setCloudBoardRole(
     if (response.ok) return null;
     return response.status === 403
       ? "Only the person who made this board can change who edits it."
-      : "The board service did not take that. Try again.";
+      : "Tinkjam did not save that change. Try again.";
   } catch {
-    return "Could not reach the board service. Try again.";
+    return "Could not reach Tinkjam. Try again.";
   }
 }

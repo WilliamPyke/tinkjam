@@ -8,7 +8,7 @@ import { configuredHostedAppUrl } from "~/hostedPairing";
 
 const decodeErrorBody = Schema.decodeUnknownOption(Schema.Struct({ message: Schema.String }));
 export const decodeHandoff = Schema.decodeUnknownOption(GuestHandoff);
-const UNREACHABLE = "Could not reach the server.";
+const UNREACHABLE = "Could not reach this board. Try again.";
 
 /** The message a failed guest request carries, or `fallback`. */
 async function failureOf(response: Response, fallback: string): Promise<string> {
@@ -64,7 +64,7 @@ export async function postGuestMessage(
   return guestShareRequest(endpoint, `${GUEST_ROUTE_PREFIX}/messages`, {
     init: { method: "POST", body: form },
   }).then(
-    (response) => (response.ok ? null : failureOf(response, "Something went wrong. Try again.")),
+    (response) => (response.ok ? null : failureOf(response, "Could not send it. Try again.")),
     () => UNREACHABLE,
   );
 }
@@ -84,7 +84,7 @@ export async function openOnMyMachine(
     endpoint,
     GUEST_HANDOFF_ROUTE,
     decodeHandoff,
-    "Could not start the handoff. Try again.",
+    "Could not open this board on your computer. Try again.",
   );
   if (typeof handoff === "string") {
     tab?.close();

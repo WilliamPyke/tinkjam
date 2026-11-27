@@ -1763,7 +1763,11 @@ describe("RoomBoard controls", () => {
     await expect.element(artifact).toBeDisabled();
     await userEvent.hover(artifact.element().parentElement!);
     await expect
-      .element(page.getByText(`The board holds ${ROOM_BOARD_MAX_ARTIFACTS} artifacts at most`))
+      .element(
+        page.getByText(
+          `The board holds ${ROOM_BOARD_MAX_ARTIFACTS} artifacts at most. Delete one to add another.`,
+        ),
+      )
       .toBeVisible();
   });
 });

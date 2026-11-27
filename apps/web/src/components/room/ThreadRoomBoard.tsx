@@ -1,9 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
 import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
+import { isAtomCommandInterrupted } from "@t3tools/client-runtime/state/runtime";
 import { deriveThreadStructureRuntime } from "@t3tools/client-runtime/state/thread-execution";
 import {
   GUEST_NAME_MAX_LENGTH,
@@ -282,7 +279,7 @@ export function ThreadRoomBoard({
   );
   const addRoomBoxThread = useAtomCommand(
     serverEnvironment.addRoomBoxThread,
-    "add the thread to the board",
+    "add the agent box to the board",
   );
   // Where the box goes once the owner picks which of their threads it is.
   const [addingAt, setAddingAt] = useState<BoardPoint | null>(null);
@@ -495,11 +492,10 @@ export function ThreadRoomBoard({
     });
     setOpeningPullRequest(false);
     if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
-      const error = squashAtomCommandFailure(result);
       toastManager.add({
         type: "error",
         title: "Could not open the pull request",
-        description: error instanceof Error ? error.message : "An error occurred.",
+        description: "Try again in a moment.",
       });
     }
   };

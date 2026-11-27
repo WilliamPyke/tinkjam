@@ -34,7 +34,7 @@ export type RoomCodePatchRead =
   | { readonly error: string };
 
 export const ROOM_CODE_PATCH_UNREADABLE: RoomCodePatchRead = {
-  error: "This file's changes cannot be read now.",
+  error: "This file's changes cannot be read now. Try again in a moment.",
 };
 
 /** A machine's answer as the window shows it. */
@@ -98,7 +98,7 @@ export function RoomCodeWindow({
         <p className="min-h-0 flex-1 px-3 pb-3 text-xs text-muted-foreground">
           {boxId === undefined
             ? "Draw a line from an agent box to this window. Everyone in the room will then see the files its agent changes, and their diffs."
-            : "No changes yet. They show here when the box's next turn ends."}
+            : "No changes yet. They show here after the agent's next answer."}
         </p>
       </>
     );
@@ -146,20 +146,20 @@ export function RoomCodeWindow({
               onClick={onOpenThread}
             >
               <ExternalLinkIcon />
-              Open in thread
+              Open chat
             </Button>
           )}
         </div>
         <p className="truncate text-2xs text-muted-foreground">
           {boxId === undefined
-            ? `No longer attached to an agent box. Last from ${boxName(changes.boxId)}.`
+            ? `This window is no longer attached to an agent box. The last changes came from ${boxName(changes.boxId)}.`
             : boxId !== changes.boxId
-              ? `From ${boxName(changes.boxId)} until ${boxName(boxId)}'s next turn ends.`
-              : `Changes of ${boxName(boxId)} since it began.`}
+              ? `Changes from ${boxName(changes.boxId)} until the next answer from ${boxName(boxId)}.`
+              : `Changes from ${boxName(boxId)} since it began.`}
         </p>
         {elsewhere === null ? null : (
           <p className="text-2xs text-muted-foreground">
-            Open on {elsewhere}'s machine only: the diffs stay there.
+            Only {elsewhere}'s computer can show these changes.
           </p>
         )}
       </div>
@@ -191,7 +191,7 @@ export function RoomCodeWindow({
                     }
                   }}
                 />
-                Last turn only
+                Latest answer only
               </label>
             ) : null}
             {files.length === 0 ? (
@@ -227,7 +227,8 @@ export function RoomCodeWindow({
             )}
             {changes.truncated === true ? (
               <p className="px-3 py-1 text-2xs text-muted-foreground">
-                The diff was longer than the machine reads; counts may be short.
+                Some changes are missing because there are too many to read. Counts may be
+                incomplete.
               </p>
             ) : null}
           </div>
@@ -239,24 +240,24 @@ export function RoomCodeWindow({
           >
             {selected === null ? (
               <p className="px-3 py-2 text-2xs text-muted-foreground">
-                {canOpen ? "Pick a file to see its diff." : null}
+                {canOpen ? "Pick a file to see what changed." : null}
               </p>
             ) : stale ? (
               <div className="p-2">
                 <Button size="micro" variant="ghost-muted" onClick={() => open(selected)}>
-                  Changed since. Show again
+                  Show the latest diff
                 </Button>
               </div>
             ) : shown === null || shown.read === null ? (
               canOpen ? (
                 <p role="status" className="px-3 py-2 text-2xs text-muted-foreground">
-                  Loading the diff…
+                  Loading the changes…
                 </p>
               ) : null
             ) : "patch" in shown.read ? (
               <Suspense
                 fallback={
-                  <p className="px-3 py-2 text-2xs text-muted-foreground">Loading the diff…</p>
+                  <p className="px-3 py-2 text-2xs text-muted-foreground">Loading the changes…</p>
                 }
               >
                 <RoomCodeDiff patch={shown.read.patch} />

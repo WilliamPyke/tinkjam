@@ -569,9 +569,9 @@ function AgentRoute() {
     onError: () =>
       toastManager.add({
         type: "error",
-        title: "Could not copy the request",
+        title: "Could not copy the instructions",
         description:
-          "Your browser did not allow it. Press Read it, then select the request and copy it yourself.",
+          "Your browser did not allow it. Press Read it, then select the instructions and copy them yourself.",
       }),
   });
   return (
@@ -581,14 +581,14 @@ function AgentRoute() {
     >
       <p className="min-w-48 flex-1 text-xs text-muted-foreground">
         <span className="font-medium text-foreground">Rather have your coding agent do it?</span>{" "}
-        Copy a ready-made request and paste it into Claude Code, Codex or another coding agent on{" "}
-        this computer.
+        Copy ready-made instructions and paste them into Claude Code, Codex or another coding agent
+        on this computer.
       </p>
       <Popover>
         <PopoverTrigger render={<Button size="sm" variant="ghost" />}>Read it</PopoverTrigger>
         <PopoverPopup side="top" align="end" width="md">
           <div className="flex flex-col gap-2">
-            <PopoverTitle>What the request says</PopoverTitle>
+            <PopoverTitle>What the instructions say</PopoverTitle>
             <p className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs wrap-anywhere select-all">
               {TINKJAM_AGENT_PROMPT}
             </p>
@@ -606,7 +606,7 @@ function AgentRoute() {
         data-sync-agent-copy
       >
         {isCopied ? <CheckIcon /> : <CopyIcon />}
-        <CopyLabel copied={isCopied}>Copy request</CopyLabel>
+        <CopyLabel copied={isCopied}>Copy instructions</CopyLabel>
       </Button>
     </div>
   );

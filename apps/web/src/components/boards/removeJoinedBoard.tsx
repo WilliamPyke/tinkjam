@@ -88,7 +88,7 @@ function useRemoveJoinedBoard() {
       [
         board.cloud ? `Leave "${board.title}"?` : `Remove "${board.title}" from your boards?`,
         board.cloud
-          ? "You leave the board. Everyone else on it keeps it, and the invite link brings you back."
+          ? "You leave the board. Everyone else on it keeps it. You need a working link to come back."
           : "It goes from this browser only. Everyone else on it keeps it. To come back, you need a new link from the owner.",
       ].join("\n"),
       { variant: "destructive", confirmLabel: board.cloud ? "Leave board" : "Remove board" },

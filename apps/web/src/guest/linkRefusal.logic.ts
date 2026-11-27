@@ -21,7 +21,7 @@ const NOTICES: Readonly<Record<string, RefusalNotice>> = {
   ended: ENDED_NOTICE,
   sharing_off: {
     title: "Link sharing is off for this board",
-    detail: "Ask whoever shared it to turn it on or add you.",
+    detail: "Ask whoever shared it to switch it on or add you.",
   },
   view_only: {
     title: "This board's link now only lets people look at it",

@@ -4,10 +4,7 @@ import {
   isGuestEnvironment,
   scopeThreadRef,
 } from "@t3tools/client-runtime/environment";
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
+import { isAtomCommandInterrupted } from "@t3tools/client-runtime/state/runtime";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import {
   AuthOrchestrationOperateScope,
@@ -281,11 +278,10 @@ function useCreateBoard() {
     });
     if (created._tag === "Failure") {
       if (!isAtomCommandInterrupted(created)) {
-        const error = squashAtomCommandFailure(created);
         toastManager.add({
           type: "error",
           title: "Could not start a board",
-          description: error instanceof Error ? error.message : "An error occurred.",
+          description: "Try again in a moment.",
         });
       }
       return false;
@@ -327,7 +323,8 @@ const toastTemplateMissing = () =>
   toastManager.add({
     type: "error",
     title: "Some of the template is missing",
-    description: "The board was made, but not all of its cards could be added.",
+    description:
+      "The board was made, but not all of its cards could be added. Add the missing cards yourself, or make another board.",
   });
 
 /**
@@ -394,7 +391,7 @@ function useCreateCloudBoard() {
       toastManager.add({
         type: "error",
         title: "Could not start a board",
-        description: "This template needs a board on your computer.",
+        description: "Choose another template, or make it on your computer.",
       });
       return false;
     }

@@ -254,8 +254,8 @@ function StatusChip({
             ? "Your computer is not connected. Wake it, or open Tinkjam Sync on it. Your agent comes back by itself."
             : offlineOwn === "absent"
               ? "Your agent is not on this board. Press Bring my agent."
-              : "Whoever this agent belongs to is not on the board now, so it cannot run."
-          : "It ran on another machine and no reply came back, so this board cannot tell how it ended."}
+              : "Whoever this agent belongs to is not on the board now. Ask them to bring it back."
+          : "It ran on another computer and no reply came back, so this board cannot tell how it ended."}
       </TooltipPopup>
     </Tooltip>
   );
@@ -685,7 +685,7 @@ export function BoardAgents({
               {viewing
                 ? "You are viewing this board. Agents join when you can edit it."
                 : cloud
-                  ? "Agents cannot join this board."
+                  ? "This board cannot run agents. Make a board on your computer to use them."
                   : "Add an agent box from the toolbar, or select cards and choose Ask an agent."}
             </p>
           )}
