@@ -21,6 +21,7 @@
           return;
         }
         if (location.hash.startsWith("#moved=")) return;
+        if (location.pathname === "/guest") return;
         try {
           if (window.localStorage.getItem(MOVED_KEY) !== null) return;
           if (window.sessionStorage.getItem(ASKED_KEY) !== null) return;
