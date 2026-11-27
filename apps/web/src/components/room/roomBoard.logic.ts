@@ -1442,20 +1442,36 @@ export function putBoardEdit(
 }
 
 /**
- * Sends one card's, note's or arrow's changes one after another, so the room takes them in the
- * order they were made: text typed into a new note cannot land before the empty note it fills.
- * A change in several queues waits for each, as a line put back between two cards put back.
- * `hold` is called as each change is queued, and what it returns once the room answered it.
+ * Sends one card's, note's or arrow's changes in the order they were made: text typed into a new
+ * note cannot land before the empty note it fills, and a change in several queues waits for each.
+ * `hold` is called as each is queued, and what it returns once the room answered it. A change
+ * queued with its `change` can go ahead of its turn with `flush` as the page goes away.
  */
 export function boardChangeQueue(hold?: () => () => void) {
   const last = new Map<string, Promise<unknown>>();
-  return <A>(keys: string | ReadonlyArray<string>, send: () => Promise<A>): Promise<A> => {
+  const waiting = new Set<WaitingBoardChange>();
+  function queue<A>(keys: string | ReadonlyArray<string>, send: () => Promise<A>): Promise<A>;
+  function queue(
+    keys: string | ReadonlyArray<string>,
+    send: () => Promise<boolean>,
+    change: RoomBoardChange,
+  ): Promise<boolean>;
+  function queue(
+    keys: string | ReadonlyArray<string>,
+    send: () => Promise<unknown>,
+    change?: RoomBoardChange,
+  ): Promise<unknown> {
     const all = typeof keys === "string" ? [keys] : keys;
     const release = hold?.();
     const settled = () => undefined;
+    const entry: WaitingBoardChange = { keys: all, change, flushed: undefined };
+    waiting.add(entry);
     const next = Promise.all(
       all.map((key) => (last.get(key) ?? Promise.resolve()).then(settled, settled)),
-    ).then(send);
+    ).then(() => {
+      waiting.delete(entry);
+      return entry.flushed === undefined ? send() : entry.flushed.then((taken) => taken || send());
+    });
     for (const key of all) last.set(key, next);
     const forget = () => {
       for (const key of all) if (last.get(key) === next) last.delete(key);
@@ -1463,8 +1479,65 @@ export function boardChangeQueue(hold?: () => () => void) {
     };
     next.then(forget, forget);
     return next;
+  }
+  /**
+   * Sends every change still waiting its turn now, in the order they were queued, with `sendNow`,
+   * which must survive the page going away. A change behind one that cannot go this way stays
+   * queued, and one sent here is not sent again unless `sendNow` resolved false.
+   */
+  const flush = (
+    sendNow: (change: RoomBoardChange) => Promise<boolean>,
+    maxBytes = BOARD_FLUSH_MAX_BYTES,
+  ) => {
+    const stuck = new Set<string>();
+    let bytes = 0;
+    for (const entry of waiting) {
+      if (entry.flushed !== undefined) continue;
+      const { change, keys } = entry;
+      const size =
+        change === undefined || !BOARD_FLUSHABLE.has(change.type)
+          ? Infinity
+          : new TextEncoder().encode(JSON.stringify(change)).byteLength;
+      if (change === undefined || keys.some((key) => stuck.has(key)) || bytes + size > maxBytes) {
+        for (const key of keys) stuck.add(key);
+        continue;
+      }
+      bytes += size;
+      entry.flushed = sendNow(change);
+    }
   };
+  return Object.assign(queue, { flush });
 }
+
+interface WaitingBoardChange {
+  readonly keys: ReadonlyArray<string>;
+  readonly change: RoomBoardChange | undefined;
+  flushed: Promise<boolean> | undefined;
+}
+
+// Keepalive requests share 64 KiB of body; the rest is left for the pointer leaving the board.
+const BOARD_FLUSH_MAX_BYTES = 60 * 1024;
+
+// Changes that leave the board the same when the room takes them twice, as it may when a page
+// that sent them as it went away comes back. A reaction or restore sent twice undoes itself.
+const BOARD_FLUSHABLE: ReadonlySet<RoomBoardChange["type"]> = new Set<RoomBoardChange["type"]>([
+  "card.move",
+  "card.resize",
+  "note.put",
+  "note.remove",
+  "edge.put",
+  "edge.remove",
+  "edge.shape",
+  "edge.pin",
+  "edge.resend",
+  "artifact.copy",
+  "artifact.view",
+  "comment.reply",
+  "comment.reply.remove",
+  "comment.resolve",
+  "box.model",
+  "board.start",
+]);
 
 /**
  * The queue a change waits in. A line's is the two cards it joins, so taking a line off and
