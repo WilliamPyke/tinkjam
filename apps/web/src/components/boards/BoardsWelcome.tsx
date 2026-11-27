@@ -21,7 +21,12 @@ import { Input } from "../ui/input";
 import { Spinner } from "../ui/spinner";
 import { AccountCorner } from "./BoardsAccount";
 import { BoardThumbnail } from "./BoardThumbnail";
-import { type BoardTemplate, STARTER_BOARD_TEMPLATES, boardTemplateShapes } from "./boardTemplates";
+import {
+  BLANK_BOARD_TEMPLATE,
+  type BoardTemplate,
+  STARTER_BOARD_TEMPLATES,
+  boardTemplateShapes,
+} from "./boardTemplates";
 import { UNTITLED_BOARD } from "./boardsHome.logic";
 import { useFirstRunFocusOffered } from "./homeFocus";
 import { useNewBoardWaiting, useStartNewBoard } from "./newBoard";
@@ -151,8 +156,7 @@ export function StartBoardForm({
     }
     setStarting(true);
     try {
-      // The name was asked for here, so the board does not open asking for it again.
-      if (await startNewBoard(template, undefined, draft.title.trim() || UNTITLED_BOARD)) {
+      if (await startNewBoard(template, undefined, draft.title.trim() || null)) {
         clearWelcomeDraft();
       }
     } finally {
@@ -237,7 +241,7 @@ export function StartBoardForm({
             size="lg"
             autoFocus={caret && !typing}
             maxLength={CLOUD_BOARD_TITLE_MAX_LENGTH}
-            placeholder={UNTITLED_BOARD}
+            placeholder={template.id === BLANK_BOARD_TEMPLATE.id ? UNTITLED_BOARD : template.name}
             value={draft.title}
             onChange={(event) => change({ title: event.currentTarget.value })}
             data-welcome-title
