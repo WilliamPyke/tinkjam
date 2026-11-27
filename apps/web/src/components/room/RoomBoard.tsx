@@ -8576,7 +8576,7 @@ function BoardNote({
                           : "Write a note, or paste a link"
             }
             className={cn(
-              "resize-none bg-transparent px-3 pb-3 text-sm leading-snug outline-none placeholder:text-placeholder",
+              "resize-none bg-transparent px-3 pb-3 text-sm leading-snug outline-none placeholder:text-placeholder data-[board-keyboard-focus]:ring-2 data-[board-keyboard-focus]:ring-ring data-[board-keyboard-focus]:ring-inset",
               // Paper reads like the designs' sticky notes: larger, medium-weight words.
               paper &&
                 "px-4 pt-0.5 pb-1 text-ui-md leading-snug font-medium placeholder:text-paint-ink-muted",
