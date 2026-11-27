@@ -126,7 +126,49 @@ export function syncWorkspaces(userId: string | null) {
   if (userId === syncedUser) return;
   syncedUser = userId;
   appAtomRegistry.set(workspacesAtom, null);
-  if (userId !== null && boardAccountsEnabled()) void refreshWorkspaces();
+  stopWatching();
+  if (userId !== null && boardAccountsEnabled()) {
+    void refreshWorkspaces();
+    startWatching();
+  }
+}
+
+// The board host has no push for workspace changes (a teammate's new board, a deleted
+// workspace): the list is read again when the page comes back, and now and then while it shows.
+const WORKSPACES_STEP_MS = 60_000;
+let watchTimer: ReturnType<typeof setInterval> | null = null;
+let pageBackAt = 0;
+
+const onPageBack = () => {
+  // Coming back to the tab fires both focus and visibilitychange: one read is enough.
+  if (Date.now() - pageBackAt < 2_000) return;
+  pageBackAt = Date.now();
+  void refreshWorkspaces();
+  void refreshAccountBoards();
+};
+const onShown = () => {
+  if (document.visibilityState === "visible") {
+    onPageBack();
+    watchTimer ??= setInterval(() => void refreshWorkspaces(), WORKSPACES_STEP_MS);
+  } else if (watchTimer !== null) {
+    clearInterval(watchTimer);
+    watchTimer = null;
+  }
+};
+
+function startWatching() {
+  window.addEventListener("focus", onPageBack);
+  document.addEventListener("visibilitychange", onShown);
+  if (document.visibilityState === "visible") {
+    watchTimer = setInterval(() => void refreshWorkspaces(), WORKSPACES_STEP_MS);
+  }
+}
+
+function stopWatching() {
+  window.removeEventListener("focus", onPageBack);
+  document.removeEventListener("visibilitychange", onShown);
+  if (watchTimer !== null) clearInterval(watchTimer);
+  watchTimer = null;
 }
 
 /** Reads the account's workspaces again, as the home does each time it opens. */
