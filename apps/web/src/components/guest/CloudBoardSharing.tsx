@@ -169,7 +169,11 @@ export function CloudBoardSharing({
   const { copyToClipboard, isCopied } = useCopyToClipboard({
     onCopy: () => {
       markBoardGuideStep("invite");
-      toastManager.add({ type: "success", title: "Invite link copied" });
+      toastManager.add({
+        type: "success",
+        title: "Invite link copied",
+        description: "Send it to a teammate. It brings them onto this board.",
+      });
     },
     onError: () =>
       toastManager.add({
