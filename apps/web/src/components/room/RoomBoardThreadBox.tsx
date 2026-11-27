@@ -24,7 +24,6 @@ import { useAtomCommand } from "~/state/use-atom-command";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ComposerPendingApprovalActions } from "../chat/ComposerPendingApprovalActions";
 import { guestMessageArtifactTitle } from "../chat/roomBoardPrompt";
 import { BoardProgressLine } from "./RoomBoardArtifact";
@@ -305,37 +304,31 @@ export function BoxProgress({
 export function BoxStopButton({ onStop }: { readonly onStop: StopBoxAgent }) {
   const [stopping, setStopping] = useState(false);
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            size="icon-tiny"
-            variant="ghost-muted"
-            aria-label="Stop the agent"
-            aria-busy={stopping}
-            disabled={stopping}
-            onPointerDown={stopPointer}
-            onClick={async (event) => {
-              event.stopPropagation();
-              if (stopping) return;
-              setStopping(true);
-              const result = await onStop();
-              setStopping(false);
-              if (result !== undefined && result._tag === "Failure") {
-                toastManager.add({
-                  type: "error",
-                  title: "Could not stop the agent",
-                  description: "Try again.",
-                });
-              }
-            }}
-          />
+    <Button
+      size="micro"
+      variant="ghost-muted"
+      aria-label="Stop the agent"
+      aria-busy={stopping}
+      disabled={stopping}
+      onPointerDown={stopPointer}
+      onClick={async (event) => {
+        event.stopPropagation();
+        if (stopping) return;
+        setStopping(true);
+        const result = await onStop();
+        setStopping(false);
+        if (result !== undefined && result._tag === "Failure") {
+          toastManager.add({
+            type: "error",
+            title: "Could not stop the agent",
+            description: "Try again.",
+          });
         }
-      >
-        {stopping ? <Spinner aria-hidden /> : <SquareIcon />}
-      </TooltipTrigger>
-      <TooltipPopup side="top">Stop the agent</TooltipPopup>
-    </Tooltip>
+      }}
+    >
+      {stopping ? <Spinner aria-hidden /> : <SquareIcon aria-hidden className="fill-current" />}
+      Stop
+    </Button>
   );
 }
 
