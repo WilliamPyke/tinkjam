@@ -749,6 +749,7 @@ function RoomArtifactToolbar({
       className={cn(
         // Its gap is its own padding, so the pointer crosses from the card to it without leaving.
         "pointer-events-none invisible absolute bottom-full left-1/2 z-20 flex -translate-x-1/2 pb-2.5",
+        "group-data-[board-selected]/item:-translate-y-8",
         "[@media(hover:hover)]:group-hover/item:pointer-events-auto [@media(hover:hover)]:group-hover/item:visible",
         "group-focus-within/item:pointer-events-auto group-focus-within/item:visible",
         "group-data-[board-selected]/item:pointer-events-auto group-data-[board-selected]/item:visible",
