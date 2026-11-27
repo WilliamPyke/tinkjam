@@ -9,7 +9,7 @@ import {
   SplineIcon,
   XIcon,
 } from "lucide-react";
-import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { type MouseEvent, type ReactNode, useRef, useState } from "react";
 
 import { useBoardAccount } from "~/guest/boardAccount";
 import { useMediaQuery } from "~/hooks/useMediaQuery";
@@ -78,13 +78,10 @@ export function BoardGuide({
 }) {
   const [initial] = useState(initialBoardGuideState);
   const state = useBoardGuideState(initial);
+  // On a phone the open guide covers the board: it shows folded until opened here, without
+  // changing what this browser keeps for wider screens.
   const narrow = useMediaQuery("(max-width: 640px)");
-  const wasNarrow = useRef(false);
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keeps the guide's stored fold state in step with the screen width
-  useEffect(() => {
-    if (narrow && !wasNarrow.current) collapseBoardGuide(true);
-    wasNarrow.current = narrow;
-  }, [narrow]);
+  const [openedHere, setOpenedHere] = useState(false);
   const collapsedGuide = useRef<HTMLButtonElement | null>(null);
   const openGuide = useRef<HTMLDivElement | null>(null);
   // Until sign-in says who this is, what this browser keeps may be the last person's.
@@ -134,6 +131,7 @@ export function BoardGuide({
     });
   };
   const expand = () => {
+    setOpenedHere(true);
     collapseBoardGuide(false);
     window.requestAnimationFrame(() => {
       const guide = openGuide.current;
@@ -143,10 +141,11 @@ export function BoardGuide({
     });
   };
   const collapse = () => {
+    setOpenedHere(false);
     collapseBoardGuide(true);
     window.requestAnimationFrame(() => collapsedGuide.current?.focus({ preventScroll: true }));
   };
-  const open = !state.collapsed;
+  const open = !state.collapsed && (!narrow || openedHere);
   // Clear of the toolbar until the board is wide enough for both on one row.
   const corner = "absolute right-3 bottom-16 z-30 @5xl/board:bottom-3";
   return (

@@ -2382,6 +2382,7 @@ describe("RoomBoard guide", () => {
   };
 
   it("clicks the board's invite control when the guide's invite step is pressed", async () => {
+    await using _viewport = await boardSizedViewport();
     const onInviteClick = vi.fn();
     await using screen = await guideBoard(
       <button type="button" data-cloud-board-invite onClick={onInviteClick}>
@@ -2393,6 +2394,7 @@ describe("RoomBoard guide", () => {
   });
 
   it("says so when there is no invite control to press", async () => {
+    await using _viewport = await boardSizedViewport();
     const add = vi.spyOn(toastManager, "add");
     await using screen = await guideBoard(<span>Not shared</span>);
     await userEvent.click(screen.getByRole("button", { name: "Invite a teammate" }));
