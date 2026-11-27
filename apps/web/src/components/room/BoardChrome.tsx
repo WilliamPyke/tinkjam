@@ -41,6 +41,12 @@ export const BOARD_SELECTED_CHROME_CLASS =
 export const BOARD_ICON_BUTTON_CLASS =
   "relative grid size-6 shrink-0 place-items-center rounded-md opacity-60 pointer-coarse:mx-2 pointer-coarse:after:absolute pointer-coarse:after:-inset-2 transition-[opacity,background-color] hover:bg-current/10 hover:opacity-100 focus-visible:bg-current/10 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none";
 
+/**
+ * On a touch screen, grows the buttons inside a card as the board zooms out, so they stay
+ * finger-sized; the board sets the scale in steps (`boardCardTouchScale`).
+ */
+export const BOARD_CARD_TOUCH_CLASS = "pointer-coarse:[zoom:var(--board-card-touch-scale,1)]";
+
 /** Below this window width a board opens with the app's sidebar folded away. */
 const BOARD_ROOMY_WIDTH = 1100;
 

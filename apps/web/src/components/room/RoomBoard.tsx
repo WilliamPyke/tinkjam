@@ -71,6 +71,7 @@ import {
 import {
   type ClipboardEvent,
   type ComponentProps,
+  type CSSProperties,
   type DragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent,
@@ -176,6 +177,7 @@ import {
   boardTakenRects,
   boardAddSection,
   boardAddSpot,
+  boardCardTouchScale,
   boardCopySkipped,
   boardCodeEdgeIds,
   boardAgents,
@@ -447,6 +449,7 @@ import { BoardSnapGuides, createBoardSnapStore } from "./RoomBoardSnapGuides";
 import {
   AddedBy,
   BOARD_HOVER_CHROME_CLASS,
+  BOARD_CARD_TOUCH_CLASS,
   BOARD_ICON_BUTTON_CLASS,
   BOARD_SELECTED_CHROME_CLASS,
   BOARD_TITLE_BAR_CLASS,
@@ -6685,7 +6688,12 @@ export function RoomBoard({
                   "absolute top-0 left-0 origin-top-left [--spacing:4px]",
                   following !== null && "transition-transform duration-200 ease-out",
                 )}
-                style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}
+                style={
+                  {
+                    transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`,
+                    "--board-card-touch-scale": boardCardTouchScale(view.zoom),
+                  } as CSSProperties
+                }
               >
                 {shown.notes.map((note) => {
                   if (note.section !== true) return null;
@@ -8528,7 +8536,7 @@ function BoardNote({
           </div>
         ) : null}
         {artifact && (onAttachAgent !== undefined || onAsk !== undefined) ? (
-          <div className="flex shrink-0 flex-wrap gap-1 px-3 pb-1.5">
+          <div className={cn("flex shrink-0 flex-wrap gap-1 px-3 pb-1.5", BOARD_CARD_TOUCH_CLASS)}>
             {onAsk === undefined ? null : (
               <WhatItDoes hint="Ask one of your agent boxes to change this artifact. Its reply replaces what it shows, for everyone; Restore previous brings this version back.">
                 <Button
