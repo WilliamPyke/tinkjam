@@ -8627,7 +8627,6 @@ function BoardNote({
             people={people}
             active={embed?.active === true}
             onRelease={embed?.onRelease}
-            onUse={embed?.onUse}
             marks={artifactMarks}
             links={artifactLinks}
           />
@@ -8641,7 +8640,6 @@ function BoardNote({
             active={embed?.active === true}
             zoomedOut={embed?.zoomedOut === true}
             onRelease={() => embed?.onRelease()}
-            onUse={embed?.onUse}
             framed={note.framed === true}
             onFrame={onFramePage === undefined ? undefined : (framed) => onFramePage(note, framed)}
             addedBy={
