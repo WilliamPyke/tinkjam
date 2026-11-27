@@ -7047,12 +7047,12 @@ export function RoomBoard({
                     title={title}
                     kind={
                       hasProgress
-                        ? "thread"
+                        ? "agent box"
                         : needsApproval
                           ? "needs approval"
                           : agentWorking
                             ? "agent working"
-                            : "thread"
+                            : "agent box"
                     }
                     id={ROOM_BOARD_THREAD_CARD}
                     size={sizes[ROOM_BOARD_THREAD_CARD]}
