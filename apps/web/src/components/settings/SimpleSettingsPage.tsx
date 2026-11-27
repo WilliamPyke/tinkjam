@@ -297,7 +297,7 @@ function AppearanceSection() {
         <div
           role="radiogroup"
           aria-label="Theme"
-          className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-2.5"
+          className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-2.5"
           data-simple-theme-picker
         >
           {choices.map(({ id, card }) => {
@@ -312,7 +312,7 @@ function AppearanceSection() {
                 aria-checked={active}
                 onClick={() => pick(id)}
                 className={cn(
-                  "flex min-h-13 min-w-0 cursor-pointer items-center gap-2.5 rounded-xl border bg-raised px-3 py-2 text-start outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                  "flex h-13 min-w-0 cursor-pointer items-center gap-2.5 rounded-xl border bg-raised px-3 py-2 text-start outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                   active && "border-primary ring-1 ring-primary ring-inset",
                 )}
               >
@@ -341,7 +341,7 @@ function AppearanceSection() {
                 initialAppearance: resolvedTheme,
               })
             }
-            className="flex min-h-13 min-w-0 cursor-pointer items-center gap-2.5 rounded-xl border bg-raised px-3 py-2 text-start text-sm font-semibold outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            className="flex h-13 min-w-0 cursor-pointer items-center gap-2.5 rounded-xl border bg-raised px-3 py-2 text-start text-sm font-semibold outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             data-simple-theme-create
           >
             <span
@@ -350,7 +350,7 @@ function AppearanceSection() {
             >
               <PlusIcon className="size-4" />
             </span>
-            <span className="min-w-0">Make your own</span>
+            <span className="min-w-0 whitespace-nowrap">Make your own</span>
           </button>
         </div>
         <div>
