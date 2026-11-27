@@ -179,6 +179,17 @@ describe("RoomArtifactLive", () => {
     expect(onWrite).not.toHaveBeenCalled();
     await expect.element(field).not.toBeInTheDocument();
 
+    // A touch browser may blur the field when Cancel is pressed, before its click.
+    await userEvent.click(screen.getByRole("button", { name: "Write it yourself" }));
+    await userEvent.type(field, "Another draft to drop");
+    screen
+      .getByRole("button", { name: "Cancel" })
+      .element()
+      .dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    (field.element() as HTMLTextAreaElement).blur();
+    expect(onWrite).not.toHaveBeenCalled();
+    await expect.element(field).not.toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("button", { name: "Write it yourself" }));
     await userEvent.type(screen.getByRole("textbox", { name: "Artifact text" }), "A page to keep");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));

@@ -37,6 +37,10 @@ type SidebarContextProps = {
   state: ResponsiveSidebarState;
   open: boolean;
   setOpen: (open: boolean) => void;
+  /** Opens or folds the desktop sidebar for now, leaving the saved choice alone. */
+  setOpenUnsaved: (open: boolean) => void;
+  /** Puts the desktop sidebar back to the saved choice. */
+  restoreSavedOpen: () => void;
   openMobile: boolean;
   mobileSheetMounted: boolean;
   setMobileSheetElement: (element: HTMLDivElement | null) => void;
@@ -141,17 +145,15 @@ interface SidebarOpenState {
 
 /** Per-provider open state, kept outside React so shortcuts can toggle it at event time. */
 function createSidebarOpenStore(defaultOpen: boolean, storageKey: string | undefined) {
-  let state: SidebarOpenState = {
-    open: readStoredSidebarOpen(storageKey) ?? defaultOpen,
-    openMobile: false,
-  };
+  let savedOpen = readStoredSidebarOpen(storageKey) ?? defaultOpen;
+  let state: SidebarOpenState = { open: savedOpen, openMobile: false };
   const listeners = new Set<() => void>();
   const collapseListeners = new Set<() => void>();
   const publish = (next: SidebarOpenState) => {
     state = next;
     for (const listener of listeners) listener();
   };
-  const setOpen = (open: boolean) => {
+  const setOpenUnsaved = (open: boolean) => {
     if (!open && state.open) {
       for (const listener of collapseListeners) listener();
       moveFocusOutOfCollapsingSidebar();
@@ -160,6 +162,10 @@ function createSidebarOpenStore(defaultOpen: boolean, storageKey: string | undef
       if (!isMobileViewport()) announceSidebarVisibility(open);
       publish({ ...state, open });
     }
+  };
+  const setOpen = (open: boolean) => {
+    setOpenUnsaved(open);
+    savedOpen = open;
     if (storageKey) writeLocalStorageValue(storageKey, open, defaultOpen, Schema.Boolean);
   };
   const setOpenMobile = (openMobile: boolean) => {
@@ -174,6 +180,8 @@ function createSidebarOpenStore(defaultOpen: boolean, storageKey: string | undef
     },
     getSnapshot: () => state,
     setOpen,
+    setOpenUnsaved,
+    restoreSavedOpen: () => setOpenUnsaved(savedOpen),
     setOpenMobile,
     toggle: () => (isMobileViewport() ? setOpenMobile(!state.openMobile) : setOpen(!state.open)),
     onCollapse: (listener: () => void) => {
@@ -217,6 +225,8 @@ function SidebarProvider({
     mobileSheetMounted,
     setMobileSheetElement,
     setOpen: store.setOpen,
+    setOpenUnsaved: store.setOpenUnsaved,
+    restoreSavedOpen: store.restoreSavedOpen,
     setOpenMobile: store.setOpenMobile,
     state,
     toggleSidebar: store.toggle,
