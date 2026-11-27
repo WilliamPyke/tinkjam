@@ -2943,6 +2943,17 @@ describe("box progress", () => {
       "Running a command",
     );
     expect(boardProgressPhase({ phase: "tool", detail: "Editing files" })).toBe("Editing files");
+    // A tool's own name is code, so the board says what it does or that a tool is in use.
+    expect(boardProgressPhase({ phase: "tool", detail: "mcp__t3-code__t3_board_add" })).toBe(
+      "Adding to the board",
+    );
+    expect(boardProgressPhase({ phase: "tool", detail: "t3-code.t3_board_read" })).toBe(
+      "Reading the board",
+    );
+    expect(boardProgressPhase({ phase: "tool", detail: "mcp__linear__list_issues" })).toBe(
+      "Using a tool",
+    );
+    expect(boardProgressPhase({ phase: "tool", detail: "TodoWrite" })).toBe("Using a tool");
     expect(boardProgressPhase({ phase: "writing" })).toBe("Writing");
     expect(boardProgressPhase({ phase: "approval" })).toBe("Waiting for approval");
     expect(
