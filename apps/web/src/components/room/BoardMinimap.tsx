@@ -1,6 +1,6 @@
 import type { RoomBoard } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
-import { type PointerEvent, type RefObject, memo, useEffect, useState } from "react";
+import { type PointerEvent, type RefObject, memo, useEffect, useRef, useState } from "react";
 
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { observeResize } from "~/lib/observeResize";
@@ -14,6 +14,7 @@ import {
   minimapFrame,
   minimapItems,
   minimapRect,
+  minimapShift,
   minimapToBoard,
 } from "./boardMinimap.logic";
 import {
@@ -67,44 +68,79 @@ const minimapKey = (items: ReadonlyArray<MinimapItem>) =>
     .join("|");
 
 /**
- * The cards, drawn in board pixels under one transform, so a pan only moves the group. Redrawn
- * only when what it draws changed, not on each render of the board.
+ * The cards, painted onto a canvas in `frame`, the frame of the cards alone. A pan that reaches
+ * past them only shrinks and moves the canvas, so it never paints them again. Painted again when
+ * the cards or the theme change.
  */
 const MinimapCards = memo(
   function MinimapCards({
     items,
+    frame,
   }: {
     readonly items: ReadonlyArray<MinimapItem>;
     readonly drawn: string;
+    readonly frame: MinimapFrame;
   }) {
-    return items.map((item) => <MinimapCard key={item.id} item={item} />);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- paints the canvas, again when the theme on the page's root changes
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      const context = canvas?.getContext("2d") ?? null;
+      if (canvas === null || context === null) return;
+      const paint = () => {
+        const ratio = window.devicePixelRatio || 1;
+        canvas.width = Math.round(MINIMAP_SIZE.width * ratio);
+        canvas.height = Math.round(MINIMAP_SIZE.height * ratio);
+        context.setTransform(ratio, 0, 0, ratio, 0, 0);
+        // A canvas takes no CSS variables: each colour is read back through the canvas's style.
+        const colors = new Map<string, string>();
+        const color = (token: string) => {
+          let resolved = colors.get(token);
+          if (resolved === undefined) {
+            canvas.style.color = token;
+            resolved = getComputedStyle(canvas).color;
+            colors.set(token, resolved);
+          }
+          return resolved;
+        };
+        for (const item of items) {
+          const rect = minimapRect(frame, item);
+          context.globalAlpha =
+            item.tone !== "section" ? 1 : (item.color ?? "grey") === "grey" ? 0.08 : 0.2;
+          context.fillStyle = color(
+            item.tone === "paint"
+              ? PAINTS[item.color ?? "yellow"]
+              : item.tone === "section"
+                ? DEEP_PAINTS[item.color ?? "grey"]
+                : "var(--color-card)",
+          );
+          context.fillRect(rect.x, rect.y, rect.width, rect.height);
+          if (item.tone === "window") {
+            context.strokeStyle = color("var(--color-board-hairline)");
+            context.lineWidth = 1;
+            context.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.width - 1, rect.height - 1);
+          }
+        }
+      };
+      paint();
+      const themed = new MutationObserver(paint);
+      themed.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class", "data-theme-id"],
+      });
+      return () => themed.disconnect();
+    }, [items, frame]);
+    return (
+      <canvas
+        ref={canvasRef}
+        aria-hidden
+        className="block"
+        style={{ width: MINIMAP_SIZE.width, height: MINIMAP_SIZE.height }}
+      />
+    );
   },
   (before, after) => before.drawn === after.drawn,
 );
-
-function MinimapCard({ item }: { readonly item: MinimapItem }) {
-  return (
-    <rect
-      x={item.x}
-      y={item.y}
-      width={item.width}
-      height={item.height}
-      rx={item.tone === "section" ? 0 : 8}
-      vectorEffect="non-scaling-stroke"
-      fill={
-        item.tone === "paint"
-          ? PAINTS[item.color ?? "yellow"]
-          : item.tone === "section"
-            ? DEEP_PAINTS[item.color ?? "grey"]
-            : "var(--color-card)"
-      }
-      // A section's background shows as the board tints it; one with none stays faint.
-      fillOpacity={item.tone !== "section" ? 1 : (item.color ?? "grey") === "grey" ? 0.08 : 0.2}
-      stroke={item.tone === "window" ? "var(--color-board-hairline)" : undefined}
-      strokeWidth={item.tone === "window" ? 1 : undefined}
-    />
-  );
-}
 
 /**
  * Everyone else's pointers as dots in their colour. Reads the live store itself, so a pointer
@@ -165,6 +201,8 @@ export function BoardMinimap({
   if (area === null || area.width === 0) return null;
   const viewport = visibleBoardRect(view, area);
   const frame = held?.frame ?? minimapFrame(content, viewport, MINIMAP_SIZE);
+  const drawnFrame = content === null ? frame : minimapFrame(content, content, MINIMAP_SIZE);
+  const shift = minimapShift(drawnFrame, frame);
   const viewRect = minimapRect(frame, viewport);
   const worldTransform = `translate(${frame.offset.x} ${frame.offset.y}) scale(${frame.scale}) translate(${-frame.world.x} ${-frame.world.y})`;
 
@@ -176,13 +214,19 @@ export function BoardMinimap({
     onView(boardViewCentredOn(view, area, { x: point.x - grab.x, y: point.y - grab.y }));
 
   return (
-    <BoardFloat className="overflow-hidden p-0">
+    <BoardFloat className="relative overflow-hidden p-0">
+      <div
+        className="pointer-events-none absolute top-0 left-0 origin-top-left"
+        style={{ transform: `translate(${shift.x}px, ${shift.y}px) scale(${shift.scale})` }}
+      >
+        <MinimapCards items={items} drawn={drawn} frame={drawnFrame} />
+      </div>
       <svg
         aria-label="Minimap. Press or drag to move the view."
         role="img"
         width={MINIMAP_SIZE.width}
         height={MINIMAP_SIZE.height}
-        className="block cursor-pointer touch-none bg-card"
+        className="relative block cursor-pointer touch-none"
         onPointerDown={(event) => {
           if (event.button !== 0) return;
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -209,7 +253,6 @@ export function BoardMinimap({
         onPointerCancel={() => setHeld(null)}
       >
         <g transform={worldTransform}>
-          <MinimapCards items={items} drawn={drawn} />
           <MinimapAgentMarks items={items} drawn={drawn} />
         </g>
         <rect

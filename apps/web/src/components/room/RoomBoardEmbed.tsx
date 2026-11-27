@@ -149,10 +149,13 @@ export function useBoardPageRelease(active: boolean, onRelease: () => void) {
 export function BoardPageCover({
   label,
   quiet,
+  onUse,
 }: {
   readonly label: string;
   /** Whether the label shows only under the pointer. */
   readonly quiet: boolean;
+  /** Opens what is under the cover from the keyboard. */
+  readonly onUse?: (() => void) | undefined;
 }) {
   const pointerLabel = boardTouchFirst() ? label.replace(/^Click\b/, "Tap") : label;
   return (
@@ -161,13 +164,26 @@ export function BoardPageCover({
       className="group/embed absolute inset-0 flex cursor-pointer items-end justify-center p-2"
     >
       <span
+        aria-hidden={onUse === undefined ? undefined : true}
         className={cn(
           "rounded-md border border-board-hairline bg-card px-2 py-1 text-2xs text-muted-foreground shadow-board",
-          quiet && "opacity-0 group-hover/embed:opacity-100",
+          quiet && "opacity-0 group-hover/embed:opacity-100 group-focus-within/embed:opacity-100",
         )}
       >
         {pointerLabel}
       </span>
+      {onUse === undefined ? null : (
+        // Only Tab reaches it: a press goes through to the cover, so it still drags the card.
+        <button
+          type="button"
+          aria-label={pointerLabel}
+          className="pointer-events-none absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          onClick={(event) => {
+            event.stopPropagation();
+            onUse();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -185,6 +201,7 @@ export function RoomEmbedBody({
   active,
   zoomedOut = false,
   onRelease,
+  onUse,
   addedBy,
   actions,
   framed = false,
@@ -204,6 +221,8 @@ export function RoomEmbedBody({
   readonly live: boolean;
   /** Whether the viewer is using its page now. */
   readonly active: boolean;
+  /** Opens its page for use from the keyboard. */
+  readonly onUse?: (() => void) | undefined;
   /** The board is too far out for a framed page to load; a click zooms in to the card. */
   readonly zoomedOut?: boolean;
   readonly onRelease: () => void;
@@ -321,6 +340,7 @@ export function RoomEmbedBody({
                     : `Click to show ${embed.name}`
               }
               quiet={loads}
+              onUse={onUse}
             />
           )}
         </div>

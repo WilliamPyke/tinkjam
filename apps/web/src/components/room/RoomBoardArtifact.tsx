@@ -96,6 +96,7 @@ export function RoomArtifactBody({
   marking,
   links,
   title,
+  onUse,
 }: {
   /** What its page's links open, and where its page starts. */
   readonly links?: ArtifactLinks | undefined;
@@ -114,6 +115,8 @@ export function RoomArtifactBody({
   readonly onWrite?: (() => void) | undefined;
   /** What the artifact is called, used to name its page's frame. */
   readonly title?: string | undefined;
+  /** Opens its content for use from the keyboard. */
+  readonly onUse?: (() => void) | undefined;
 }) {
   const bodyRef = useBoardPageRelease(active, onRelease);
   if (draft !== undefined) {
@@ -143,7 +146,7 @@ export function RoomArtifactBody({
             )}
           </div>
         </div>
-        {active ? null : <BoardPageCover label="Click to scroll" quiet />}
+        {active ? null : <BoardPageCover label="Click to scroll" quiet onUse={onUse} />}
       </div>
     );
   }
@@ -189,6 +192,7 @@ export function RoomArtifactBody({
           <BoardPageCover
             label={isBoardHtmlArtifact(artifact.body) ? "Click to interact" : "Click to scroll"}
             quiet
+            onUse={onUse}
           />
         )}
       </div>
@@ -525,6 +529,7 @@ export function RoomArtifactLive({
   marks,
   links,
   title,
+  onUse,
 }: {
   /** What its page's links open, where its page starts, and whether it is a page not yet made. */
   readonly links?: ArtifactLinks | undefined;
@@ -540,6 +545,8 @@ export function RoomArtifactLive({
   readonly noteId: string;
   /** What the artifact is called, used to name its page's frame. */
   readonly title?: string | undefined;
+  /** Opens its content for use from the keyboard. */
+  readonly onUse?: (() => void) | undefined;
   readonly artifact: RoomArtifactContent | undefined;
   /** Whose agent wrote the current version; absent before anything was written. */
   readonly author: string | undefined;
@@ -639,6 +646,7 @@ export function RoomArtifactLive({
         marking={marking}
         links={links}
         title={title}
+        onUse={onUse}
       />
       <RoomArtifactMeta author={author} artifact={artifact} people={people} />
     </>
