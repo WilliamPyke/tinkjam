@@ -206,7 +206,7 @@ function TeamThreadCard({
           disabled={state === "opening"}
           onClick={() => void open()}
         >
-          {state === "opening" ? "Opening..." : "Open thread"}
+          {state === "opening" ? "Opening..." : "Open chat"}
         </Button>
       </div>
     </>

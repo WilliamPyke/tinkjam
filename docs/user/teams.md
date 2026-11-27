@@ -44,9 +44,9 @@ them on again.
 
 ## The team board
 
-Choose **Board** at the top of the team's page. It has a card for each shared thread, with
-**Open thread**, and one for each member. Add notes, tasks and links, and draw arrows, as on
-[a thread's board](./guest-links.md#see-the-room-as-a-board); a task can be given to any member.
+Choose **Board** at the top of the team's page. It has a card for each shared conversation, with
+**Open chat**, and one for each member. Add notes, tasks and links, and draw arrows, as on
+[a shared board](./guest-links.md#see-the-room-as-a-board); a task can be given to any member.
 The board is kept on Tinkjam Connect, so it is there even while every member's machine is off, and
 changes from others appear within a few seconds. It has no pointers or comments on replies, and
 nothing on it reaches an agent: to use a note, copy it into a message yourself.
