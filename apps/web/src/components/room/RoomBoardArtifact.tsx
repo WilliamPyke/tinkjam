@@ -677,12 +677,34 @@ function RoomArtifactEditor({
           }
         }}
       />
-      <p className="shrink-0 text-2xs text-muted-foreground">
-        Saves when you {boardTouchFirst() ? "tap" : "click"} away or press Ctrl+Enter. Esc cancels.
-        {text.length > ROOM_ARTIFACT_MAX_LENGTH * 0.9
-          ? ` ${text.length.toLocaleString()} of ${ROOM_ARTIFACT_MAX_LENGTH.toLocaleString()} characters.`
-          : ""}
-      </p>
+      <div className="flex shrink-0 items-end gap-1.5">
+        <p className="min-w-0 flex-1 text-2xs text-muted-foreground">
+          {boardTouchFirst()
+            ? "Saves when you tap away."
+            : "Saves when you click away or press Ctrl+Enter. Esc cancels."}
+          {text.length > ROOM_ARTIFACT_MAX_LENGTH * 0.9
+            ? ` ${text.length.toLocaleString()} of ${ROOM_ARTIFACT_MAX_LENGTH.toLocaleString()} characters.`
+            : ""}
+        </p>
+        <Button
+          type="button"
+          size="xs"
+          variant="ghost"
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => finish(false)}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          size="xs"
+          disabled={text.trim() === "" || text.trim() === initial.trim()}
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => finish(true)}
+        >
+          Save
+        </Button>
+      </div>
     </div>
   );
 }
