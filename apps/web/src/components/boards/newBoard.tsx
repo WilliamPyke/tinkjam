@@ -308,7 +308,7 @@ function useCreateBoard() {
     const notes = changes.filter((change) => change.type === "note.put").length;
     if (notes > 0) fitRoomBoardOnOpen(roomBoardViewKey(ref), notes);
     // Typing on a new board names it; it never reaches a prompt the user has not clicked into.
-    if (title === null) nameBoardOnOpen(ref);
+    if (title === null) nameBoardOnOpen(ref, newBoardTitle(template, title));
     // Open it now; the rest of the template lands on the open board.
     void navigate(newBoardLocation(ref));
     void (async () => {
@@ -412,7 +412,7 @@ function useCreateCloudBoard() {
     const ref = scopeThreadRef(guestEnvironmentId(created.shareId), created.threadId);
     const notes = changes.filter((change) => change.type === "note.put").length;
     if (notes > 0) fitRoomBoardOnOpen(`guest:${created.shareId}`, notes);
-    if (title === null) nameBoardOnOpen(ref);
+    if (title === null) nameBoardOnOpen(ref, newBoardTitle(template, title));
     // Straight onto the new board, wherever it was started from; its template lands there live.
     void navigate(guestShareLocation(created));
     void putOnCloudBoard(created, changes).then((complete) => {

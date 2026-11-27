@@ -9,15 +9,15 @@ import { useOrchestrationCommand } from "~/state/use-orchestration-command";
 import { Input } from "../ui/input";
 import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import { UNTITLED_BOARD } from "./boardsHome.logic";
 
 // Boards made in this tab whose name is not yet confirmed: they open with the name being edited,
 // so the first keys typed name the board instead of reaching a prompt. A reload forgets them.
-const boardsToName = new Set<string>();
+const boardsToName = new Map<string, string>();
 const boardKey = (ref: ScopedThreadRef) => `${ref.environmentId}:${ref.threadId}`;
 
-/** Opens this new board with its name being edited. */
-export const nameBoardOnOpen = (ref: ScopedThreadRef) => void boardsToName.add(boardKey(ref));
+/** Opens this new board with its name being edited, starting from the name it was made with. */
+export const nameBoardOnOpen = (ref: ScopedThreadRef, name: string) =>
+  void boardsToName.set(boardKey(ref), name);
 
 /**
  * A board's name in its header, renamed in place: click it, type, Enter or click away to keep it,
@@ -34,8 +34,8 @@ export function BoardTitle({
   readonly rename?: (title: string) => Promise<string | null>;
 }) {
   // A new board's shell can arrive after it opens, so its draft starts from the name it was made with.
-  const [draft, setDraft] = useState<string | null>(() =>
-    boardsToName.has(boardKey(threadRef)) ? UNTITLED_BOARD : null,
+  const [draft, setDraft] = useState<string | null>(
+    () => boardsToName.get(boardKey(threadRef)) ?? null,
   );
   const [cut, setCut] = useState(false);
   const updateMetadata = useOrchestrationCommand(threadEnvironment.updateMetadata, {
