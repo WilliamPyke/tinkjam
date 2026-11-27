@@ -1267,7 +1267,9 @@ function GuestThreadSession({
               needsApproval={(pendingRequests?.approvals.length ?? 0) > 0}
               renderBoxApproval={(boxId) => {
                 const ref = boxThread(boxId);
-                return ref === undefined ? null : <BoxApproval threadRef={ref} />;
+                return ref === undefined ? null : (
+                  <BoxApproval threadRef={ref} onAnswer={() => setSideBox(boxId)} />
+                );
               }}
               onUseNote={
                 cloud

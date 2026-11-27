@@ -55,7 +55,14 @@ export function boardAgentEndOf(
 export type BoardAgentStatus =
   | { readonly kind: "needs-you"; readonly need: "request" | "approval" }
   | {
-      readonly kind: "working" | "queued" | "waiting" | "idle" | "offline" | BoardAgentOutcome;
+      readonly kind:
+        | "working"
+        | "queued"
+        | "waiting"
+        | "unsent"
+        | "idle"
+        | "offline"
+        | BoardAgentOutcome;
     };
 
 /**
@@ -84,7 +91,7 @@ export function boardAgentStatus(input: {
   if (input.requests > 0 && input.canResolve) return { kind: "needs-you", need: "request" };
   if (run?.phase === "approval") return { kind: "waiting" };
   if (run !== undefined) return { kind: run.phase === "queued" ? "queued" : "working" };
-  if (input.requests > 0) return { kind: "waiting" };
+  if (input.requests > 0) return { kind: "unsent" };
   if (input.offline === true) return { kind: "offline" };
   if (input.ended !== undefined) return { kind: input.ended };
   return { kind: input.answered ? "done" : "idle" };
@@ -106,7 +113,9 @@ export function boardAgentStatusLabel(
     case "queued":
       return "Queued";
     case "waiting":
-      return "Waiting for approval";
+      return "Waiting for an answer";
+    case "unsent":
+      return "Waiting to be sent";
     case "failed":
       return "Failed";
     case "stopped":

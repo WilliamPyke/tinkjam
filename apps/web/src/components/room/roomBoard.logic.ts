@@ -3278,19 +3278,29 @@ const PROGRESS_PHASES: Readonly<Record<RoomBoxProgress["phase"], string>> = {
   thinking: "Thinking",
   tool: "Running a tool",
   writing: "Writing",
-  approval: "Waiting for approval",
+  approval: "Waiting for an answer",
+};
+
+const BOARD_TOOL_PHRASES: Readonly<Record<string, string>> = {
+  t3_board_read: "Reading the board",
+  t3_board_add: "Adding to the board",
+  t3_board_update: "Changing the board",
+  t3_board_arrange: "Arranging the board",
 };
 
 /**
- * What a box's agent is doing, in words: "Thinking", "Running pnpm test", "Writing". The server
- * names most tools as a phrase already ("Editing files"), which shows as it is.
+ * What a box's agent is doing, in words: "Thinking", "Adding to the board", "Writing". The server
+ * names most tools as a phrase already ("Editing files"), which shows as it is; a bare tool name
+ * is code, so it shows as what the board's own tools do, or as "Using a tool".
  */
-export const boardProgressPhase = (progress: Pick<RoomBoxProgress, "phase" | "detail">): string =>
-  progress.phase === "tool" && progress.detail !== undefined && progress.detail.trim() !== ""
-    ? /^[A-Z][a-z]+ing\b/.test(progress.detail.trim())
-      ? progress.detail.trim()
-      : `Running ${progress.detail.trim()}`
-    : PROGRESS_PHASES[progress.phase];
+export const boardProgressPhase = (progress: Pick<RoomBoxProgress, "phase" | "detail">): string => {
+  const detail = progress.phase === "tool" ? (progress.detail?.trim() ?? "") : "";
+  if (detail === "") return PROGRESS_PHASES[progress.phase];
+  if (/^[A-Z][a-z]+ing\b/.test(detail)) return detail;
+  if (/\s/.test(detail)) return `Running ${detail}`;
+  // Claude names an app's tool `mcp__app__tool`, Codex `app.tool`.
+  return BOARD_TOOL_PHRASES[detail.replace(/^mcp__.+?__|^.+\./, "")] ?? "Using a tool";
+};
 
 /** How long something has run: "8s", "2m 05s", "1h 04m". */
 export function formatBoardElapsed(ms: number): string {

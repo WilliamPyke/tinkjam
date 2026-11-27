@@ -13,7 +13,7 @@ import {
   type ThreadGuestMessage,
 } from "@t3tools/contracts";
 import { roomBoxExcerpt } from "@t3tools/shared/roomBoard";
-import { AppWindowIcon, SquareIcon } from "lucide-react";
+import { AppWindowIcon, MessagesSquareIcon, SquareIcon } from "lucide-react";
 import { type PointerEvent, type ReactNode, use, useState, useSyncExternalStore } from "react";
 
 import { cn } from "~/lib/utils";
@@ -24,7 +24,6 @@ import { useAtomCommand } from "~/state/use-atom-command";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ComposerPendingApprovalActions } from "../chat/ComposerPendingApprovalActions";
 import { guestMessageArtifactTitle } from "../chat/roomBoardPrompt";
 import { BoardProgressLine } from "./RoomBoardArtifact";
@@ -305,37 +304,31 @@ export function BoxProgress({
 export function BoxStopButton({ onStop }: { readonly onStop: StopBoxAgent }) {
   const [stopping, setStopping] = useState(false);
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            size="icon-tiny"
-            variant="ghost-muted"
-            aria-label="Stop the agent"
-            aria-busy={stopping}
-            disabled={stopping}
-            onPointerDown={stopPointer}
-            onClick={async (event) => {
-              event.stopPropagation();
-              if (stopping) return;
-              setStopping(true);
-              const result = await onStop();
-              setStopping(false);
-              if (result !== undefined && result._tag === "Failure") {
-                toastManager.add({
-                  type: "error",
-                  title: "Could not stop the agent",
-                  description: "Try again.",
-                });
-              }
-            }}
-          />
+    <Button
+      size="micro"
+      variant="ghost-muted"
+      aria-label="Stop the agent"
+      aria-busy={stopping}
+      disabled={stopping}
+      onPointerDown={stopPointer}
+      onClick={async (event) => {
+        event.stopPropagation();
+        if (stopping) return;
+        setStopping(true);
+        const result = await onStop();
+        setStopping(false);
+        if (result !== undefined && result._tag === "Failure") {
+          toastManager.add({
+            type: "error",
+            title: "Could not stop the agent",
+            description: "Try again.",
+          });
         }
-      >
-        {stopping ? <Spinner aria-hidden /> : <SquareIcon />}
-      </TooltipTrigger>
-      <TooltipPopup side="top">Stop the agent</TooltipPopup>
-    </Tooltip>
+      }}
+    >
+      {stopping ? <Spinner aria-hidden /> : <SquareIcon aria-hidden className="fill-current" />}
+      Stop
+    </Button>
   );
 }
 
@@ -382,7 +375,9 @@ export function BoxRequests({
               {message.text || "Sent files"}
             </p>
             {onResolve === undefined ? (
-              <p className="text-2xs text-muted-foreground">Waiting for the owner</p>
+              <p className="text-2xs text-muted-foreground">
+                Waiting for {people.ownerName ?? "the owner"} to press Send
+              </p>
             ) : (
               <div className="flex items-center justify-end gap-1">
                 <div className="flex min-w-0 flex-1 items-center" onPointerDown={stopPointer}>
@@ -418,18 +413,23 @@ export function BoxRequests({
 
 /**
  * The first approval a box's run waits on, for the person whose agent it is: what it asks, cut to
- * a couple of lines, and the thread page's own answers. A question is answered in the conversation.
+ * a couple of lines, and the thread page's own answers. A question shows here and is answered in
+ * the conversation.
  */
 export function BoxApproval({
   threadRef,
   onOpen,
+  onAnswer,
 }: {
   readonly threadRef: ScopedThreadRef;
   /** Opens the box's conversation, when the box has no button of its own for it. */
   readonly onOpen?: (() => void) | undefined;
+  /** Opens the box's conversation to answer its agent's question. */
+  readonly onAnswer: () => void;
 }) {
-  const approval = useAtomValue(environmentThreadDetails.pendingRequestsAtom(threadRef))
-    ?.approvals[0];
+  const requests = useAtomValue(environmentThreadDetails.pendingRequestsAtom(threadRef));
+  const approval = requests?.approvals[0];
+  const question = requests?.userInputs[0]?.questions[0];
   const canRespond = useEnvironmentScope(threadRef.environmentId, AuthOrchestrationOperateScope);
   const respond = useAtomCommand(threadEnvironment.respondToApproval, { reportFailure: false });
   const [responding, setResponding] = useState(false);
@@ -440,7 +440,28 @@ export function BoxApproval({
         Open conversation
       </Button>
     );
-  if (approval === undefined) return open;
+  if (approval === undefined) {
+    if (question === undefined) return open;
+    return (
+      <div
+        role="group"
+        aria-label="Question"
+        className="flex flex-col gap-1 rounded-md border border-warning/30 bg-warning/8 px-2 py-1.5 text-xs"
+        onPointerDown={stopPointer}
+      >
+        <p className="text-2xs font-medium text-warning-foreground">Your agent asks</p>
+        <p className="line-clamp-3 whitespace-pre-wrap [overflow-wrap:anywhere]">
+          {question.question}
+        </p>
+        <div>
+          <Button size="micro" variant="outline" onClick={onAnswer}>
+            <MessagesSquareIcon />
+            Answer in the conversation
+          </Button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       role="group"
