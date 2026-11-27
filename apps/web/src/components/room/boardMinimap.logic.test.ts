@@ -6,6 +6,7 @@ import {
   minimapFrame,
   minimapItems,
   minimapRect,
+  minimapShift,
   minimapToBoard,
 } from "./boardMinimap.logic";
 import { visibleBoardRect } from "./roomBoard.logic";
@@ -38,6 +39,20 @@ describe("minimapFrame", () => {
     expect(view.y).toBeGreaterThanOrEqual(0);
     expect(view.x + view.width).toBeLessThanOrEqual(200);
     expect(view.y + view.height).toBeLessThanOrEqual(120);
+    // The cards, drawn once as if the view sat on them, are carried to where this frame puts them.
+    const content = { x: 0, y: 0, width: 300, height: 200 };
+    const drawn = minimapFrame(content, content, { width: 200, height: 120 });
+    const shift = minimapShift(drawn, frame);
+    expect(shift.scale).toBeLessThan(1);
+    for (const point of [
+      { x: 0, y: 0 },
+      { x: 300, y: 200 },
+    ]) {
+      const at = boardToMinimap(drawn, point);
+      const moved = boardToMinimap(frame, point);
+      expect(shift.x + at.x * shift.scale).toBeCloseTo(moved.x);
+      expect(shift.y + at.y * shift.scale).toBeCloseTo(moved.y);
+    }
   });
 
   it("shows the view's rect where the board's view is, and a click there pans the view to it", () => {

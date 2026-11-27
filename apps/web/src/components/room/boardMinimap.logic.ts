@@ -114,3 +114,16 @@ export const boardViewCentredOn = (
   x: area.width / 2 - point.x * view.zoom,
   y: area.height / 2 - point.y * view.zoom,
 });
+
+/**
+ * The scale and shift that carry a picture drawn in `drawn` onto `frame`, for a CSS transform
+ * from the top-left corner.
+ */
+export function minimapShift(drawn: MinimapFrame, frame: MinimapFrame) {
+  const scale = frame.scale / drawn.scale;
+  return {
+    scale,
+    x: frame.offset.x + (drawn.world.x - frame.world.x) * frame.scale - scale * drawn.offset.x,
+    y: frame.offset.y + (drawn.world.y - frame.world.y) * frame.scale - scale * drawn.offset.y,
+  };
+}
