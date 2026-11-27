@@ -643,6 +643,8 @@ function RoomArtifactEditor({
   const [text, setText] = useState(initial);
   // Ctrl+Enter or Escape closes the field, and the blur that may follow must not save again.
   const done = useRef(false);
+  // A touch browser may blur the field on Cancel's press, before its click.
+  const cancelling = useRef(false);
   const finish = (save: boolean) => {
     if (done.current) return;
     done.current = true;
@@ -664,7 +666,7 @@ function RoomArtifactEditor({
         data-board-text
         onPointerDown={stopPointer}
         onChange={(event) => setText(event.target.value)}
-        onBlur={() => finish(true)}
+        onBlur={() => finish(!cancelling.current)}
         onKeyDown={(event) => {
           // The board's own keys stay out of a field someone is typing in.
           event.stopPropagation();
@@ -690,7 +692,10 @@ function RoomArtifactEditor({
           type="button"
           size="xs"
           variant="ghost"
-          onPointerDown={(event) => event.preventDefault()}
+          onPointerDown={(event) => {
+            cancelling.current = true;
+            event.preventDefault();
+          }}
           onClick={() => finish(false)}
         >
           Cancel
