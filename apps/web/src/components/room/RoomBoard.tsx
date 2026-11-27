@@ -273,6 +273,7 @@ import {
   boardTypingRect,
   openingBoardView,
   followBoardView,
+  centreBoardRect,
   panBoardBy,
   panToCentre,
   panToShow,
@@ -631,6 +632,15 @@ const focusInPlace = (element: HTMLElement | null) => {
   element?.focus({ preventScroll: true });
 };
 
+/** Text-like controls match `:focus-visible` even when a mouse put the caret in them. */
+const textLikeFocus = (target: Element) =>
+  target instanceof HTMLTextAreaElement ||
+  (target instanceof HTMLInputElement &&
+    !["button", "checkbox", "color", "file", "image", "radio", "range", "reset", "submit"].includes(
+      target.type,
+    )) ||
+  (target instanceof HTMLElement && target.isContentEditable);
+
 /** Runs `run` with `flag` up, and puts it down after, even when `run` throws. */
 function withFlag(flag: { current: boolean }, run: () => void) {
   flag.current = true;
@@ -962,6 +972,22 @@ const chromeCoverOf = (surface: HTMLElement | null) => {
   return { top: reach("top"), bottom: reach("bottom"), left: boardRailReach(root, area.left) };
 };
 
+/** The part of the surface not under its floating chrome, unless that leaves too little to use. */
+const boardClearArea = (
+  area: BoardArea,
+  cover: { readonly top: number; readonly bottom: number; readonly left: number },
+) => {
+  const height = area.height - cover.top - cover.bottom;
+  const vertical = height >= area.height / 2;
+  const left = area.width - cover.left < area.width / 2 ? 0 : cover.left;
+  return {
+    left,
+    top: vertical ? cover.top : 0,
+    width: area.width - left,
+    height: vertical ? height : area.height,
+  };
+};
+
 /** A note or task, which Ctrl+Enter and its + follow with a blank one beside it. */
 const followsOn = (note: RoomBoardNote) =>
   note.section !== true &&
@@ -979,6 +1005,25 @@ const drawnRect = (element: HTMLElement): BoardRect => ({
 /** Everything on a board at the size the browser drew it. */
 const drawnRectsIn = (surface: HTMLElement | null): Array<BoardRect> =>
   [...(surface?.querySelectorAll<HTMLElement>("[data-board-item]") ?? [])].map(drawnRect);
+
+/** Where an element inside a board item lies on the board, in board pixels. */
+const drawnRectInside = (item: HTMLElement, element: HTMLElement): BoardRect => {
+  let x = 0;
+  let y = 0;
+  let at: HTMLElement | null = element;
+  while (at !== null && at !== item) {
+    x += at.offsetLeft;
+    y += at.offsetTop;
+    at = at.offsetParent instanceof HTMLElement ? at.offsetParent : null;
+  }
+  if (at !== item) return drawnRect(item);
+  return {
+    x: item.offsetLeft + x,
+    y: item.offsetTop + y,
+    width: element.offsetWidth,
+    height: element.offsetHeight,
+  };
+};
 
 /** The value of a `data-*` attribute on whatever is under a point on the screen. */
 const dataAt = (x: number, y: number, key: "boardDrop" | "boardItem") =>
@@ -1322,6 +1367,9 @@ export function RoomBoard({
   // Laid over the cards while the wheel moves the view, so cards sliding under the pointer do not
   // each fade in their hover controls.
   const wheelShieldRef = useRef<HTMLDivElement | null>(null);
+  const keyFocusAt = useRef(Number.NEGATIVE_INFINITY);
+  const keyboardFocused = useRef<Element | null>(null);
+  const glideTimer = useRef<number | null>(null);
   const fitted = useRef(false);
   // The view the board opened on, refitted as the surface settles (a sidebar folding as the board
   // opens) until the viewer moves it.
@@ -1336,6 +1384,24 @@ export function RoomBoard({
   const unsent = boardEditsUnsent(board, settledEdits);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keeps the page from reloading for a new deploy while edits here are not yet on the board
   useEffect(() => (unsent ? holdChunkReload() : undefined), [unsent]);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keeps window key and pointer listeners while the board is mounted
+  useEffect(() => {
+    const key = () => {
+      keyFocusAt.current = performance.now();
+    };
+    const pointer = () => {
+      keyFocusAt.current = Number.NEGATIVE_INFINITY;
+      keyboardFocused.current?.removeAttribute("data-board-keyboard-focus");
+      keyboardFocused.current = null;
+    };
+    window.addEventListener("keydown", key, true);
+    window.addEventListener("pointerdown", pointer, true);
+    return () => {
+      window.removeEventListener("keydown", key, true);
+      window.removeEventListener("pointerdown", pointer, true);
+      if (glideTimer.current !== null) window.clearTimeout(glideTimer.current);
+    };
+  }, []);
   const edges = shown.edges ?? [];
   const marks = boardMarks(shown);
   // The card a note held over would be handed to, and what that does.
@@ -2904,16 +2970,15 @@ export function RoomBoard({
       setView({ ...next, x: next.x + left });
       return;
     }
-    const height = surface.height - cover.top - cover.bottom;
-    const top = height < surface.height / 2 ? 0 : cover.top;
-    const shifted = { ...view, x: view.x - left, y: view.y - top };
+    const clear = boardClearArea(surface, cover);
+    const shifted = { ...view, x: view.x - clear.left, y: view.y - clear.top };
     const next = panToCentre(shifted, rect, {
-      width: surface.width - left,
-      height: top === 0 ? surface.height : height,
+      width: clear.width,
+      height: clear.height,
     });
     if (next === shifted) return;
     setFollowing(null);
-    setView({ ...next, x: next.x + left, y: next.y + top });
+    setView({ ...next, x: next.x + clear.left, y: next.y + clear.top });
   };
   // Far enough in for a card's page to load, as `reveal` centres it, when the board is too far out.
   const zoomToCard = (ref: string) => {
@@ -2921,22 +2986,49 @@ export function RoomBoard({
     const area = boardAreaOf(surfaceRef.current);
     if (element === null || area === null) return;
     const rect = drawnRect(element);
-    const cover = chromeCoverOf(surfaceRef.current);
-    const height = area.height - cover.top - cover.bottom;
-    const top = height < area.height / 2 ? 0 : cover.top;
-    const left = area.width - cover.left < area.width / 2 ? 0 : cover.left;
+    const clear = boardClearArea(area, chromeCoverOf(surfaceRef.current));
     const zoomed = {
       ...view,
       zoom: Math.max(view.zoom, BOARD_EMBED_MIN_ZOOM),
-      x: view.x - left,
-      y: view.y - top,
+      x: view.x - clear.left,
+      y: view.y - clear.top,
     };
-    const next = panToCentre(zoomed, rect, {
-      width: area.width - left,
-      height: top === 0 ? area.height : height,
+    const next = centreBoardRect(zoomed, rect, {
+      width: clear.width,
+      height: clear.height,
     });
     setFollowing(null);
-    setView({ ...next, x: next.x + left, y: next.y + top });
+    setView({ ...next, x: next.x + clear.left, y: next.y + clear.top });
+  };
+  const glideTo = (next: BoardView) => {
+    const layer = linesRef.current;
+    if (
+      layer !== null &&
+      layer !== undefined &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      layer.setAttribute("data-board-gliding", "");
+      if (glideTimer.current !== null) window.clearTimeout(glideTimer.current);
+      glideTimer.current = window.setTimeout(() => {
+        linesRef.current?.removeAttribute("data-board-gliding");
+        glideTimer.current = null;
+      }, 220);
+    }
+    setFollowing(null);
+    setView(next);
+  };
+  const revealKeyboardFocus = (target: Element) => {
+    const area = boardAreaOf(surfaceRef.current);
+    if (area === null) return;
+    const item = target.closest<HTMLElement>("[data-board-item]");
+    if (item === null) return;
+    const prompt = target.closest<HTMLElement>("[data-board-prompt]");
+    const rect = prompt === null ? drawnRect(item) : drawnRectInside(item, prompt);
+    const clear = boardClearArea(area, chromeCoverOf(surfaceRef.current));
+    const shifted = { ...view, x: view.x - clear.left, y: view.y - clear.top };
+    const next = panToShow(shifted, rect, { width: clear.width, height: clear.height });
+    if (next === shifted) return;
+    glideTo({ ...next, x: next.x + clear.left, y: next.y + clear.top });
   };
   // The card this person last added or selected alone, which a new card joins in its section.
   const lastCard = useRef<string | null>(null);
@@ -6686,25 +6778,29 @@ export function RoomBoard({
           onPaste={pasteOnBoard}
           onDragOver={dragOverBoard}
           onDrop={dropOnBoard}
-          // A prompt box taking focus brings its Send button into the board's visible area.
+          onBlurCapture={(event) => {
+            if (!(event.target instanceof Element)) return;
+            event.target.removeAttribute("data-board-keyboard-focus");
+            if (keyboardFocused.current === event.target) keyboardFocused.current = null;
+          }}
+          // A keyboard focus off the board brings what it lands on into view; a prompt's whole
+          // box comes with it, Send button included.
           onFocusCapture={(event) => {
             // A keyboard already open for another field stays open for this one.
             if (touchFirst()) keepTypingInSight();
-            const prompt =
-              event.target instanceof Element
-                ? event.target.closest<HTMLElement>("[data-board-prompt]")
-                : null;
-            const area = boardAreaOf(surfaceRef.current);
-            if (prompt === null || area === null) return;
-            const drawn = prompt.getBoundingClientRect();
-            reveal(
-              clientRectToBoard(view, area, {
-                x: drawn.left,
-                y: drawn.top,
-                width: drawn.width,
-                height: drawn.height,
-              }),
-            );
+            if (!(event.target instanceof Element)) return;
+            const target = event.target;
+            const keyDriven = performance.now() - keyFocusAt.current < 150;
+            const keyboard =
+              keyDriven || (!textLikeFocus(target) && target.matches(":focus-visible"));
+            keyboardFocused.current?.removeAttribute("data-board-keyboard-focus");
+            keyboardFocused.current = null;
+            if (keyboard) {
+              target.setAttribute("data-board-keyboard-focus", "");
+              keyboardFocused.current = target;
+            }
+            if (!keyboard || target.closest("[data-board-item]") === null) return;
+            revealKeyboardFocus(target);
           }}
         >
           <BoardSelectionContext value={selected}>
@@ -6715,7 +6811,7 @@ export function RoomBoard({
                 className={cn(
                   // Cards are placed and sized in board pixels, so spacing inside the world is
                   // pinned to pixels: a person's text size changes the words, never the geometry.
-                  "absolute top-0 left-0 origin-top-left [--spacing:4px]",
+                  "absolute top-0 left-0 origin-top-left [--spacing:4px] data-[board-gliding]:transition-transform data-[board-gliding]:duration-200 data-[board-gliding]:ease-out",
                   following !== null && "transition-transform duration-200 ease-out",
                 )}
                 style={
@@ -8502,7 +8598,7 @@ function BoardNote({
                           : "Write a note, or paste a link"
             }
             className={cn(
-              "resize-none bg-transparent px-3 pb-3 text-sm leading-snug outline-none placeholder:text-placeholder",
+              "resize-none bg-transparent px-3 pb-3 text-sm leading-snug outline-none placeholder:text-placeholder data-[board-keyboard-focus]:ring-2 data-[board-keyboard-focus]:ring-ring data-[board-keyboard-focus]:ring-inset",
               // Paper reads like the designs' sticky notes: larger, medium-weight words.
               paper &&
                 "px-4 pt-0.5 pb-1 text-ui-md leading-snug font-medium placeholder:text-paint-ink-muted",
