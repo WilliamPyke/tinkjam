@@ -32,6 +32,10 @@ const samples = SAMPLE_BOARDS.map((board) => ({
 ---
 
 <Layout navOver>
+  <script is:inline>
+    // Without scripts the whole page shows at once.
+    document.documentElement.classList.add("gate");
+  </script>
   <section class="hero">
     <div class="hero__stage">
       <h1 class="headline" data-headline>
@@ -86,7 +90,6 @@ const samples = SAMPLE_BOARDS.map((board) => ({
         </span>
       </h1>
 
-      <div class="hero__frame">
       <div class="board" data-board>
         <svg
           class="board__lines"
@@ -198,7 +201,6 @@ const samples = SAMPLE_BOARDS.map((board) => ({
         <button class="replay" type="button" data-replay hidden>Draw it again</button>
         <p class="sr-only" aria-live="polite" data-announce></p>
       </div>
-      </div>
 
       <div class="intro">
         <p class="intro__lede">
@@ -218,6 +220,7 @@ const samples = SAMPLE_BOARDS.map((board) => ({
         <p class="intro__fine">Free while in beta. No account needed.</p>
       </div>
     </div>
+    <button class="hero__skip" type="button" data-skip>Skip</button>
   </section>
 
   <dialog class="samples" aria-labelledby="samples-title" data-samples>
@@ -371,7 +374,52 @@ const samples = SAMPLE_BOARDS.map((board) => ({
 <script>
   import { startHeroDemo } from "../lib/heroDemo";
 
+  const root = document.documentElement;
+  const reveal = () => root.classList.replace("gate", "revealed");
   const board = document.querySelector<HTMLElement>("[data-board]");
-  if (board) startHeroDemo(board);
+  const stage = document.querySelector<HTMLElement>(".hero__stage");
+  if (!board || !stage || !startHeroDemo(board, reveal)) reveal();
+  document.querySelector("[data-skip]")?.addEventListener("click", reveal);
+  // "Draw it again" goes back to the board alone, so the camera plays the whole way again.
+  document
+    .querySelector("[data-replay]")
+    ?.addEventListener("click", () => root.classList.replace("revealed", "gate"));
+
+  if (board && stage) {
+    // WebKit gets the CSS fallback for the board's scale wrong, so it is set from the stage's width.
+    new ResizeObserver(([entry]) => {
+      if (entry) stage.style.setProperty("--s", String(entry.contentRect.width / 1440));
+    }).observe(stage);
+
+    // Before the line is drawn, scrolling moves around the board as it does on a real one.
+    const camera = matchMedia(
+      "(min-width: 1024px) and (min-height: 640px) and (prefers-reduced-motion: no-preference)",
+    );
+    const pan = { x: 0, y: 0 };
+    const within = (value: number, low: number, high: number) =>
+      Math.min(Math.max(value, low), high);
+    stage.parentElement?.addEventListener(
+      "wheel",
+      (event) => {
+        const open = root.classList.contains("gate") && board.dataset.demo === undefined;
+        if (!open || !camera.matches) return;
+        event.preventDefault();
+        const unit = stage.offsetWidth / 1440;
+        const across = event.shiftKey ? event.deltaY : event.deltaX;
+        pan.x = within(pan.x - across, -80 * unit, 260 * unit);
+        pan.y = within(pan.y - (event.shiftKey ? 0 : event.deltaY), -380 * unit, 60 * unit);
+        stage.style.translate = `${pan.x}px ${pan.y}px`;
+      },
+      { passive: false },
+    );
+    // The camera takes over from wherever the board was left.
+    const settle = () => {
+      if (board.dataset.demo === undefined && root.classList.contains("gate")) return;
+      pan.x = pan.y = 0;
+      stage.style.translate = "";
+    };
+    new MutationObserver(settle).observe(board, { attributeFilter: ["data-demo"] });
+    new MutationObserver(settle).observe(root, { attributeFilter: ["class"] });
+  }
 </script>
 </Layout>
