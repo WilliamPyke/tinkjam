@@ -97,7 +97,7 @@ export function RoomCodeWindow({
         {running}
         <p className="min-h-0 flex-1 px-3 pb-3 text-xs text-muted-foreground">
           {boxId === undefined
-            ? "Draw a line from a thread box to this window. Everyone in the room will then see the files its thread changes, and their diffs."
+            ? "Draw a line from an agent box to this window. Everyone in the room will then see the files its agent changes, and their diffs."
             : "No changes yet. They show here when the box's next turn ends."}
         </p>
       </>
@@ -152,7 +152,7 @@ export function RoomCodeWindow({
         </div>
         <p className="truncate text-2xs text-muted-foreground">
           {boxId === undefined
-            ? `No longer attached to a thread box. Last from ${boxName(changes.boxId)}.`
+            ? `No longer attached to an agent box. Last from ${boxName(changes.boxId)}.`
             : boxId !== changes.boxId
               ? `From ${boxName(changes.boxId)} until ${boxName(boxId)}'s next turn ends.`
               : `Changes of ${boxName(boxId)} since it began.`}

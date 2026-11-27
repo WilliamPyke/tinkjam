@@ -2499,7 +2499,7 @@ export function boardCommentAskBoxes(
 ): ReadonlyArray<{ readonly id: string; readonly label: string }> {
   return boxes
     .filter((box) => canPromptBoardBox(box, viewer))
-    .map((box) => ({ id: box.id, label: `Your agent · ${box.title || "Untitled thread"}` }));
+    .map((box) => ({ id: box.id, label: `Your agent · ${box.title || "Untitled agent box"}` }));
 }
 
 /** Who wrote an agent's answer in a comment thread, and on what: "Sam's agent · Haiku". */
@@ -2982,7 +2982,7 @@ export function boardBoxAgentLabel(
   if (box.guestId === undefined) return sentenceStart(ownerAgent);
   const person = boardPersonName(people, box.guestId);
   const possessive = person === "You" ? "Your" : `${person}'s`;
-  if (lastTurn === undefined) return `${possessive} thread`;
+  if (lastTurn === undefined) return `${possessive} agent box`;
   return lastTurn.guestId === undefined
     ? `${person}, through ${ownerAgent}`
     : `${possessive} agent`;
@@ -2993,17 +2993,17 @@ const BOX_TITLE_MAX_LENGTH = 80;
 /** The title a thread box takes from the thread it is added for: one line, cut short. */
 export function boardThreadBoxTitle(threadTitle: string): string {
   const title = threadTitle.replace(/\s+/g, " ").trim();
-  if (title === "") return "Board thread";
+  if (title === "") return "Agent box";
   return title.length <= BOX_TITLE_MAX_LENGTH
     ? title
     : `${title.slice(0, BOX_TITLE_MAX_LENGTH - 1).replace(/[\uD800-\uDBFF]$/, "")}…`;
 }
 
-/** A box as other cards name it: `Your thread "Pricing"`, or `Sam's thread`. */
+/** A box as other cards name it: `Your agent box "Pricing"`, or `Sam's agent box`. */
 export function boardBoxName(box: BoardThreadBox, people: BoardPeople): string {
   const person = boardPersonName(people, box.guestId);
   const whose = person === "You" ? "Your" : `${person}'s`;
-  return box.title === "" ? `${whose} thread` : `${whose} thread "${box.title}"`;
+  return box.title === "" ? `${whose} agent box` : `${whose} agent box "${box.title}"`;
 }
 
 /** The box a request waits on: a request from a guest's side panel waits on the room thread. */
@@ -3412,7 +3412,7 @@ export function boardCopySkipped(
   for (const note of notes) {
     if (note.section === true) kinds.add("Sections");
     else if (note.pinnedTo !== undefined) kinds.add("Comments on replies");
-    else if (note.kind === "thread") kinds.add("Thread boxes");
+    else if (note.kind === "thread") kinds.add("Agent boxes");
     else if (note.kind === "artifact") kinds.add("Artifacts");
     else if (note.kind === "code") kinds.add("Code windows");
     else if (note.kind === "pull-request") kinds.add("Pull request windows");

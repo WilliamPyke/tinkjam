@@ -554,7 +554,7 @@ const altShortcutHere = (target: EventTarget | null) =>
 // About what three clamped lines of a quote hold on a note of the default width.
 const QUOTE_CLAMP_LENGTH = 90;
 const BOARD_CODE_WINDOW_HINT =
-  "Adds a code window beside this thread box. Everyone in the room will see the files its thread changed and their diffs, updated as each turn ends.";
+  "Adds a code window beside this agent box. Everyone in the room will see the files its agent changed and their diffs, updated after each reply.";
 
 /**
  * What a line does: carries a card into a box's next prompt (`context`), every prompt (`pinned`),
@@ -2765,7 +2765,7 @@ export function RoomBoard({
   // Why the toolbar cannot add a card for this person now, said on its disabled buttons.
   const cannotAdd =
     room === null
-      ? "Share this thread to add to its board"
+      ? "Share this chat to add to its board"
       : !canEdit
         ? "This link lets you look at the board, not change it"
         : full
@@ -2782,7 +2782,7 @@ export function RoomBoard({
     (!holds.agents
       ? CLOUD_NO_AGENTS
       : threadsFull
-        ? `The board holds ${ROOM_BOARD_MAX_THREADS} thread boxes at most`
+        ? `The board holds ${ROOM_BOARD_MAX_THREADS} agent boxes at most`
         : null);
   const cannotAddArtifact =
     cannotAdd ??
@@ -4005,17 +4005,17 @@ export function RoomBoard({
     }
     const existing = boardOwnBoxFor(shown, viewer, note.id);
     if (existing !== null) {
-      return { label: "Show my thread", run: () => focusItem(boardBoxRef(existing)) };
+      return { label: "Show my agent box", run: () => focusItem(boardBoxRef(existing)) };
     }
     if (!canEdit || full || threadsFull) return undefined;
     return {
       label: "Attach my agent",
       hint:
         viewer === null
-          ? "Adds a thread box beside this artifact. What you prompt it runs on your agent, and its replies rewrite the artifact for everyone."
+          ? "Adds an agent box beside this artifact. What you prompt it runs on your agent, and its replies rewrite the artifact for everyone."
           : holds.room
-            ? "Adds a thread box of yours beside this artifact. What you prompt it runs on your own agent, on your machine, or asks the owner's agent when yours is not connected. Its replies rewrite the artifact for everyone."
-            : "Adds a thread box of yours beside this artifact. What you prompt it runs on your own agent, on your machine. Its replies rewrite the artifact for everyone.",
+            ? "Adds an agent box of yours beside this artifact. What you prompt it runs on your own agent, on your machine, or asks the owner's agent when yours is not connected. Its replies rewrite the artifact for everyone."
+            : "Adds an agent box of yours beside this artifact. What you prompt it runs on your own agent, on your machine. Its replies rewrite the artifact for everyone.",
       run: bringAgent ?? (() => addBeside(noteRef(note.id), "thread", "to")),
     };
   };
@@ -4703,7 +4703,7 @@ export function RoomBoard({
     return [
       ...(box === undefined ? [] : boxMenuActions(box)),
       ...(ref === cardRef(ROOM_BOARD_THREAD_CARD)
-        ? [{ label: "Open thread", run: onOpenThread }]
+        ? [{ label: "Open chat", run: onOpenThread }]
         : []),
       ...(guest === undefined ? [] : followAction(guest)),
       ...(workingOn === undefined || workedOn === null
@@ -4845,7 +4845,7 @@ export function RoomBoard({
         },
       },
       "add-thread": {
-        label: "Add thread box",
+        label: "Add agent box",
         run: bringAgent ?? (() => typeAfterMenu(addCard({ kind: "thread" }, near("thread")))),
       },
       "add-artifact": {
@@ -5141,7 +5141,7 @@ export function RoomBoard({
           onPickArtifact={(artifactId) =>
             setReplyCards((current) => keepReplyCards({ ...current, [box.id]: artifactId }))
           }
-          label={box.title === "" ? "Prompt this thread" : `Prompt ${box.title}`}
+          label={box.title === "" ? "Prompt this agent box" : `Prompt ${box.title}`}
           placeholder={box.guestId === undefined ? "Ask your agent" : guestBoxPlaceholder}
           model={renderBoxModel?.(box.id)}
           onPrompt={(prompt) => {
@@ -5259,7 +5259,7 @@ export function RoomBoard({
                 {viewer === null ? "Waiting for your approval" : "Waiting for the owner's approval"}
               </p>
               <Button size="xs" onPointerDown={stopPointer} onClick={onOpenThread}>
-                Open thread
+                Open chat
               </Button>
             </div>
           ) : undefined,
@@ -5274,7 +5274,7 @@ export function RoomBoard({
     const picked = note?.boxModel;
     return {
       id: box.id,
-      name: box.title || "Untitled thread",
+      name: box.title || "Untitled agent box",
       whose: boardPersonName(people, box.guestId),
       color: boardCursorColor(guests, box.guestId),
       model: isRoom
@@ -5312,7 +5312,7 @@ export function RoomBoard({
       const box = threadBoxes.find((candidate) => candidate.id === turn.boxId);
       return {
         id: turn.id,
-        name: box === undefined ? "Removed thread" : box.title || "Untitled thread",
+        name: box === undefined ? "Removed agent box" : box.title || "Untitled agent box",
         color: boardCursorColor(guests, box?.guestId ?? turn.guestId),
         line,
         at: turn.at,
@@ -5485,7 +5485,7 @@ export function RoomBoard({
     const box = threadBoxes.find((candidate) => candidate.id === boxId);
     return {
       id: boxId,
-      name: box === undefined ? "Thread box" : box.title || boardBoxName(box, people),
+      name: box === undefined ? "Agent box" : box.title || boardBoxName(box, people),
       color: boardCursorColor(guests, box?.guestId),
     };
   };
@@ -5859,8 +5859,8 @@ export function RoomBoard({
                   {cards !== undefined || !holds.agents ? null : onAddThread === undefined ? (
                     <WhyNot reason={cannotAddThread}>
                       <BoardTool
-                        label="Thread"
-                        hint="Thread box: write to your agent here, and everyone sees its replies"
+                        label="Agent box"
+                        hint="Agent box: write to your agent here, and everyone sees its replies"
                         disabled={cannotAddThread !== null}
                         onClick={
                           bringAgent ?? (() => addAndType(() => addCard({ kind: "thread" })))
@@ -5877,7 +5877,9 @@ export function RoomBoard({
                             render={
                               <MenuTrigger
                                 disabled={cannotAddThread !== null}
-                                render={<Button size="icon" variant="ghost" aria-label="Thread" />}
+                                render={
+                                  <Button size="icon" variant="ghost" aria-label="Agent box" />
+                                }
                               />
                             }
                           >
@@ -5885,7 +5887,7 @@ export function RoomBoard({
                             <ChevronDownIcon className="absolute end-0.5 bottom-0.5 size-2.5 opacity-60" />
                           </TooltipTrigger>
                           <TooltipPopup side={toolsAlongBottom ? "top" : "right"}>
-                            Thread box: write to your agent here, and everyone sees its replies
+                            Agent box: write to your agent here, and everyone sees its replies
                           </TooltipPopup>
                         </Tooltip>
                       </WhyNot>
@@ -5895,7 +5897,7 @@ export function RoomBoard({
                         finalFocus={() => isBoardKey(document.activeElement)}
                       >
                         <MenuItem onClick={() => addAndType(() => addCard({ kind: "thread" }))}>
-                          New thread box
+                          New agent box
                         </MenuItem>
                         <MenuItem
                           onClick={() => {
@@ -5905,7 +5907,7 @@ export function RoomBoard({
                             onAddThread(at);
                           }}
                         >
-                          Add one of your threads…
+                          Add one of your chats…
                         </MenuItem>
                       </MenuPopup>
                     </Menu>
@@ -5927,7 +5929,7 @@ export function RoomBoard({
                       <WhyNot reason={cannotAddCode}>
                         <BoardTool
                           label="Code"
-                          hint="Code: shows the files an agent changed. Draw a line to it from that agent's thread box."
+                          hint="Code: shows the files an agent changed. Draw a line to it from that agent's box."
                           disabled={cannotAddCode !== null}
                           onClick={() => addAndType(() => addCard({ kind: "code" }))}
                         >
@@ -5940,7 +5942,7 @@ export function RoomBoard({
                     <span className="contents @max-xl/board:hidden">
                       <WhyNot reason={cannotAddPullRequest}>
                         <BoardTool
-                          label="Pull request"
+                          label="GitHub pull request"
                           hint="Shows a GitHub pull request to the room, kept up to date by the board owner's GitHub sign-in."
                           disabled={cannotAddPullRequest !== null}
                           onClick={startPullRequest}
@@ -6027,7 +6029,7 @@ export function RoomBoard({
                             onClick={startPullRequest}
                           >
                             <PullRequestGlyph.pullRequest />
-                            Pull request
+                            GitHub pull request
                           </MenuItem>
                         ) : null}
                         {cards === undefined && resolvedComments > 0 ? (
@@ -6079,7 +6081,7 @@ export function RoomBoard({
                     Add
                   </Button>
                   {draftKind === "link" && cards === undefined && holds.agents ? (
-                    <WhatItDoes hint="Adds the link and writes a prompt in your thread box asking your agent to read it onto the board. Nothing runs until you press Send.">
+                    <WhatItDoes hint="Adds the link and writes a prompt in your agent box asking your agent to read it onto the board. Nothing runs until you press Send.">
                       <Button
                         size="sm"
                         variant="outline"
@@ -6833,7 +6835,7 @@ export function RoomBoard({
                       <div>
                         <Button size="xs" variant="outline" onClick={onOpenThread}>
                           <MessagesSquareIcon />
-                          Open thread
+                          Open chat
                         </Button>
                       </div>
                     )}
@@ -7297,7 +7299,7 @@ export function RoomBoard({
                 const title = threadBoxes.find((box) => box.id === id)?.title ?? "";
                 return {
                   id,
-                  title: target?.label ?? (title === "" ? "Untitled thread" : title),
+                  title: target?.label ?? (title === "" ? "Untitled agent box" : title),
                   ...(target?.model === undefined ? {} : { model: target.model }),
                 };
               })}
@@ -8214,7 +8216,7 @@ function BoardNote({
           {box !== undefined
             ? box.label
             : thread
-              ? "Thread"
+              ? "Agent box"
               : artifact
                 ? "Artifact"
                 : code
@@ -8337,7 +8339,7 @@ function BoardNote({
                       : pullRequest
                         ? "Pull request window title"
                         : thread
-                          ? "Thread name"
+                          ? "Agent box name"
                           : "Note"
             }
             value={text}
@@ -8357,8 +8359,8 @@ function BoardNote({
                         ? "Add a title"
                         : thread
                           ? canChange
-                            ? "Name this thread"
-                            : "Untitled thread"
+                            ? "Name this agent box"
+                            : "Untitled agent box"
                           : "Write a note, or paste a link"
             }
             className={cn(
@@ -8470,7 +8472,7 @@ function BoardNote({
         {artifact && (onAttachAgent !== undefined || onAsk !== undefined) ? (
           <div className="flex shrink-0 flex-wrap gap-1 px-3 pb-1.5">
             {onAsk === undefined ? null : (
-              <WhatItDoes hint="Ask one of your thread boxes to change this artifact. Its reply replaces what it shows, for everyone; Restore previous brings this version back.">
+              <WhatItDoes hint="Ask one of your agent boxes to change this artifact. Its reply replaces what it shows, for everyone; Restore previous brings this version back.">
                 <Button size="micro" variant="outline" onPointerDown={stopPointer} onClick={onAsk}>
                   Ask an agent
                 </Button>
@@ -8904,7 +8906,7 @@ function GuestDetails({
       {waiting.length === 0 ? (
         <p className="text-xs text-muted-foreground">
           {onBoxes > 0
-            ? `${onBoxes} waiting on ${onBoxes === 1 ? "a thread box" : "thread boxes"}.`
+            ? `${onBoxes} waiting on ${onBoxes === 1 ? "an agent box" : "agent boxes"}.`
             : viewer === null
               ? "Nothing waiting for you."
               : "Nothing waiting for the owner."}

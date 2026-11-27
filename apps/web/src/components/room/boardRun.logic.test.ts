@@ -68,7 +68,7 @@ describe("where a run goes and when it cannot", () => {
       { id: ROOM_BOARD_ROOM_BOX, label: "Room" },
       { id: "busy", label: "Busy" },
       { id: "idle", label: "Idle" },
-      { id: BOARD_ASK_NEW_BOX, label: "New thread box" },
+      { id: BOARD_ASK_NEW_BOX, label: "New agent box" },
     ];
     expect(boardRunTargets(targets, (id) => id === "busy").map((one) => one.id)).toEqual([
       "idle",
@@ -86,8 +86,8 @@ describe("where a run goes and when it cannot", () => {
       12,
       `A box per task runs up to ${BOARD_RUN_MAX_BOXES} at once. Select fewer, or use One box for all.`,
     ],
-    ["a box each, on a full board", "each", 2, 0, "The board has no room for another thread box."],
-    ["a box each, with room for one", "each", 2, 1, "The board has room for 1 more thread box."],
+    ["a box each, on a full board", "each", 2, 0, "The board has no room for another agent box."],
+    ["a box each, with room for one", "each", 2, 1, "The board has room for 1 more agent box."],
   ] as const)("%s", (_, mode, count, boxesLeft, expected) => {
     expect(boardRunRefusal(mode, count, { boxesLeft, maxBoxes: BOARD_RUN_MAX_BOXES })).toBe(
       expected,

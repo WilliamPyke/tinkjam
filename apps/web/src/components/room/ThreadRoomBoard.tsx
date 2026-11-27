@@ -528,7 +528,7 @@ export function ThreadRoomBoard({
   const panelTitle =
     panelChat === null || panelChat === ROOM_BOARD_ROOM_BOX
       ? title
-      : chatBox?.text.trim() || "Thread box";
+      : chatBox?.text.trim() || "Agent box";
   const closePanel = useStableCallback(() => onChat(null));
   const popOut = useStableCallback(() => {
     if (panelRef === null) return;
@@ -626,8 +626,8 @@ export function ThreadRoomBoard({
           panel={
             panelChat === null ? null : panelRef === null ? (
               <BoardChatPanelNote title={panelTitle} onClose={closePanel}>
-                This thread box has no conversation yet. Prompt it from its box on the board to
-                start one.
+                This agent box has no conversation yet. Prompt it from its box on the board to start
+                one.
               </BoardChatPanelNote>
             ) : (
               <BoardChatPanel

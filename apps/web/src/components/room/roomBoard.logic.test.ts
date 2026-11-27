@@ -2635,7 +2635,7 @@ describe("thread boxes", () => {
       { id: "b1", label: "Your agent · Pricing" },
     ]);
     expect(boardCommentAskBoxes(boxes, sam)).toEqual([
-      { id: "b2", label: "Your agent · Untitled thread" },
+      { id: "b2", label: "Your agent · Untitled agent box" },
     ]);
     expect(boardCommentAskBoxes(boxes, eve)).toEqual([]);
     // A cloud board has no thread of its own, so its boxes are only people's.
@@ -2654,8 +2654,8 @@ describe("thread boxes", () => {
 
   it("says whose agent runs a box, a guest's by who ran its last turn", () => {
     const sent: { readonly guestId?: string } = {};
-    expect(boardBoxAgentLabel({ guestId: sam }, { guests, viewer: eve })).toBe("Sam's thread");
-    expect(boardBoxAgentLabel({ guestId: sam }, { guests, viewer: sam })).toBe("Your thread");
+    expect(boardBoxAgentLabel({ guestId: sam }, { guests, viewer: eve })).toBe("Sam's agent box");
+    expect(boardBoxAgentLabel({ guestId: sam }, { guests, viewer: sam })).toBe("Your agent box");
     expect(boardBoxAgentLabel({ guestId: sam }, { guests, viewer: eve }, { guestId: sam })).toBe(
       "Sam's agent",
     );
@@ -2674,16 +2674,16 @@ describe("thread boxes", () => {
       "Sam, through the owner's agent",
     );
     expect(boardBoxName({ id: "b1", title: "Pricing" }, { guests, viewer: null })).toBe(
-      'Your thread "Pricing"',
+      'Your agent box "Pricing"',
     );
     expect(boardBoxName({ id: "b2", guestId: sam, title: "" }, { guests, viewer: null })).toBe(
-      "Sam's thread",
+      "Sam's agent box",
     );
   });
 
   it.each([
     ["Fix  the\nlogin ", "Fix the login"],
-    ["   ", "Board thread"],
+    ["   ", "Agent box"],
     ["a".repeat(81), `${"a".repeat(79)}…`],
   ])("titles a box added for the thread %j as %j", (threadTitle, title) => {
     expect(boardThreadBoxTitle(threadTitle)).toBe(title);
@@ -3269,7 +3269,7 @@ describe("selecting several cards", () => {
       name: "what it left out, in one sentence",
       kinds: [undefined, "artifact", "comment", "thread", "code"],
       cards: 0,
-      said: "Artifacts, comment threads, thread boxes and code windows are not copied.",
+      said: "Artifacts, comment threads, agent boxes and code windows are not copied.",
     },
     {
       name: "the room's cards",

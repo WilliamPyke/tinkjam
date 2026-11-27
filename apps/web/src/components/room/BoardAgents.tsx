@@ -686,7 +686,7 @@ export function BoardAgents({
                 ? "You are viewing this board. Agents join when you can edit it."
                 : cloud
                   ? "Agents cannot join this board."
-                  : "Add an agent with Thread in the toolbar, or select cards and choose Ask an agent."}
+                  : "Add an agent box from the toolbar, or select cards and choose Ask an agent."}
             </p>
           )}
           {recent.length === 0 ? null : (

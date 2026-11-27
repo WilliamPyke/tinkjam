@@ -115,12 +115,12 @@ export function useBoardBringIn(input: {
       }
       if (!input.canPrompt || !input.canEdit) return null;
       if (!input.canAddBox) {
-        return { label, hint: "This board has no room for a thread box of yours.", run: undefined };
+        return { label, hint: "This board has no room for an agent box of yours.", run: undefined };
       }
       if (noRoom !== null) return noRoom;
       return {
         label,
-        hint: "Adds a thread box of yours beside the link and writes a prompt in it for your agent. Nothing runs until you press Send.",
+        hint: "Adds an agent box of yours beside the link and writes a prompt in it for your agent. Nothing runs until you press Send.",
         run: () => {
           const title = boardThreadBoxTitle(`Read ${boardLinkTitle(link)}`);
           const made = input.addBeside(roomBoardNoteRef(link.id), "thread", title);
@@ -133,7 +133,7 @@ export function useBoardBringIn(input: {
     if (noRoom !== null) return noRoom;
     return {
       label,
-      hint: "Writes a prompt in your thread box asking your agent to open this with its own connections and write what it says onto the board. Nothing runs until you press Send.",
+      hint: "Writes a prompt in your agent box asking your agent to open this with its own connections and write what it says onto the board. Nothing runs until you press Send.",
       run: () => input.chooseBox(preferred, (boxId) => prepare(boxId, link.id, snapshotId)),
     };
   };

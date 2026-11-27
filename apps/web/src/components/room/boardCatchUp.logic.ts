@@ -84,7 +84,7 @@ const CARD_NOUNS: Readonly<Record<NonNullable<RoomBoardNote["kind"]>, string>> =
   task: "task",
   link: "link",
   comment: "comment",
-  thread: "thread box",
+  thread: "agent box",
   artifact: "artifact",
   code: "code window",
   "pull-request": "pull request window",

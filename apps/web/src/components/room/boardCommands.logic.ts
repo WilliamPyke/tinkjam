@@ -32,7 +32,7 @@ const KIND_NAMES: Readonly<Record<NonNullable<RoomBoardNote["kind"]>, string>> =
   task: "Task",
   link: "Link",
   artifact: "Artifact",
-  thread: "Thread box",
+  thread: "Agent box",
   comment: "Comment",
   code: "Code window",
   "pull-request": "Pull request",

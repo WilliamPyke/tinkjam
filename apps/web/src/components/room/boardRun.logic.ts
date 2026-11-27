@@ -66,8 +66,8 @@ export function boardRunRefusal(
   }
   if (count > room.boxesLeft) {
     return room.boxesLeft === 0
-      ? "The board has no room for another thread box."
-      : `The board has room for ${room.boxesLeft} more thread ${room.boxesLeft === 1 ? "box" : "boxes"}.`;
+      ? "The board has no room for another agent box."
+      : `The board has room for ${room.boxesLeft} more agent ${room.boxesLeft === 1 ? "box" : "boxes"}.`;
   }
   return null;
 }
