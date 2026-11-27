@@ -1265,6 +1265,25 @@ describe("RoomBoard keys and pointer", () => {
     );
   });
 
+  it("opens a focused Plan task's details with Enter, while Space selects it", async () => {
+    await using _viewport = await boardSizedViewport();
+    const board = renderBoard([{ id: "t", text: "Ship", x: 300, y: 300, kind: "task" }]);
+    await using screen = await board.screen;
+    await userEvent.click(
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name: "Plan" }),
+    );
+    const task = screen.getByRole("button", { name: "Task: Ship" });
+    task.element().focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(page.getByRole("dialog", { name: "Task" })).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+
+    task.element().focus();
+    await userEvent.keyboard(" ");
+    await expect.element(page.getByRole("dialog", { name: "Task" })).not.toBeInTheDocument();
+    await expect.element(screen.getByText("1 selected")).toBeVisible();
+  });
+
   it("fits a tall task menu and an empty priority cell into a short phone viewport", async () => {
     await using _viewport = await boardSizedViewport(390, 420);
     const longTitle = "Decide the launch story and every step the team still owes";

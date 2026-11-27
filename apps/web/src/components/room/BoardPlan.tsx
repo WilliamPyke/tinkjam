@@ -1449,6 +1449,11 @@ function PlanCard({
         aria-pressed={picked}
         className="absolute inset-0 cursor-pointer rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         onClick={onOpen}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" || isPicking(event)) return;
+          event.preventDefault();
+          onDetails();
+        }}
       />
       <div
         data-plan-no-drag
@@ -1551,6 +1556,11 @@ function PlanListRow({
         aria-pressed={picked}
         className="absolute inset-0 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         onClick={onOpen}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" || isPicking(event)) return;
+          event.preventDefault();
+          onDetails();
+        }}
       />
       <span className="relative">
         <PlanCardMenu
