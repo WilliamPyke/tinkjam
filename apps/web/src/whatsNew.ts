@@ -32,6 +32,11 @@ export const WHATS_NEW: ReadonlyArray<WhatsNewEntry> = [
       "Shift-clicking empty space on the board keeps your selection.",
       "When something cannot be done, Tinkjam says what happened and what to do next, in plain words.",
       "Tab to an artifact or embedded page and press Enter to use it.",
+      "A change you make just before closing or reloading the page is still saved, even on a slow connection. Tinkjam asks first if one has not reached the board yet.",
+      "Undo and redo straight after typing in a new note keep the note.",
+      "A board made from a template is named after it and opens with every card in view.",
+      "Tasks added in Plan no longer land on top of others, and comment pins sit beside a note's text.",
+      "Tab moves the board to the card you reach, and a note shows when it has keyboard focus.",
     ],
   },
   {
