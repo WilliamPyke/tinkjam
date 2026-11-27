@@ -1,7 +1,7 @@
 import { ClerkFailed, ClerkLoading, SignIn } from "@clerk/react";
 import { useNavigate } from "@tanstack/react-router";
 import { XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cloudBoardsOrigin } from "~/guest/cloudBoardsHost";
 import { PRIVACY_POLICY_URL } from "~/legalLinks";
@@ -105,7 +105,28 @@ function SignInForm({ request }: { readonly request: SignInPageRequest }) {
       <ClerkFailed>
         <SignInFailed />
       </ClerkFailed>
-      <div data-sign-in-form>
+      <SignInWidget request={request} />
+    </>
+  );
+}
+
+function SignInWidget({ request }: { readonly request: SignInPageRequest }) {
+  const widget = useRef<HTMLDivElement>(null);
+  const [verifying, setVerifying] = useState(false);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- watches Clerk's widget DOM, which React does not own, for its verification state
+  useEffect(() => {
+    const root = widget.current;
+    if (root === null) return;
+    const update = () =>
+      setVerifying(root.textContent?.includes("Verifying your request") ?? false);
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(root, { subtree: true, childList: true, characterData: true });
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <>
+      <div data-sign-in-form ref={widget}>
         <SignIn
           routing="path"
           path="/sign-in"
@@ -116,6 +137,13 @@ function SignInForm({ request }: { readonly request: SignInPageRequest }) {
             ? { signUpForceRedirectUrl: request.signUpForceRedirectUrl }
             : {})}
         />
+      </div>
+      <div aria-live="polite">
+        {verifying ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Checking your connection. This can take up to a minute.
+          </p>
+        ) : null}
       </div>
     </>
   );
