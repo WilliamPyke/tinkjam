@@ -30,6 +30,8 @@ export const WHATS_NEW: ReadonlyArray<WhatsNewEntry> = [
       "Typing in a note and dragging a card stay smooth on a board full of cards.",
       "With a screen reader, cards, sections, tasks and their buttons say what they are and what they act on.",
       "Shift-clicking empty space on the board keeps your selection.",
+      "When something cannot be done, Tinkjam says what happened and what to do next, in plain words.",
+      "Tab to an artifact or embedded page and press Enter to use it.",
     ],
   },
   {
