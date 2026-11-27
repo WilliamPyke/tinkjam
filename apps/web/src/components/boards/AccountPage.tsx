@@ -244,7 +244,8 @@ function NameForm({ initial }: { readonly initial: string }) {
         : {
             type: "info",
             title: "Saved on this browser",
-            description: "Your account could not keep the name, so other devices may ask again.",
+            description:
+              "Tinkjam could not save it to your account. Other devices may ask for your name again.",
           },
     );
   };

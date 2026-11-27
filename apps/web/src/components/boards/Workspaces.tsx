@@ -429,7 +429,7 @@ function WorkspacePeopleDialog({
             <p className="text-sm font-medium">Invite link</p>
             {link === null ? (
               <p className="text-sm text-muted-foreground">
-                The invite link is off. {owner ? "Turn it on to invite people." : null}
+                The invite link is off. {owner ? "Switch it on to invite people." : null}
               </p>
             ) : (
               <div className="flex gap-2">
@@ -452,7 +452,7 @@ function WorkspacePeopleDialog({
             {owner ? (
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => void renew()}>
-                  {link === null ? "Turn on link" : "New link"}
+                  {link === null ? "Make a link" : "New link"}
                 </Button>
                 {link === null ? null : (
                   <Button
@@ -460,11 +460,11 @@ function WorkspacePeopleDialog({
                     variant="ghost-destructive"
                     onClick={() =>
                       void endWorkspaceInvite(workspace.id).then(
-                        reportFailure("Could not turn off the link"),
+                        reportFailure("Could not switch off the link"),
                       )
                     }
                   >
-                    Turn off link
+                    Switch off link
                   </Button>
                 )}
               </div>
@@ -549,7 +549,7 @@ function MemberRow({
     const confirmed = await confirm(
       [
         `Remove ${member.name} from ${workspace.name}?`,
-        `Its boards go from their account; their cards stay, with their name. Signed in, ${member.name} can no longer open them, even with a link. Link sharing stays as it is for everyone else: to close it on a board, open its Share and turn link sharing off.`,
+        `Boards in this workspace leave ${member.name}'s account. Cards they wrote stay on those boards with their name, and they cannot open the boards again, even with a link. Link sharing stays as it is for everyone else: to close it on a board, open its Share and switch link sharing off.`,
       ].join("\n"),
       "Remove person",
     );

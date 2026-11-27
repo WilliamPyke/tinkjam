@@ -1,7 +1,4 @@
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
+import { isAtomCommandInterrupted } from "@t3tools/client-runtime/state/runtime";
 import type { ScopedThreadRef } from "@t3tools/contracts";
 import { PencilIcon } from "lucide-react";
 import { useState } from "react";
@@ -59,8 +56,7 @@ export function BoardTitle({
         input: { threadId: threadRef.threadId, title: next },
       }).then((result) => {
         if (result._tag === "Success" || isAtomCommandInterrupted(result)) return null;
-        const error = squashAtomCommandFailure(result);
-        return error instanceof Error ? error.message : "An error occurred.";
+        return "The new name was not saved. Try again.";
       });
     void renamed.then((failure) => {
       if (failure !== null) {
