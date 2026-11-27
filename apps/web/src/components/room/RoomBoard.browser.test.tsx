@@ -1368,12 +1368,39 @@ describe("RoomBoard keys and pointer", () => {
     );
   });
 
+  it("opens a focused Plan task's details with Enter, while Space selects it", async () => {
+    await using _viewport = await boardSizedViewport();
+    const board = renderBoard([{ id: "t", text: "Ship", x: 300, y: 300, kind: "task" }]);
+    await using screen = await board.screen;
+    await userEvent.click(
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name: "Plan" }),
+    );
+    const task = screen.getByRole("button", { name: "Task: Ship" });
+    task.element().focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(page.getByRole("dialog", { name: "Task" })).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+
+    task.element().focus();
+    await userEvent.keyboard(" ");
+    await expect.element(page.getByRole("dialog", { name: "Task" })).not.toBeInTheDocument();
+    await expect.element(screen.getByText("1 selected")).toBeVisible();
+  });
+
   it("fits a tall task menu and an empty priority cell into a short phone viewport", async () => {
     await using _viewport = await boardSizedViewport(390, 420);
     const longTitle = "Decide the launch story and every step the team still owes";
     const board = renderBoard(
       [
-        { id: "long", text: longTitle, x: 300, y: 300, kind: "task" },
+        {
+          id: "long",
+          text: longTitle,
+          x: 300,
+          y: 300,
+          kind: "task",
+          assignee: {},
+          due: "2099-01-15",
+        },
         { id: "second", text: "Second", x: 300, y: 300, kind: "task" },
       ],
       undefined,
@@ -1397,11 +1424,15 @@ describe("RoomBoard keys and pointer", () => {
 
     const title = screen.getByRole("list", { name: "Tasks" }).getByText(longTitle).element();
     const row = title.closest("li");
-    const priority = title.nextElementSibling?.nextElementSibling;
+    const priority = row?.querySelector("[data-plan-priority]");
     if (row === null || priority === null || priority === undefined) {
       throw new Error("The list row did not draw its priority cell");
     }
     expect(priority.getBoundingClientRect().width).toBe(0);
+
+    const rows = screen.getByRole("list", { name: "Tasks" });
+    await expect.element(rows.getByText("You").first()).toBeVisible();
+    await expect.element(rows.getByText(/2099/).first()).toBeVisible();
   });
 
   it("closes a Plan column's sort menu after a sort is chosen", async () => {
@@ -1440,6 +1471,25 @@ describe("RoomBoard keys and pointer", () => {
     await userEvent.click(
       screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name: "Board" }),
     );
+  });
+
+  it("offers to clear filters where a filtered List has no tasks", async () => {
+    await using _viewport = await boardSizedViewport();
+    const board = renderBoard([
+      { id: "a", text: "Alpha", x: 300, y: 300, kind: "task" },
+      { id: "b", text: "Beta", x: 300, y: 300, kind: "task" },
+    ]);
+    await using screen = await board.screen;
+    await userEvent.click(
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name: "List" }),
+    );
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search tasks" }), "missing");
+    await expect.element(screen.getByText("No task matches these filters.")).toBeVisible();
+    const clear = screen.getByRole("button", { name: "Clear filters" }).last();
+    await userEvent.click(clear);
+    await expect.element(screen.getByRole("searchbox", { name: "Search tasks" })).toHaveValue("");
+    await expect.element(screen.getByRole("button", { name: "Task: Alpha" })).toBeVisible();
+    await expect.element(screen.getByRole("button", { name: "Task: Beta" })).toBeVisible();
   });
 
   it("turns a vertical wheel sideways where Plan columns overflow, but not in a task list that can scroll", async () => {

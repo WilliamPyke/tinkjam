@@ -772,9 +772,13 @@ export function BoardPlan({
               ))}
             </ol>
             {rows.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-                No task matches. Clear the filters to see every task.
-              </p>
+              <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+                <p className="text-sm text-muted-foreground">No task matches these filters.</p>
+                <Button size="sm" variant="outline" onClick={() => setFilter(NO_PLAN_FILTER)}>
+                  <XIcon />
+                  Clear filters
+                </Button>
+              </div>
             ) : null}
             {canEdit ? (
               <div className="border-t border-board-hairline">
@@ -872,6 +876,11 @@ export function BoardPlan({
                     </li>
                   );
                 })}
+                {tasks.length === 0 ? (
+                  <li className="px-2 py-6 text-center text-xs text-muted-foreground">
+                    {column.length === 0 ? "No tasks here." : "No task matches these filters."}
+                  </li>
+                ) : null}
                 {lineAt !== null && lineAt >= shownAt ? (
                   <li>
                     <DropLine />
@@ -1118,15 +1127,15 @@ function PlanToolbar({
         Hide done
       </Toggle>
       {isPlanFiltered(filter) ? (
-        <Button
-          size="xs"
-          variant="ghost-muted"
-          aria-label={`Clear filters, showing ${shown} of ${total} tasks`}
-          onClick={() => onFilter(NO_PLAN_FILTER)}
-        >
-          <XIcon />
-          {shown} of {total}
-        </Button>
+        <span className="flex items-center gap-1.5">
+          <Button size="xs" variant="ghost-muted" onClick={() => onFilter(NO_PLAN_FILTER)}>
+            <XIcon />
+            Clear filters
+          </Button>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {shown} of {total}
+          </span>
+        </span>
       ) : picked.size > 0 ? null : (
         <p className="hidden text-xs text-muted-foreground sm:block">
           {total === 1 ? "1 task" : `${total} tasks`}
@@ -1449,6 +1458,11 @@ function PlanCard({
         aria-pressed={picked}
         className="absolute inset-0 cursor-pointer rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         onClick={onOpen}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" || isPicking(event)) return;
+          event.preventDefault();
+          onDetails();
+        }}
       />
       <div
         data-plan-no-drag
@@ -1513,14 +1527,34 @@ function PlanListRow({
       }}
     >
       <PlanStatusMark status={status} />
-      <span
-        className={cn(
-          "min-w-0 flex-1 truncate text-sm font-medium",
-          done && "text-muted-foreground line-through",
-          task.text.trim() === "" && "text-muted-foreground italic",
+      <span className="min-w-0 flex-1">
+        <span
+          className={cn(
+            "block truncate text-sm font-medium",
+            done && "text-muted-foreground line-through",
+            task.text.trim() === "" && "text-muted-foreground italic",
+          )}
+        >
+          {label}
+        </span>
+        {assignee === undefined && task.due === undefined ? null : (
+          <span className="mt-1 flex min-w-0 items-center gap-1.5 sm:hidden">
+            {assignee === undefined ? null : (
+              <span className="flex min-w-0 items-center gap-1 text-2xs text-muted-foreground">
+                <PersonDot
+                  color={boardCursorColor(guests, assignee.guestId)}
+                  className="size-4 text-4xs font-semibold"
+                >
+                  {boardPersonName(people, assignee.guestId).charAt(0).toUpperCase()}
+                </PersonDot>
+                <span className="truncate">{boardPersonName(people, assignee.guestId)}</span>
+              </span>
+            )}
+            {task.due === undefined ? null : (
+              <TaskDueChip due={task.due} today={today} done={done} />
+            )}
+          </span>
         )}
-      >
-        {label}
       </span>
       <span className="hidden w-28 min-w-0 items-center gap-1.5 text-xs text-muted-foreground sm:flex">
         {assignee === undefined ? null : (
@@ -1536,6 +1570,7 @@ function PlanListRow({
         )}
       </span>
       <span
+        data-plan-priority
         className={cn(
           task.priority === undefined ? "hidden sm:flex sm:w-20" : "flex w-auto sm:w-20",
         )}
@@ -1551,6 +1586,11 @@ function PlanListRow({
         aria-pressed={picked}
         className="absolute inset-0 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         onClick={onOpen}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" || isPicking(event)) return;
+          event.preventDefault();
+          onDetails();
+        }}
       />
       <span className="relative">
         <PlanCardMenu
