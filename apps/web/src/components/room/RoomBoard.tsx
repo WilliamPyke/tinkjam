@@ -409,6 +409,7 @@ import {
   boardPlanWithStatus,
 } from "./boardPlan.logic";
 import {
+  type BoardLineEnd,
   type BoardLineObstacle,
   BoardEdgeLine,
   BoardScaleContext,
@@ -1077,6 +1078,8 @@ interface Linking {
   readonly press: BoardPoint;
   /** The pointer dragging from a grip; absent with the Line tool, which picks by clicks. */
   readonly pointerId?: number;
+  /** A line's end being moved to another card; `from` is then the end that stays. */
+  readonly again?: { readonly edge: RoomBoardEdge; readonly end: BoardLineEnd };
 }
 
 const edgeAt = (x: number, y: number) => {
@@ -4362,10 +4365,12 @@ export function RoomBoard({
       width: 0,
       height: 0,
     };
-    linkPath.current?.setAttribute(
-      "d",
-      boardLine(lastBoardLineShape(lineBoard), linking.box, box).path,
-    );
+    linkPath.current?.setAttribute("d", linkingPath(linking, box));
+  };
+  const linkingPath = ({ box, again }: Linking, at: BoardBox) => {
+    const shape =
+      again === undefined ? lastBoardLineShape(lineBoard) : (again.edge.shape ?? "curve");
+    return again?.end === "from" ? boardLine(shape, at, box).path : boardLine(shape, box, at).path;
   };
   // A new line into an empty artifact makes it a live view of the artifact at its start, once the
   // line is on the board. A board edit only, and not an undo step: "Stop following" is its way
@@ -4392,16 +4397,47 @@ export function RoomBoard({
     const to = noteRef(id);
     viewArtifactAlong(from, to, to, { ...shown, notes: [...shown.notes, added] });
   };
+  const putEdge = (from: string, to: string, shape: BoardLineShape) => {
+    const id = randomUUID();
+    const line = { id, from, to, ...(shape === "elbow" ? { shape } : {}) };
+    send({ kind: "edge", id }, line);
+    viewArtifactAlong(from, to, boardChangeQueueKey(shown, { kind: "edge", id }, line));
+    return id;
+  };
   /** Draws a line between two cards, unless one is there or the board holds no more. */
   const addEdge = (from: string, to: string) => {
     if (to === from || edges.length >= ROOM_BOARD_MAX_EDGES) return;
     if (edges.some((edge) => edge.from === from && edge.to === to)) return;
-    const id = randomUUID();
-    const elbow = lastBoardLineShape(lineBoard) === "elbow";
-    const line = { id, from, to, ...(elbow ? { shape: "elbow" as const } : {}) };
-    send({ kind: "edge", id }, line);
-    viewArtifactAlong(from, to, boardChangeQueueKey(shown, { kind: "edge", id }, line));
+    putEdge(from, to, lastBoardLineShape(lineBoard));
   };
+  /** Moves one end of a line to another card: a new line there in its place, as one undo step. */
+  const moveEdgeEnd = (edge: RoomBoardEdge, end: BoardLineEnd, ref: string) => {
+    const from = end === "from" ? ref : edge.from;
+    const to = end === "to" ? ref : edge.to;
+    if (from === to || edges.some((other) => other.from === from && other.to === to)) return;
+    send({ kind: "edge", id: edge.id }, null);
+    setSelectedEdge(putEdge(from, to, edge.shape ?? "curve"));
+  };
+  const grabEdgeEnd = useStableCallback(
+    (id: string, end: BoardLineEnd, event: PointerEvent<SVGElement>) => {
+      const edge = edges.find((each) => each.id === id);
+      const stays = edge === undefined ? undefined : end === "from" ? edge.to : edge.from;
+      const box = stays === undefined ? undefined : boxes.get(stays);
+      const at = pointerOnBoard(event);
+      if (edge === undefined || stays === undefined || box === undefined || at === null) return;
+      if (!canEdit || event.button !== 0) return;
+      event.stopPropagation();
+      holdPointer(event);
+      setLinking({
+        from: stays,
+        box,
+        to: at,
+        press: { x: event.clientX, y: event.clientY },
+        pointerId: event.pointerId,
+        again: { edge, end },
+      });
+    },
+  );
   const startLink = (from: string, event: PointerEvent<HTMLElement>) => {
     const box = boxes.get(from);
     const at = pointerOnBoard(event);
@@ -4424,16 +4460,20 @@ export function RoomBoard({
   const endLink = useStableCallback((event: LinkPointer) => {
     if (linking === null || linking.pointerId !== event.pointerId) return;
     dropHeldPointer();
-    const { from, press } = linking;
+    const { from, press, again } = linking;
     stopLinking();
+    if (again !== undefined) setSelectedEdge(again.edge.id);
     if (event.type === "pointercancel") return;
+    const moved = Math.hypot(event.clientX - press.x, event.clientY - press.y) >= CLICK_SLOP;
     // A grip sits on the end of any line drawn from it, so a click there is the line's.
-    if (Math.hypot(event.clientX - press.x, event.clientY - press.y) < CLICK_SLOP) {
+    if (!moved && again === undefined) {
       setSelectedEdge(edgeAt(event.clientX, event.clientY));
       return;
     }
-    const to = linkTargetAt(event.clientX, event.clientY, from);
-    if (to !== null) addEdge(from, to.ref);
+    const to = moved ? linkTargetAt(event.clientX, event.clientY, from) : null;
+    if (to === null) return;
+    if (again === undefined) addEdge(from, to.ref);
+    else moveEdgeEnd(again.edge, again.end, to.ref);
   });
   // A line drawn from a grip follows its pointer anywhere: over other cards, off the grip after
   // a fast flick, and where the browser could not capture it, such as a scripted drag.
@@ -6972,6 +7012,7 @@ export function RoomBoard({
                       const from = boxes.get(edge.from);
                       const to = boxes.get(edge.to);
                       if (from === undefined || to === undefined) return null;
+                      if (linking?.again?.edge.id === edge.id) return null;
                       const selected = selectedEdge === edge.id;
                       const state: EdgeStroke = selected ? "selected" : edgeRole(edge.id);
                       const slots = lineSlots.get(edge.id);
@@ -6999,6 +7040,7 @@ export function RoomBoard({
                           }
                           selectable={canEdit}
                           onSelect={selectEdge}
+                          onGrabEnd={selected && canEdit ? grabEdgeEnd : undefined}
                           over={edgesOver}
                         />
                       );
@@ -7007,13 +7049,7 @@ export function RoomBoard({
                       // Moved on the page as the pointer goes; see `drawLinkTo`.
                       <path
                         ref={linkPath}
-                        d={
-                          boardLine(lastBoardLineShape(lineBoard), linking.box, {
-                            ...linking.to,
-                            width: 0,
-                            height: 0,
-                          }).path
-                        }
+                        d={linkingPath(linking, { ...linking.to, width: 0, height: 0 })}
                         fill="none"
                         stroke="var(--color-primary)"
                         style={{ strokeWidth: boardStroke(2.5) }}
@@ -7395,6 +7431,7 @@ export function RoomBoard({
                   const to = boxes.get(edge.to);
                   if (selectedEdge !== edge.id || from === undefined || to === undefined)
                     return null;
+                  if (linking?.again?.edge.id === edge.id) return null;
                   const shape = edge.shape ?? "curve";
                   const { middle } = boardLine(
                     shape,

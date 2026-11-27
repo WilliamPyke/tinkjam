@@ -17,10 +17,12 @@ import { type BoardLineShape, boardLine, boardLineObstaclesNear } from "./boardL
 import {
   type BoardBox,
   type BoardLineSlots,
+  type BoardPoint,
   type BoardSide,
   boardConnector,
   boardConnectorSides,
   boardGripScale,
+  boardLineEnds,
   boardLineScale,
   boardTouchScale,
 } from "./roomBoard.logic";
@@ -63,6 +65,8 @@ export function BoardScaled({ children }: { readonly children: ReactNode }) {
 
 const sameBox = (a: BoardBox, b: BoardBox) =>
   a === b || (a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height);
+
+export type BoardLineEnd = "from" | "to";
 
 /** A card an elbow line goes around, named as a line names its ends. */
 export interface BoardLineObstacle extends BoardBox {
@@ -142,6 +146,10 @@ interface BoardEdgeLineProps {
   readonly selectable: boolean;
   /** Stable across renders: a line given a new one would draw again. */
   readonly onSelect: (id: string) => void;
+  /** Set while it is selected: a press on either end's handle moves that end. Stable too. */
+  readonly onGrabEnd?:
+    | ((id: string, end: BoardLineEnd, event: PointerEvent<SVGElement>) => void)
+    | undefined;
   /** The layer above the cards. */
   readonly over: SVGGElement | null;
 }
@@ -240,6 +248,7 @@ export const BoardEdgeLine = memo(function BoardEdgeLine({
   obstacles,
   selectable,
   onSelect,
+  onGrabEnd,
   over,
 }: BoardEdgeLineProps) {
   const start = liveEnd(from, useBoardLineEnd(fromRef));
@@ -395,25 +404,67 @@ export const BoardEdgeLine = memo(function BoardEdgeLine({
       {over === null
         ? null
         : createPortal(
-            <path
-              ref={ghost}
-              data-line-id={id}
-              data-line-from={fromRef}
-              data-line-to={toRef}
-              className="hidden data-[line-focus]:inline"
-              d={path}
-              fill="none"
-              stroke={color}
-              strokeOpacity={0.35}
-              style={{ strokeWidth: boardStroke(width) }}
-              strokeLinecap="round"
-              strokeDasharray="2 7"
-            />,
+            <>
+              <path
+                ref={ghost}
+                data-line-id={id}
+                data-line-from={fromRef}
+                data-line-to={toRef}
+                className="hidden data-[line-focus]:inline"
+                d={path}
+                fill="none"
+                stroke={color}
+                strokeOpacity={0.35}
+                style={{ strokeWidth: boardStroke(width) }}
+                strokeLinecap="round"
+                strokeDasharray="2 7"
+              />
+              {onGrabEnd === undefined ? null : (
+                <BoardLineEndHandles
+                  ends={boardLineEnds(start, end, { sides, slots })}
+                  onGrab={(which, event) => onGrabEnd(id, which, event)}
+                />
+              )}
+            </>,
             over,
           )}
     </g>
   );
 }, sameEdgeProps);
+
+/** A selected line's two ends, drawn above the cards, each a handle that moves that end. */
+function BoardLineEndHandles({
+  ends,
+  onGrab,
+}: {
+  readonly ends: { readonly start: BoardPoint; readonly end: BoardPoint };
+  readonly onGrab: (end: BoardLineEnd, event: PointerEvent<SVGElement>) => void;
+}) {
+  return (["from", "to"] as const).map((which) => {
+    const at = which === "from" ? ends.start : ends.end;
+    return (
+      <g key={which}>
+        <circle
+          cx={at.x}
+          cy={at.y}
+          fill="var(--color-background)"
+          stroke="var(--color-primary)"
+          style={{ r: "calc(5px * var(--board-grip-scale, 1))", strokeWidth: boardStroke(2) }}
+        />
+        <circle
+          data-board-line-end={which}
+          cx={at.x}
+          cy={at.y}
+          fill="transparent"
+          pointerEvents="all"
+          className="cursor-grab"
+          style={{ r: "calc(12px * var(--board-grip-scale, 1))" }}
+          onPointerDown={(event) => onGrab(which, event)}
+        />
+      </g>
+    );
+  });
+}
 
 function sameEdgeProps(before: BoardEdgeLineProps, after: BoardEdgeLineProps): boolean {
   for (const key of Object.keys(after) as Array<keyof BoardEdgeLineProps>) {
