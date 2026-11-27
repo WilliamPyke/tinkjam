@@ -7841,7 +7841,7 @@ function LinkHandle({
       data-board-link
       // Pointer only: the keyboard draws a line with the Line tool.
       tabIndex={-1}
-      aria-label="Drag to another card to draw a line"
+      aria-hidden="true"
       className={cn(
         "group/link pointer-events-none absolute z-10 grid size-7 cursor-crosshair touch-none place-items-center opacity-0 transition-opacity group-hover/item:pointer-events-auto group-hover/item:opacity-100 group-data-[board-selected]/item:pointer-events-auto group-data-[board-selected]/item:opacity-100",
         // A pin's touches its right side, so the pointer reaches it without leaving the pin.
