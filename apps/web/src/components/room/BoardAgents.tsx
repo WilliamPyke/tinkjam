@@ -215,6 +215,7 @@ const STATUS_TONES: Readonly<Record<BoardAgentStatus["kind"], BoardChipTone>> = 
   working: "primary",
   queued: "neutral",
   waiting: "neutral",
+  unsent: "neutral",
   failed: "error",
   stopped: "neutral",
   ended: "neutral",
@@ -227,10 +228,12 @@ function StatusChip({
   status,
   run,
   offlineOwn,
+  whose,
 }: {
   readonly status: BoardAgentStatus;
   readonly run: BoardAgentRun | undefined;
   readonly offlineOwn?: "away" | "absent" | undefined;
+  readonly whose: string;
 }) {
   const chip = (
     <BoardChip
@@ -244,18 +247,22 @@ function StatusChip({
       )}
     </BoardChip>
   );
-  if (status.kind !== "ended" && status.kind !== "offline") return chip;
+  if (status.kind !== "ended" && status.kind !== "offline" && status.kind !== "unsent") {
+    return chip;
+  }
   return (
     <Tooltip>
       <TooltipTrigger render={<span />}>{chip}</TooltipTrigger>
       <TooltipPopup side="top">
-        {status.kind === "offline"
-          ? offlineOwn === "away"
-            ? "Your computer is not connected. Wake it, or open Tinkjam Sync on it. Your agent comes back by itself."
-            : offlineOwn === "absent"
-              ? "Your agent is not on this board. Press Bring my agent."
-              : "Whoever this agent belongs to is not on the board now. Ask them to bring it back."
-          : "It ran on another computer and no reply came back, so this board cannot tell how it ended."}
+        {status.kind === "unsent"
+          ? `It goes to the agent when ${whose} presses Send.`
+          : status.kind === "offline"
+            ? offlineOwn === "away"
+              ? "Your computer is not connected. Wake it, or open Tinkjam Sync on it. Your agent comes back by itself."
+              : offlineOwn === "absent"
+                ? "Your agent is not on this board. Press Bring my agent."
+                : "Whoever this agent belongs to is not on the board now. Ask them to bring it back."
+            : "It ran on another computer and no reply came back, so this board cannot tell how it ended."}
       </TooltipPopup>
     </Tooltip>
   );
@@ -599,7 +606,12 @@ export function BoardAgents({
                       <span className="min-w-0 flex-1 truncate text-ui-sm font-medium">
                         {entry.name}
                       </span>
-                      <StatusChip status={status} run={run} offlineOwn={entry.offlineOwn} />
+                      <StatusChip
+                        status={status}
+                        run={run}
+                        offlineOwn={entry.offlineOwn}
+                        whose={entry.whose}
+                      />
                     </span>
                     <span className="truncate ps-4 text-xs text-muted-foreground">
                       {[entry.whose, run?.model ?? entry.model]

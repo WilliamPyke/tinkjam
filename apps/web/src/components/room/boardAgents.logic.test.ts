@@ -45,7 +45,7 @@ describe("boardAgentStatus", () => {
     [
       "a guest's prompt waits, as that guest sees it",
       { ...idle, run: undefined, requests: 1, viewer: "sam" },
-      { kind: "waiting" },
+      { kind: "unsent" },
     ],
     [
       "a prompt waits for the owner while the box runs",
@@ -109,6 +109,11 @@ describe("boardAgentStatus", () => {
     expect(
       boardAgentStatusLabel({ kind: "working" }, run(), Date.parse("2026-11-15T10:01:12.000Z")),
     ).toBe("Working · 1m 12s");
+  });
+
+  it("tells a prompt waiting to be sent from a run waiting for approval", () => {
+    expect(boardAgentStatusLabel({ kind: "unsent" }, undefined, 0)).toBe("Waiting to be sent");
+    expect(boardAgentStatusLabel({ kind: "waiting" }, undefined, 0)).toBe("Waiting for approval");
   });
 });
 

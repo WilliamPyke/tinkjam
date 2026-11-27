@@ -382,7 +382,9 @@ export function BoxRequests({
               {message.text || "Sent files"}
             </p>
             {onResolve === undefined ? (
-              <p className="text-2xs text-muted-foreground">Waiting for the owner</p>
+              <p className="text-2xs text-muted-foreground">
+                Waiting for {people.ownerName ?? "the owner"} to press Send
+              </p>
             ) : (
               <div className="flex items-center justify-end gap-1">
                 <div className="flex min-w-0 flex-1 items-center" onPointerDown={stopPointer}>
