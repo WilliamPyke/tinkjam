@@ -5,17 +5,16 @@ import { cn } from "~/lib/utils";
 type ChatMarkdownComponent = typeof import("./ChatMarkdown").default;
 
 let loadedChatMarkdown: ChatMarkdownComponent | null = null;
-const loadChatMarkdown = import("./ChatMarkdown").then((module) => {
-  loadedChatMarkdown = module.default;
-  return module;
-});
-// Rejected loads surface where the markdown renders, through the lazy component.
-loadChatMarkdown.catch(() => {});
-const ChatMarkdown = lazy(() => loadChatMarkdown);
+const ChatMarkdown = lazy(() =>
+  import("./ChatMarkdown").then((module) => {
+    loadedChatMarkdown = module.default;
+    return module;
+  }),
+);
 
 /**
- * Markdown for views that open without the chat. Loading starts with this module, so the views
- * render at once and their text shows as written only until it arrives.
+ * Markdown for views that open without the chat. Loading starts when the first one renders, so a
+ * board's own data comes first; until it arrives the text shows as written.
  */
 export function LazyChatMarkdown(props: ComponentProps<ChatMarkdownComponent>) {
   // Kept per instance: switching to the loaded component mid-life would remount it.
