@@ -772,9 +772,13 @@ export function BoardPlan({
               ))}
             </ol>
             {rows.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-                No task matches. Clear the filters to see every task.
-              </p>
+              <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+                <p className="text-sm text-muted-foreground">No task matches these filters.</p>
+                <Button size="sm" variant="outline" onClick={() => setFilter(NO_PLAN_FILTER)}>
+                  <XIcon />
+                  Clear filters
+                </Button>
+              </div>
             ) : null}
             {canEdit ? (
               <div className="border-t border-board-hairline">
@@ -872,6 +876,11 @@ export function BoardPlan({
                     </li>
                   );
                 })}
+                {tasks.length === 0 ? (
+                  <li className="px-2 py-6 text-center text-xs text-muted-foreground">
+                    {column.length === 0 ? "No tasks here." : "No task matches these filters."}
+                  </li>
+                ) : null}
                 {lineAt !== null && lineAt >= shownAt ? (
                   <li>
                     <DropLine />
@@ -1118,15 +1127,15 @@ function PlanToolbar({
         Hide done
       </Toggle>
       {isPlanFiltered(filter) ? (
-        <Button
-          size="xs"
-          variant="ghost-muted"
-          aria-label={`Clear filters, showing ${shown} of ${total} tasks`}
-          onClick={() => onFilter(NO_PLAN_FILTER)}
-        >
-          <XIcon />
-          {shown} of {total}
-        </Button>
+        <span className="flex items-center gap-1.5">
+          <Button size="xs" variant="ghost-muted" onClick={() => onFilter(NO_PLAN_FILTER)}>
+            <XIcon />
+            Clear filters
+          </Button>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {shown} of {total}
+          </span>
+        </span>
       ) : picked.size > 0 ? null : (
         <p className="hidden text-xs text-muted-foreground sm:block">
           {total === 1 ? "1 task" : `${total} tasks`}

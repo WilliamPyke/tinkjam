@@ -1358,6 +1358,25 @@ describe("RoomBoard keys and pointer", () => {
     );
   });
 
+  it("offers to clear filters where a filtered List has no tasks", async () => {
+    await using _viewport = await boardSizedViewport();
+    const board = renderBoard([
+      { id: "a", text: "Alpha", x: 300, y: 300, kind: "task" },
+      { id: "b", text: "Beta", x: 300, y: 300, kind: "task" },
+    ]);
+    await using screen = await board.screen;
+    await userEvent.click(
+      screen.getByRole("radiogroup", { name: "View" }).getByRole("radio", { name: "List" }),
+    );
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search tasks" }), "missing");
+    await expect.element(screen.getByText("No task matches these filters.")).toBeVisible();
+    const clear = screen.getByRole("button", { name: "Clear filters" }).last();
+    await userEvent.click(clear);
+    await expect.element(screen.getByRole("searchbox", { name: "Search tasks" })).toHaveValue("");
+    await expect.element(screen.getByRole("button", { name: "Task: Alpha" })).toBeVisible();
+    await expect.element(screen.getByRole("button", { name: "Task: Beta" })).toBeVisible();
+  });
+
   it("turns a vertical wheel sideways where Plan columns overflow, but not in a task list that can scroll", async () => {
     await using _viewport = await boardSizedViewport();
     const board = renderBoard(
