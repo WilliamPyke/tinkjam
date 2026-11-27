@@ -3414,7 +3414,7 @@ export function RoomBoard({
       const element = drawnItem(ref);
       return element === null ? [] : [drawnRect(element)];
     });
-    if (rects.length > 0) addSection(rects);
+    if (rects.length > 0) addAndType(() => addSection(rects));
   };
   /** Adds a card of `kind` beside an item, with a line between them in the direction given. */
   const addBeside = (

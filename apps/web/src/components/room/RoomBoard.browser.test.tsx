@@ -364,6 +364,35 @@ describe("RoomBoard sections", () => {
     );
   });
 
+  it("puts a new section's title in typing when cards are grouped, and saves its name on Enter", async () => {
+    const board = renderBoard([{ id: "a", text: "First", x: 100, y: 100 }]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const header = screen.container.querySelector('[data-board-item="note:a"] > div');
+    if (header === null) throw new Error("The board did not draw the note");
+    await userEvent.click(header);
+    await userEvent.click(screen.getByRole("button", { name: "Group in a section" }));
+    await vi.waitFor(() =>
+      expect(
+        onChange.mock.calls.some(
+          ([change]) => change.type === "note.put" && change.section === true,
+        ),
+      ).toBe(true),
+    );
+
+    const title = screen.getByRole("textbox", { name: "Section title", exact: true });
+    await expect.element(title).toHaveFocus();
+    await userEvent.keyboard("Launch prep{Enter}");
+    await vi.waitFor(() =>
+      expect(
+        onChange.mock.calls.some(
+          ([change]) => change.type === "note.put" && change.text === "Launch prep",
+        ),
+      ).toBe(true),
+    );
+    await expect.element(title).toHaveValue("Launch prep");
+  });
+
   it("opens a thread box's conversation on a double-click, but types in its title there", async () => {
     const onOpenConversation = vi.fn();
     const board = renderBoard(
