@@ -8354,7 +8354,7 @@ function BoardNote({
             value={text}
             readOnly={!canChange}
             maxLength={ROOM_BOARD_NOTE_MAX_LENGTH}
-            rows={titleLine ? 1 : note.kind === "link" ? 2 : note.kind === "task" ? 3 : 4}
+            rows={note.kind === "link" ? 2 : titleLine ? 1 : note.kind === "task" ? 3 : 4}
             placeholder={
               note.kind === "task"
                 ? "Write a task"
