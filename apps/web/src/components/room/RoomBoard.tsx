@@ -273,6 +273,7 @@ import {
   boardTypingRect,
   openingBoardView,
   followBoardView,
+  centreBoardRect,
   panBoardBy,
   panToCentre,
   panToShow,
@@ -960,6 +961,22 @@ const chromeCoverOf = (surface: HTMLElement | null) => {
       }),
     );
   return { top: reach("top"), bottom: reach("bottom"), left: boardRailReach(root, area.left) };
+};
+
+/** The part of the surface not under its floating chrome, unless that leaves too little to use. */
+const boardClearArea = (
+  area: BoardArea,
+  cover: { readonly top: number; readonly bottom: number; readonly left: number },
+) => {
+  const height = area.height - cover.top - cover.bottom;
+  const vertical = height >= area.height / 2;
+  const left = area.width - cover.left < area.width / 2 ? 0 : cover.left;
+  return {
+    left,
+    top: vertical ? cover.top : 0,
+    width: area.width - left,
+    height: vertical ? height : area.height,
+  };
 };
 
 /** A note or task, which Ctrl+Enter and its + follow with a blank one beside it. */
@@ -2890,16 +2907,15 @@ export function RoomBoard({
       setView({ ...next, x: next.x + left });
       return;
     }
-    const height = surface.height - cover.top - cover.bottom;
-    const top = height < surface.height / 2 ? 0 : cover.top;
-    const shifted = { ...view, x: view.x - left, y: view.y - top };
+    const clear = boardClearArea(surface, cover);
+    const shifted = { ...view, x: view.x - clear.left, y: view.y - clear.top };
     const next = panToCentre(shifted, rect, {
-      width: surface.width - left,
-      height: top === 0 ? surface.height : height,
+      width: clear.width,
+      height: clear.height,
     });
     if (next === shifted) return;
     setFollowing(null);
-    setView({ ...next, x: next.x + left, y: next.y + top });
+    setView({ ...next, x: next.x + clear.left, y: next.y + clear.top });
   };
   // Far enough in for a card's page to load, as `reveal` centres it, when the board is too far out.
   const zoomToCard = (ref: string) => {
@@ -2907,22 +2923,19 @@ export function RoomBoard({
     const area = boardAreaOf(surfaceRef.current);
     if (element === null || area === null) return;
     const rect = drawnRect(element);
-    const cover = chromeCoverOf(surfaceRef.current);
-    const height = area.height - cover.top - cover.bottom;
-    const top = height < area.height / 2 ? 0 : cover.top;
-    const left = area.width - cover.left < area.width / 2 ? 0 : cover.left;
+    const clear = boardClearArea(area, chromeCoverOf(surfaceRef.current));
     const zoomed = {
       ...view,
       zoom: Math.max(view.zoom, BOARD_EMBED_MIN_ZOOM),
-      x: view.x - left,
-      y: view.y - top,
+      x: view.x - clear.left,
+      y: view.y - clear.top,
     };
-    const next = panToCentre(zoomed, rect, {
-      width: area.width - left,
-      height: top === 0 ? area.height : height,
+    const next = centreBoardRect(zoomed, rect, {
+      width: clear.width,
+      height: clear.height,
     });
     setFollowing(null);
-    setView({ ...next, x: next.x + left, y: next.y + top });
+    setView({ ...next, x: next.x + clear.left, y: next.y + clear.top });
   };
   // The card this person last added or selected alone, which a new card joins in its section.
   const lastCard = useRef<string | null>(null);

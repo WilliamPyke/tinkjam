@@ -2108,6 +2108,19 @@ describe("RoomBoard link cards", () => {
     expect(drawn.right).toBeLessThanOrEqual(area.right);
     expect(drawn.top).toBeGreaterThanOrEqual(area.top);
     expect(drawn.bottom).toBeLessThanOrEqual(area.bottom);
+    const rail = [...document.querySelectorAll<HTMLElement>('[data-board-chrome="rail"]')].find(
+      (element) => element.offsetHeight > element.offsetWidth,
+    );
+    const left = rail?.getBoundingClientRect().right ?? area.left;
+    const bottom = Math.min(
+      area.bottom,
+      ...[...document.querySelectorAll<HTMLElement>('[data-board-chrome="bottom"]')].map(
+        (element) => element.getBoundingClientRect().top,
+      ),
+    );
+    const centre = middleOf(card);
+    expect(Math.abs(centre.x - (left + area.right) / 2)).toBeLessThan(2);
+    expect(Math.abs(centre.y - (area.top + bottom) / 2)).toBeLessThan(2);
   });
 });
 

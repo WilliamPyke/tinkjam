@@ -501,11 +501,10 @@ export function panToShowAdded(view: BoardView, rect: BoardRect, area: BoardSize
 }
 
 /**
- * The view at the same zoom that brings `rect` to the middle of the area, when `panToShow` would
- * move to show it at all; a side too long for the area shows from its start, as there.
+ * The view at the same zoom with `rect` in the middle of the area; a side too long for the area
+ * shows from its start, as in `panToShow`.
  */
-export function panToCentre(view: BoardView, rect: BoardRect, area: BoardSize, margin = 24) {
-  if (panToShow(view, rect, area, margin) === view) return view;
+export function centreBoardRect(view: BoardView, rect: BoardRect, area: BoardSize, margin = 24) {
   const shift = (start: number, length: number, room: number) =>
     Math.round(length > room - margin * 2 ? margin - start : (room - length) / 2 - start);
   return {
@@ -513,6 +512,15 @@ export function panToCentre(view: BoardView, rect: BoardRect, area: BoardSize, m
     x: view.x + shift(view.x + rect.x * view.zoom, rect.width * view.zoom, area.width),
     y: view.y + shift(view.y + rect.y * view.zoom, rect.height * view.zoom, area.height),
   };
+}
+
+/**
+ * The view at the same zoom that brings `rect` to the middle of the area, when `panToShow` would
+ * move to show it at all.
+ */
+export function panToCentre(view: BoardView, rect: BoardRect, area: BoardSize, margin = 24) {
+  if (panToShow(view, rect, area, margin) === view) return view;
+  return centreBoardRect(view, rect, area, margin);
 }
 
 /**
