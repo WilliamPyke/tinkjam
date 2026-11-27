@@ -6153,7 +6153,10 @@ export function RoomBoard({
             ) : null}
             <BoardFloat
               data-board-chrome="bottom"
-              className={cn("h-9 gap-0.5 rounded-full px-1", BOARD_TOUCH_ROW)}
+              className={cn(
+                "h-9 gap-0.5 rounded-full px-1 pointer-coarse:[&_button]:w-10",
+                BOARD_TOUCH_ROW,
+              )}
             >
               <Button
                 size="icon-xs"
@@ -8471,7 +8474,12 @@ function BoardNote({
           <div className="flex shrink-0 flex-wrap gap-1 px-3 pb-1.5">
             {onAsk === undefined ? null : (
               <WhatItDoes hint="Ask one of your thread boxes to change this artifact. Its reply replaces what it shows, for everyone; Restore previous brings this version back.">
-                <Button size="micro" variant="outline" onPointerDown={stopPointer} onClick={onAsk}>
+                <Button
+                  size="micro-touch"
+                  variant="outline"
+                  onPointerDown={stopPointer}
+                  onClick={onAsk}
+                >
                   Ask an agent
                 </Button>
               </WhatItDoes>
@@ -8479,7 +8487,7 @@ function BoardNote({
             {onAttachAgent === undefined ? null : (
               <WhatItDoes hint={onAttachAgent.hint}>
                 <Button
-                  size="micro"
+                  size="micro-touch"
                   variant="outline"
                   onPointerDown={stopPointer}
                   onClick={onAttachAgent.run}
