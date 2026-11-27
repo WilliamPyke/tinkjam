@@ -234,7 +234,7 @@ describe("RoomBoard sections", () => {
     });
   });
 
-  it("moves by its edge and, once selected, by its inside, which pans the board until then", async () => {
+  it("moves by its edge and, once selected, by its inside, which draws the selection box until then", async () => {
     await using _viewport = await boardSizedViewport();
     const board = renderBoard([
       { id: "frame", text: "Plan", x: 0, y: 0, section: true, size: { w: 500, h: 400 } },
@@ -255,12 +255,11 @@ describe("RoomBoard sections", () => {
       const rect = section.getBoundingClientRect();
       return { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.75 };
     };
-    // Not selected: the inside is the board's, so the section follows the pan and nothing is sent.
+    // Not selected: the inside is the board's, so the drag draws the selection box there and the
+    // section neither moves nor pans with it.
     const before = section.getBoundingClientRect().left;
     await drag(inside());
-    await vi.waitFor(() =>
-      expect(section.getBoundingClientRect().left).toBeCloseTo(before + 40, 0),
-    );
+    expect(section.getBoundingClientRect().left).toBeCloseTo(before, 0);
     expect(moves()).toBe(0);
 
     const rect = section.getBoundingClientRect();
@@ -362,6 +361,35 @@ describe("RoomBoard sections", () => {
         expect.objectContaining({ type: "note.put", noteId: "frame", text: "Plan B" }),
       ),
     );
+  });
+
+  it("puts a new section's title in typing when cards are grouped, and saves its name on Enter", async () => {
+    const board = renderBoard([{ id: "a", text: "First", x: 100, y: 100 }]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const header = screen.container.querySelector('[data-board-item="note:a"] > div');
+    if (header === null) throw new Error("The board did not draw the note");
+    await userEvent.click(header);
+    await userEvent.click(screen.getByRole("button", { name: "Group in a section" }));
+    await vi.waitFor(() =>
+      expect(
+        onChange.mock.calls.some(
+          ([change]) => change.type === "note.put" && change.section === true,
+        ),
+      ).toBe(true),
+    );
+
+    const title = screen.getByRole("textbox", { name: "Section title", exact: true });
+    await expect.element(title).toHaveFocus();
+    await userEvent.keyboard("Launch prep{Enter}");
+    await vi.waitFor(() =>
+      expect(
+        onChange.mock.calls.some(
+          ([change]) => change.type === "note.put" && change.text === "Launch prep",
+        ),
+      ).toBe(true),
+    );
+    await expect.element(title).toHaveValue("Launch prep");
   });
 
   it("opens a thread box's conversation on a double-click, but types in its title there", async () => {
@@ -541,6 +569,61 @@ describe("RoomBoard selection", () => {
     await userEvent.click(screen.getByRole("button", { name: "Group in a section" }));
     await vi.waitFor(() => expect(moved()).toHaveLength(4));
     expect(moved()[3]).toMatchObject({ section: true, x: 568, y: 428 });
+  });
+
+  it("selects with a drag box on the empty board, replacing the selection unless Shift is held", async () => {
+    await using _viewport = await boardSizedViewport();
+    const board = renderBoard([
+      { id: "a", text: "First", x: 100, y: 100 },
+      { id: "b", text: "Second", x: 400, y: 100 },
+      { id: "c", text: "Third", x: 100, y: 420 },
+    ]);
+    await using screen = await board.screen;
+    const item = (id: string) => {
+      const element = screen.container.querySelector<HTMLElement>(`[data-board-item="note:${id}"]`);
+      if (element === null) throw new Error(`The board did not draw note ${id}`);
+      return element;
+    };
+    const selected = (id: string) => item(id).hasAttribute("data-board-selected");
+    const dragBox = async (ids: ReadonlyArray<string>, shift = false) => {
+      const rects = ids.map((id) => item(id).getBoundingClientRect());
+      const from = {
+        x: Math.min(...rects.map((rect) => rect.left)) - 24,
+        y: Math.min(...rects.map((rect) => rect.top)) - 24,
+      };
+      const to = {
+        x: Math.max(...rects.map((rect) => rect.right)) + 24,
+        y: Math.max(...rects.map((rect) => rect.bottom)) + 24,
+      };
+      await commands.mouse([
+        { type: "down", ...from },
+        ...(shift ? [{ type: "keydown" as const, key: "Shift" }] : []),
+        { type: "move", ...to },
+        { type: "up", ...to },
+        ...(shift ? [{ type: "keyup" as const, key: "Shift" }] : []),
+      ]);
+    };
+
+    await dragBox(["a", "b"]);
+    await vi.waitFor(() => {
+      expect(selected("a")).toBe(true);
+      expect(selected("b")).toBe(true);
+      expect(selected("c")).toBe(false);
+    });
+
+    await dragBox(["c"]);
+    await vi.waitFor(() => {
+      expect(selected("a")).toBe(false);
+      expect(selected("b")).toBe(false);
+      expect(selected("c")).toBe(true);
+    });
+
+    await dragBox(["a", "b"], true);
+    await vi.waitFor(() => {
+      expect(selected("a")).toBe(true);
+      expect(selected("b")).toBe(true);
+      expect(selected("c")).toBe(true);
+    });
   });
 
   it("selects with Shift-clicks without selecting the page's text, and drags the group", async () => {
@@ -965,6 +1048,26 @@ describe("RoomBoard keys and pointer", () => {
     await userEvent.keyboard("{Control>}z{/Control}");
     await vi.waitFor(() => expect(puts(onChange)).toHaveLength(2));
     expect(puts(onChange)[1]).toMatchObject({ noteId: "a", x: 0, y: 0 });
+  });
+
+  it("undoes a nudge pressed right before Ctrl+Z, instead of skipping it or undoing an older step", async () => {
+    const board = renderBoard([{ id: "a", text: "First", x: 0, y: 0 }]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    await userEvent.click(headerIn(screen.container, "a"));
+    const item = () => {
+      const element = screen.container.querySelector<HTMLElement>('[data-board-item="note:a"]');
+      if (element === null) throw new Error("The board did not draw the note");
+      return element;
+    };
+    const restingX = item().getBoundingClientRect().left;
+    // The nudge is still settling when Ctrl+Z lands: undo must take the nudge back at once.
+    await userEvent.keyboard("{ArrowRight}{Control>}z{/Control}");
+    await vi.waitFor(() => expect(item().getBoundingClientRect().left).toBeCloseTo(restingX, 0));
+    // The next nudge settling is the clock for the first: it is the only move the room hears of.
+    await userEvent.keyboard("{ArrowRight}{ArrowRight}");
+    await vi.waitFor(() => expect(puts(onChange)).toHaveLength(1));
+    expect(puts(onChange)[0]).toMatchObject({ noteId: "a", x: 8, y: 0 });
   });
 
   it("says nothing of resolved comments until one is resolved, and then counts it once", async () => {
