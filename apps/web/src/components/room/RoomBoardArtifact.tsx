@@ -145,11 +145,11 @@ export function RoomArtifactBody({
         <p className="text-xs text-muted-foreground">
           {links?.unmade === true
             ? "This page isn't made yet. Ask your agent to write it: the first page goes along as context."
-            : "A page on the board that an agent writes, or you write yourself. Everyone sees it. To have an agent write it, use Attach my agent, or draw a line from an agent box to this card and ask it to write."}
+            : "A page everyone on the board can see. Write it yourself, or ask an agent to write it."}
         </p>
         {onWrite === undefined ? null : (
           <Button
-            size="xs"
+            size="sm"
             variant="outline"
             onPointerDown={stopPointer}
             onClick={onWrite}
