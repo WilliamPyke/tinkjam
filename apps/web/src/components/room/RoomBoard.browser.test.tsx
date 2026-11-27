@@ -2105,6 +2105,30 @@ describe("RoomBoard link cards", () => {
     expect(drawn.top).toBeGreaterThanOrEqual(area.top);
     expect(drawn.bottom).toBeLessThanOrEqual(area.bottom);
   });
+
+  it("opens an artifact's page from the keyboard", async () => {
+    const board = renderBoard([
+      {
+        id: "deck",
+        text: "",
+        x: 0,
+        y: 0,
+        kind: "artifact",
+        artifact: {
+          body: "<!doctype html><html><body><h1>Seed deck</h1></body></html>",
+          turnId: "turn-1",
+          updatedAt: "2026-11-12T10:00:00.000Z",
+        },
+      },
+    ]);
+    await using screen = await board.screen;
+    const cover = screen.getByRole("button", { name: "Click to interact" });
+    cover.element().focus();
+    await expect.element(cover).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(cover).not.toBeInTheDocument();
+    expect(screen.container.querySelector("[data-board-embed-cover]")).toBeNull();
+  });
 });
 
 describe("RoomBoard live drags", () => {
