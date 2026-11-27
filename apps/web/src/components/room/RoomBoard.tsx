@@ -119,6 +119,7 @@ import { useStableCallback } from "~/hooks/useStableCallback";
 import { cn, isMacPlatform, randomUUID } from "~/lib/utils";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 
+import { holdSendingBoardChange } from "../guest/BoardSyncNote";
 import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
 import {
   AlertDialog,
@@ -1356,7 +1357,7 @@ export function RoomBoard({
   } | null>(null);
   // Whether deleting the boxes among them deletes their chats too: off unless the person ticks it.
   const [deletingChats, setDeletingChats] = useState(false);
-  const [queueChange] = useState(boardChangeQueue);
+  const [queueChange] = useState(() => boardChangeQueue(holdSendingBoardChange));
   // The view left here last time, which the board reopens on when it still shows a card.
   const [remembered] = useState(() =>
     viewKey === undefined ? undefined : rememberedRoomBoardView(viewKey),

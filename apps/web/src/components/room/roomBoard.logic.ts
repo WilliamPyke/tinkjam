@@ -1445,11 +1445,13 @@ export function putBoardEdit(
  * Sends one card's, note's or arrow's changes one after another, so the room takes them in the
  * order they were made: text typed into a new note cannot land before the empty note it fills.
  * A change in several queues waits for each, as a line put back between two cards put back.
+ * `hold` is called as each change is queued, and what it returns once the room answered it.
  */
-export function boardChangeQueue() {
+export function boardChangeQueue(hold?: () => () => void) {
   const last = new Map<string, Promise<unknown>>();
   return <A>(keys: string | ReadonlyArray<string>, send: () => Promise<A>): Promise<A> => {
     const all = typeof keys === "string" ? [keys] : keys;
+    const release = hold?.();
     const settled = () => undefined;
     const next = Promise.all(
       all.map((key) => (last.get(key) ?? Promise.resolve()).then(settled, settled)),
@@ -1457,6 +1459,7 @@ export function boardChangeQueue() {
     for (const key of all) last.set(key, next);
     const forget = () => {
       for (const key of all) if (last.get(key) === next) last.delete(key);
+      release?.();
     };
     next.then(forget, forget);
     return next;
