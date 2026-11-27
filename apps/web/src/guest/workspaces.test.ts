@@ -56,6 +56,9 @@ const workspace = (boards: ReadonlyArray<string>) => ({
 });
 
 const setup = (boards: ReadonlyArray<string>) => {
+  // Node has no page: these stand in for its focus and visibility events.
+  vi.stubGlobal("window", new EventTarget());
+  vi.stubGlobal("document", Object.assign(new EventTarget(), { visibilityState: "visible" }));
   host.workspaces = [workspace(boards)];
   host.requests.length = 0;
   syncWorkspaces(null);
@@ -74,6 +77,20 @@ describe("openBoardAsAccount", () => {
     setup([]);
     expect(typeof (await openBoardAsAccount("share-w"))).toBe("string");
     expect(host.requests.some((path) => path.startsWith(CLOUD_WORKSPACE_OPEN_ROUTE))).toBe(false);
+  });
+});
+
+describe("a page that comes back", () => {
+  it("reads the account's workspaces again, and stops once signed out", async () => {
+    setup(["share-w"]);
+    await vi.waitFor(() => expect(host.requests).toContain(CLOUD_WORKSPACES_ROUTE));
+    host.requests.length = 0;
+    window.dispatchEvent(new Event("focus"));
+    expect(host.requests).toContain(CLOUD_WORKSPACES_ROUTE);
+    syncWorkspaces(null);
+    host.requests.length = 0;
+    window.dispatchEvent(new Event("focus"));
+    expect(host.requests).toEqual([]);
   });
 });
 

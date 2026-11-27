@@ -10,20 +10,26 @@ import {
 } from "./boardAccount";
 import { isCloudBoardsHost } from "./cloudBoardsHost";
 import { guestShareOrigin, type JoinedGuestShare } from "./guestShares";
-import { decodeRefusalBody, linkRefusalMessage } from "./linkRefusal.logic";
+import {
+  decodeRefusalBody,
+  knownRefusalNotice,
+  linkRefusalMessage,
+  type RefusalNotice,
+} from "./linkRefusal.logic";
 
 const decodeRedeemResult = Schema.decodeUnknownOption(GuestRedeemResult);
 
 /**
- * Joins a share on the owner's host. Resolves to what the browser keeps of it, or to a message
- * for the person joining. A thread shared to a team also needs the member's assertion.
+ * Joins a share on the owner's host. Resolves to what the browser keeps of it, to the notice for
+ * a refusal the host named (no other name or retry gets past one), or to a message for the person
+ * joining. A thread shared to a team also needs the member's assertion.
  */
 export async function redeemInvite(input: {
   readonly credential: string;
   readonly host: string;
   readonly name: string;
   readonly memberAssertion?: string;
-}): Promise<JoinedGuestShare | string> {
+}): Promise<JoinedGuestShare | RefusalNotice | string> {
   const origin = guestShareOrigin(input.host);
   const cloud = isCloudBoardsHost(input.host);
   try {
@@ -53,7 +59,7 @@ export async function redeemInvite(input: {
     if (!response.ok) {
       return Option.match(decodeRefusalBody(json), {
         onNone: () => "Something went wrong. Try again.",
-        onSome: linkRefusalMessage,
+        onSome: (refusal) => knownRefusalNotice(refusal.detail) ?? linkRefusalMessage(refusal),
       });
     }
     const result = Option.getOrNull(decodeRedeemResult(json));

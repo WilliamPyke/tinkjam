@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   ENDED_NOTICE,
+  knownRefusalNotice,
   linkRefusalMessage,
   linkRefusalNotice,
   refusalDetailOf,
@@ -22,12 +23,32 @@ describe("linkRefusalNotice", () => {
       title: "This link does not open a board",
       detail: "Ask whoever shared it for a new one.",
     });
+    // Losing access is not the board ending: it is still there for everyone else.
+    expect(linkRefusalNotice("removed")).toEqual({
+      title: "You no longer have access to this board",
+      detail: "Ask someone on it to share it with you again.",
+    });
+    expect(linkRefusalNotice("removed_from_workspace")).toEqual({
+      title: "You no longer have access to this board",
+      detail: "You were removed from its workspace. Ask someone in it to add you back.",
+    });
   });
 
   it("falls back to the notice that covers every refusal, named or not", () => {
     expect(linkRefusalNotice("ended")).toBe(ENDED_NOTICE);
     expect(linkRefusalNotice("from-a-newer-host")).toBe(ENDED_NOTICE);
     expect(linkRefusalNotice(undefined)).toBe(ENDED_NOTICE);
+  });
+});
+
+describe("knownRefusalNotice", () => {
+  it("names only the refusals this client has words for", () => {
+    expect(knownRefusalNotice("removed_from_workspace")?.title).toBe(
+      "You no longer have access to this board",
+    );
+    expect(knownRefusalNotice("ended")).toBe(ENDED_NOTICE);
+    expect(knownRefusalNotice("from-a-newer-host")).toBeUndefined();
+    expect(knownRefusalNotice(undefined)).toBeUndefined();
   });
 });
 

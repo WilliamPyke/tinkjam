@@ -31,11 +31,23 @@ const NOTICES: Readonly<Record<string, RefusalNotice>> = {
     title: "This link does not open a board",
     detail: "Ask whoever shared it for a new one.",
   },
+  removed: {
+    title: "You no longer have access to this board",
+    detail: "Ask someone on it to share it with you again.",
+  },
+  removed_from_workspace: {
+    title: "You no longer have access to this board",
+    detail: "You were removed from its workspace. Ask someone in it to add you back.",
+  },
 };
+
+/** The notice for a `detail` this client has words for, or undefined. */
+export const knownRefusalNotice = (detail: string | undefined): RefusalNotice | undefined =>
+  detail === undefined ? undefined : NOTICES[detail];
 
 /** The notice `detail` names, or the one that covers a refusal the host did not name. */
 export const linkRefusalNotice = (detail: string | undefined): RefusalNotice =>
-  (detail === undefined ? undefined : NOTICES[detail]) ?? ENDED_NOTICE;
+  knownRefusalNotice(detail) ?? ENDED_NOTICE;
 
 /** A notice as one sentence, where the place that shows it has no title of its own. */
 export const refusalSentence = (notice: RefusalNotice): string =>
@@ -64,7 +76,7 @@ export function linkRefusalMessage(
     | null
     | undefined,
 ): string {
-  const notice = refusal?.detail === undefined ? undefined : NOTICES[refusal.detail];
+  const notice = knownRefusalNotice(refusal?.detail);
   return notice !== undefined
     ? refusalSentence(notice)
     : (refusal?.message ?? refusalSentence(ENDED_NOTICE));

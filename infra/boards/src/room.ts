@@ -234,6 +234,12 @@ const LINK_REPLACED =
   "This link does not open the board any more. Ask whoever shared it for a new one.";
 const SHARING_OFF =
   "Link sharing is off for this board. Ask whoever shared it to turn it on or add you.";
+/** Why a page of someone taken out of the board's workspace closes, and why they cannot join again. */
+export const REMOVED_FROM_WORKSPACE = roomFailure(
+  "not_member",
+  "You were removed from this board's workspace. Ask someone in it to add you back.",
+  "removed_from_workspace",
+);
 const ONLY_VIEWING =
   "This board's link now only lets people look at it. Ask whoever shared it for the view link.";
 

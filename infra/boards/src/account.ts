@@ -12,6 +12,7 @@ import * as Result from "effect/Result";
 
 import {
   guestBySession,
+  REMOVED_FROM_WORKSPACE,
   roomFailure,
   type CloudGuest,
   type CloudRoom,
@@ -31,8 +32,8 @@ export const accountGuestOf = (room: CloudRoom | null, account: string): CloudGu
   room?.guests.find((guest) => guest.accountId === account);
 
 /** Locked out of the board's workspace: a fresh seat from the edit link is no way back in either. */
-export const accountLockedOut = (room: CloudRoom | null, account: string): boolean =>
-  accountGuestOf(room, account)?.locked === true;
+export const lockedOutRefusal = (room: CloudRoom | null, account: string): RoomFailure | null =>
+  accountGuestOf(room, account)?.locked === true ? REMOVED_FROM_WORKSPACE : null;
 
 /** What the account's list keeps of a board it is on. */
 export const accountBoardOf = (
