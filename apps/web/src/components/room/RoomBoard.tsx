@@ -6215,12 +6215,9 @@ export function RoomBoard({
               >
                 <MinusIcon />
               </Button>
-              <span
-                role="status"
-                className="w-10 text-center text-xs font-semibold text-foreground tabular-nums"
-              >
+              <span className="w-10 text-center text-xs font-semibold text-foreground tabular-nums">
                 <span className="sr-only">Zoom </span>
-                {Math.round(view.zoom * 100)}%
+                <span>{Math.round(view.zoom * 100)}%</span>
               </span>
               <Button
                 size="icon-xs"
