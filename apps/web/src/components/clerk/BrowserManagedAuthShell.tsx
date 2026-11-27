@@ -12,6 +12,10 @@ import type { ManagedAuthShellProps } from "./lazyClerk";
 
 type ClerkRouterFn = NonNullable<ComponentProps<typeof ClerkProvider>["routerPush"]>;
 
+// ClerkProvider passes its options through to Clerk's script loader, whose public option this is;
+// the React prop type has not caught up with it.
+const clerkScriptOptions = { scriptLoadTimeout: 45_000 } as const;
+
 /** Lazy-load Clerk so cloudless local mode, and anyone who never signed in, never downloads it. */
 export default function BrowserManagedAuthShell({
   publishableKey,
@@ -37,6 +41,7 @@ export default function BrowserManagedAuthShell({
     };
   return (
     <ClerkProvider
+      {...clerkScriptOptions}
       appearance={clerkAppearance}
       localization={clerkLocalization}
       publishableKey={publishableKey}

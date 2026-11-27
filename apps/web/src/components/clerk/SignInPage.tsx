@@ -14,7 +14,7 @@ import { Skeleton } from "../ui/skeleton";
 import { signInScreenAppearance } from "./clerkAppearance";
 import { signInFromBoard, type SignInPageRequest } from "./authRedirect";
 import { useClerkMounted } from "./clerkHooks";
-import { requestClerk, useClerkLoadFailed } from "./lazyClerk";
+import { requestClerk, retryClerk, useClerkLoadFailed } from "./lazyClerk";
 import { clearSignInPageRequestOnLeave, readSignInPageRequest } from "./signInPageRequest";
 
 /**
@@ -85,17 +85,26 @@ const signInLoading = (
   </div>
 );
 
-const signInFailed = (
-  <p role="alert" className="text-base text-foreground">
-    Sign-in could not load. Check your internet connection, then reload this page.
-  </p>
-);
+function SignInFailed() {
+  return (
+    <div role="alert" className="flex flex-col items-start gap-4">
+      <p className="text-base text-foreground">
+        Sign-in could not load. Check your internet connection, then try again.
+      </p>
+      <Button type="button" variant="outline" onClick={retryClerk}>
+        Try again
+      </Button>
+    </div>
+  );
+}
 
 function SignInForm({ request }: { readonly request: SignInPageRequest }) {
   return (
     <>
       <ClerkLoading>{signInLoading}</ClerkLoading>
-      <ClerkFailed>{signInFailed}</ClerkFailed>
+      <ClerkFailed>
+        <SignInFailed />
+      </ClerkFailed>
       <div data-sign-in-form>
         <SignIn
           routing="path"
@@ -117,5 +126,5 @@ function SignInStarting() {
   const failed = useClerkLoadFailed();
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- starts loading Clerk, which lives outside React, for a page opened without it
   useEffect(() => void requestClerk(), []);
-  return failed ? signInFailed : signInLoading;
+  return failed ? <SignInFailed /> : signInLoading;
 }
