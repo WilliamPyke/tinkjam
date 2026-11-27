@@ -1079,13 +1079,20 @@ interface Linking {
   readonly pointerId?: number;
 }
 
-const edgeAt = (x: number, y: number) =>
-  document
-    .elementsFromPoint(x, y)
-    .find(
-      (element): element is SVGElement =>
-        element instanceof SVGElement && element.dataset.boardEdge !== undefined,
-    )?.dataset.boardEdge ?? null;
+const edgeAt = (x: number, y: number) => {
+  // Hit-test the paths' geometry rather than the browser's painted hit region: a transparent
+  // stroke is not part of `elementsFromPoint` until its first paint, which makes a fast press
+  // at a line's edge depend on paint timing.
+  const at = new DOMPoint(x, y);
+  const paths = [...document.querySelectorAll<SVGGeometryElement>("path[data-board-edge]")];
+  for (const path of paths.reverse()) {
+    const transform = path.getScreenCTM();
+    if (transform !== null && path.isPointInStroke(at.matrixTransform(transform.inverse()))) {
+      return path.dataset.boardEdge ?? null;
+    }
+  }
+  return null;
+};
 
 /** A grip's band reaches outside its card; past the card's edge a press it covers is the line's. */
 const linePressOnGrip = (target: EventTarget | null, x: number, y: number) => {
