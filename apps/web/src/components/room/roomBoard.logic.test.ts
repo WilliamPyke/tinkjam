@@ -3128,9 +3128,23 @@ describe("the visible board area", () => {
     expect(big.zoom).toBe(BOARD_READABLE_ZOOM);
     expect(big.x + 2_000 * big.zoom).toBe(16);
     expect(big.y + -100 * big.zoom).toBe(102);
-    // A wide surface fits as it always has.
+    // A wide surface with no chrome over it fits as it always has.
     const desk = { width: 1_200, height: 800 };
-    expect(fitBoardOnSurface(rects, desk, covered, 72)).toEqual(fitBoardView(rects, desk, 72));
+    expect(fitBoardOnSurface(rects, desk, { top: 0, bottom: 0 }, 72)).toEqual(
+      fitBoardView(rects, desk, 72),
+    );
+  });
+
+  it("fits a wide board clear of chrome floating over its bottom", () => {
+    const surface = { width: 1_184, height: 844 };
+    const covered = { top: 0, bottom: 194 };
+    const sections = [
+      { x: 440, y: 40, width: 480, height: 248 },
+      { x: 960, y: 40, width: 480, height: 248 },
+      { x: 440, y: 328, width: 1_000, height: 248 },
+    ];
+    const fit = fitBoardOnSurface(sections, surface, covered, 72);
+    expect(fit.y + 576 * fit.zoom).toBeLessThanOrEqual(surface.height - covered.bottom - 12);
   });
 
   it("keeps the board the larger side of the row, whatever width the conversation kept", () => {

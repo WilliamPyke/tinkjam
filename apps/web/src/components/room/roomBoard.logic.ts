@@ -575,12 +575,12 @@ const BOARD_NARROW_WIDTH = 640;
 /** The smallest zoom Fit goes to on a narrow board, where smaller text cannot be read. */
 export const BOARD_READABLE_ZOOM = 0.35;
 const NARROW_GUTTER = 16;
-const NARROW_CHROME_GAP = 12;
+const CHROME_GAP = 12;
 
 /**
- * Fit for this surface. A wide one keeps `margin` on every side. A narrow one keeps a 16px gutter
- * on the sides, clears the chrome floating over its top and bottom (`covered`, in screen pixels),
- * and never goes below 35%: a board too big for that shows from its top card at 35%.
+ * Fit for this surface. It keeps `margin` on every side, or a 16px gutter on a narrow one, clear
+ * of the chrome floating over its top and bottom (`covered`, in screen pixels). A narrow fit never
+ * goes below 35%: a board too big for that shows from its top card at 35%.
  */
 export function fitBoardOnSurface(
   rects: ReadonlyArray<BoardRect>,
@@ -588,14 +588,21 @@ export function fitBoardOnSurface(
   covered: { readonly top: number; readonly bottom: number },
   margin: number,
 ): BoardView {
-  if (area.width >= BOARD_NARROW_WIDTH) return fitBoardView(rects, area, margin);
+  if (area.width >= BOARD_NARROW_WIDTH) {
+    return fitBoardView(rects, area, {
+      top: Math.max(margin, covered.top + CHROME_GAP),
+      right: margin,
+      bottom: Math.max(margin, covered.bottom + CHROME_GAP),
+      left: margin,
+    });
+  }
   return fitBoardView(
     rects,
     area,
     {
-      top: covered.top + NARROW_CHROME_GAP,
+      top: covered.top + CHROME_GAP,
       right: NARROW_GUTTER,
-      bottom: covered.bottom + NARROW_CHROME_GAP,
+      bottom: covered.bottom + CHROME_GAP,
       left: NARROW_GUTTER,
     },
     BOARD_READABLE_ZOOM,
