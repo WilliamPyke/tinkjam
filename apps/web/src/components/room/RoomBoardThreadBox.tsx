@@ -13,7 +13,7 @@ import {
   type ThreadGuestMessage,
 } from "@t3tools/contracts";
 import { roomBoxExcerpt } from "@t3tools/shared/roomBoard";
-import { AppWindowIcon, SquareIcon } from "lucide-react";
+import { AppWindowIcon, MessagesSquareIcon, SquareIcon } from "lucide-react";
 import { type PointerEvent, type ReactNode, use, useState, useSyncExternalStore } from "react";
 
 import { cn } from "~/lib/utils";
@@ -420,18 +420,23 @@ export function BoxRequests({
 
 /**
  * The first approval a box's run waits on, for the person whose agent it is: what it asks, cut to
- * a couple of lines, and the thread page's own answers. A question is answered in the conversation.
+ * a couple of lines, and the thread page's own answers. A question shows here and is answered in
+ * the conversation.
  */
 export function BoxApproval({
   threadRef,
   onOpen,
+  onAnswer,
 }: {
   readonly threadRef: ScopedThreadRef;
   /** Opens the box's conversation, when the box has no button of its own for it. */
   readonly onOpen?: (() => void) | undefined;
+  /** Opens the box's conversation to answer its agent's question. */
+  readonly onAnswer: () => void;
 }) {
-  const approval = useAtomValue(environmentThreadDetails.pendingRequestsAtom(threadRef))
-    ?.approvals[0];
+  const requests = useAtomValue(environmentThreadDetails.pendingRequestsAtom(threadRef));
+  const approval = requests?.approvals[0];
+  const question = requests?.userInputs[0]?.questions[0];
   const canRespond = useEnvironmentScope(threadRef.environmentId, AuthOrchestrationOperateScope);
   const respond = useAtomCommand(threadEnvironment.respondToApproval, { reportFailure: false });
   const [responding, setResponding] = useState(false);
@@ -442,7 +447,28 @@ export function BoxApproval({
         Open conversation
       </Button>
     );
-  if (approval === undefined) return open;
+  if (approval === undefined) {
+    if (question === undefined) return open;
+    return (
+      <div
+        role="group"
+        aria-label="Question"
+        className="flex flex-col gap-1 rounded-md border border-warning/30 bg-warning/8 px-2 py-1.5 text-xs"
+        onPointerDown={stopPointer}
+      >
+        <p className="text-2xs font-medium text-warning-foreground">Your agent asks</p>
+        <p className="line-clamp-3 whitespace-pre-wrap [overflow-wrap:anywhere]">
+          {question.question}
+        </p>
+        <div>
+          <Button size="micro" variant="outline" onClick={onAnswer}>
+            <MessagesSquareIcon />
+            Answer in the conversation
+          </Button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       role="group"

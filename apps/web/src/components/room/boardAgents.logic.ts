@@ -113,7 +113,7 @@ export function boardAgentStatusLabel(
     case "queued":
       return "Queued";
     case "waiting":
-      return "Waiting for approval";
+      return "Waiting for an answer";
     case "unsent":
       return "Waiting to be sent";
     case "failed":

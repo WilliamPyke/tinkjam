@@ -111,9 +111,9 @@ describe("boardAgentStatus", () => {
     ).toBe("Working · 1m 12s");
   });
 
-  it("tells a prompt waiting to be sent from a run waiting for approval", () => {
+  it("tells a prompt waiting to be sent from a run waiting for an answer", () => {
     expect(boardAgentStatusLabel({ kind: "unsent" }, undefined, 0)).toBe("Waiting to be sent");
-    expect(boardAgentStatusLabel({ kind: "waiting" }, undefined, 0)).toBe("Waiting for approval");
+    expect(boardAgentStatusLabel({ kind: "waiting" }, undefined, 0)).toBe("Waiting for an answer");
   });
 });
 

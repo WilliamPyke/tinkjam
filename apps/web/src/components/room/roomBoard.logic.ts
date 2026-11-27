@@ -3278,7 +3278,7 @@ const PROGRESS_PHASES: Readonly<Record<RoomBoxProgress["phase"], string>> = {
   thinking: "Thinking",
   tool: "Running a tool",
   writing: "Writing",
-  approval: "Waiting for approval",
+  approval: "Waiting for an answer",
 };
 
 const BOARD_TOOL_PHRASES: Readonly<Record<string, string>> = {

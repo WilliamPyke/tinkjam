@@ -282,7 +282,7 @@ const AGENT_NOTICES: Readonly<
   "needs-you": {
     type: "warning",
     title: "needs you",
-    description: "Its agent asks you to approve something.",
+    description: "Its agent is waiting for your answer.",
   },
   done: { type: "info", title: "finished" },
   stopped: {

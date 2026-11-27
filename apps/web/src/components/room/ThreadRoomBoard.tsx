@@ -614,6 +614,7 @@ export function ThreadRoomBoard({
                   <BoxApproval
                     threadRef={ref}
                     onOpen={boxId === ROOM_BOARD_ROOM_BOX ? () => openPanel() : undefined}
+                    onAnswer={() => openPanel(boxId)}
                   />
                 );
               }}

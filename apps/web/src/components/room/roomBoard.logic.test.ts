@@ -2955,7 +2955,7 @@ describe("box progress", () => {
     );
     expect(boardProgressPhase({ phase: "tool", detail: "TodoWrite" })).toBe("Using a tool");
     expect(boardProgressPhase({ phase: "writing" })).toBe("Writing");
-    expect(boardProgressPhase({ phase: "approval" })).toBe("Waiting for approval");
+    expect(boardProgressPhase({ phase: "approval" })).toBe("Waiting for an answer");
     expect(
       boardProgressLine({ phase: "writing", model: "Claude Opus 4.5", startedAt }, at(65)),
     ).toBe("Writing · Claude Opus 4.5 · 1m 05s");
