@@ -1351,6 +1351,11 @@ export interface BoardEdit {
    * differs; a held note, until someone else deletes it.
    */
   readonly base: BoardValue | undefined;
+  /**
+   * What this person sent for it before, oldest first, which the room's copy may still pass on
+   * its way here: the copy moving to one of them is not someone else's change.
+   */
+  readonly sent?: ReadonlyArray<string>;
 }
 export type BoardEdits = Readonly<Record<string, BoardEdit>>;
 export const NO_BOARD_EDITS: BoardEdits = {};
@@ -1393,10 +1398,18 @@ const valueKey = (value: BoardValue | undefined): string => {
   ]);
 };
 
-const shows = (board: RoomBoard, edit: BoardEdit) => {
+/** The edit as the room's copy leaves it, or null once that copy moved past it. */
+const settled = (board: RoomBoard, edit: BoardEdit): BoardEdit | null => {
   const room = roomCopy(board, edit.target);
-  if (!edit.held) return valueKey(edit.base) === valueKey(room);
-  return edit.target.kind !== "note" || edit.base === undefined || room !== undefined;
+  if (edit.held) {
+    return edit.target.kind !== "note" || edit.base === undefined || room !== undefined
+      ? edit
+      : null;
+  }
+  const now = valueKey(room);
+  if (valueKey(edit.base) === now) return edit;
+  const seen = edit.sent?.indexOf(now) ?? -1;
+  return seen === -1 ? null : { ...edit, base: room, sent: edit.sent?.slice(seen + 1) ?? [] };
 };
 
 /**
@@ -1405,8 +1418,22 @@ const shows = (board: RoomBoard, edit: BoardEdit) => {
  * back to its base, as when someone else deletes a line this person drew.
  */
 export function settleBoardEdits(board: RoomBoard, edits: BoardEdits): BoardEdits {
-  const kept = Object.entries(edits).filter(([, edit]) => shows(board, edit));
-  return kept.length === Object.keys(edits).length ? edits : Object.fromEntries(kept);
+  let changed = false;
+  const kept = Object.entries(edits).flatMap(([key, edit]) => {
+    const now = settled(board, edit);
+    if (now !== edit) changed = true;
+    return now === null ? [] : [[key, now] as const];
+  });
+  return changed ? Object.fromEntries(kept) : edits;
+}
+
+/** Notes that the held `value` went to the room, as typing saved at a pause does. */
+export function boardEditSent(edits: BoardEdits, target: BoardTarget, value: BoardValue) {
+  const key = boardEditKey(target);
+  const edit = edits[key];
+  if (edit === undefined) return edits;
+  const sent = [...(edit.sent ?? []), valueKey(value ?? undefined)];
+  return { ...edits, [key]: { ...edit, sent } };
 }
 
 /**
@@ -1430,51 +1457,96 @@ export function putBoardEdit(
   value: BoardValue,
   held: boolean,
 ): BoardEdits {
+  const kept = settleBoardEdits(board, edits);
+  const key = boardEditKey(target);
+  const last = kept[key];
+  // What this person let go of before is on its way to the room ahead of this.
+  const sent = [
+    ...(last?.sent ?? []),
+    ...(last === undefined || last.held ? [] : [valueKey(last.value ?? undefined)]),
+  ];
   return {
-    ...settleBoardEdits(board, edits),
-    [boardEditKey(target)]: {
+    ...kept,
+    [key]: {
       target,
       value,
       held,
       base: roomCopy(board, target),
+      ...(sent.length === 0 ? {} : { sent }),
     },
   };
 }
 
 /**
- * Sends one card's, note's or arrow's changes in the order they were made: text typed into a new
- * note cannot land before the empty note it fills, and a change in several queues waits for each.
- * `hold` is called as each is queued, and what it returns once the room answered it. A change
- * queued with its `change` can go ahead of its turn with `flush` as the page goes away.
+ * Sends one card's, note's or arrow's changes in the order they were made, each waiting for all
+ * its queues. `hold` is called as each is queued; what it returns, once the room answered. `flush`
+ * sends those queued with their `change` early as the page goes away. `send` calls `retry` before
+ * sending again: false when a newer change sent early replaces its own.
  */
 export function boardChangeQueue(hold?: () => () => void) {
   const last = new Map<string, Promise<unknown>>();
   const waiting = new Set<WaitingBoardChange>();
-  function queue<A>(keys: string | ReadonlyArray<string>, send: () => Promise<A>): Promise<A>;
+  // When each key's latest change went out, on one clock with `flush`, so a change flushed before
+  // one ahead of it was sent again is sent again after it.
+  const sentAt = new Map<string, number>();
+  let clock = 0;
+  const sending = (keys: ReadonlyArray<string>) => {
+    clock += 1;
+    for (const key of keys) sentAt.set(key, clock);
+  };
+  function queue<A>(
+    keys: string | ReadonlyArray<string>,
+    send: (retry: () => boolean) => Promise<A>,
+  ): Promise<A>;
   function queue(
     keys: string | ReadonlyArray<string>,
-    send: () => Promise<boolean>,
+    send: (retry: () => boolean) => Promise<boolean>,
     change: RoomBoardChange,
   ): Promise<boolean>;
   function queue(
     keys: string | ReadonlyArray<string>,
-    send: () => Promise<unknown>,
+    send: (retry: () => boolean) => Promise<unknown>,
     change?: RoomBoardChange,
   ): Promise<unknown> {
     const all = typeof keys === "string" ? [keys] : keys;
     const release = hold?.();
     const settled = () => undefined;
-    const entry: WaitingBoardChange = { keys: all, change, flushed: undefined };
+    const entry: WaitingBoardChange = { keys: all, change, flushed: undefined, flushedAt: 0 };
     waiting.add(entry);
+    const retry = () => {
+      for (const behind of waiting) {
+        if (
+          change !== undefined &&
+          behind.flushed !== undefined &&
+          behind.change !== undefined &&
+          behind.keys.some((key) => all.includes(key)) &&
+          boardChangeReplaces(behind.change, change)
+        ) {
+          return false;
+        }
+      }
+      sending(all);
+      return true;
+    };
+    const sendInTurn = () => {
+      sending(all);
+      return send(retry);
+    };
     const next = Promise.all(
       all.map((key) => (last.get(key) ?? Promise.resolve()).then(settled, settled)),
     ).then(() => {
       waiting.delete(entry);
-      return entry.flushed === undefined ? send() : entry.flushed.then((taken) => taken || send());
+      if (entry.flushed === undefined) return sendInTurn();
+      const overtaken = all.some((key) => (sentAt.get(key) ?? 0) > entry.flushedAt);
+      return entry.flushed.then((taken) => (taken && !overtaken ? true : sendInTurn()));
     });
     for (const key of all) last.set(key, next);
     const forget = () => {
-      for (const key of all) if (last.get(key) === next) last.delete(key);
+      for (const key of all) {
+        if (last.get(key) !== next) continue;
+        last.delete(key);
+        sentAt.delete(key);
+      }
       release?.();
     };
     next.then(forget, forget);
@@ -1483,7 +1555,8 @@ export function boardChangeQueue(hold?: () => () => void) {
   /**
    * Sends every change still waiting its turn now, in the order they were queued, with `sendNow`,
    * which must survive the page going away. A change behind one that cannot go this way stays
-   * queued, and one sent here is not sent again unless `sendNow` resolved false.
+   * queued, and one sent here is not sent again unless `sendNow` resolved false or a change ahead
+   * of it was sent again after it.
    */
   const flush = (
     sendNow: (change: RoomBoardChange) => Promise<boolean>,
@@ -1503,16 +1576,48 @@ export function boardChangeQueue(hold?: () => () => void) {
         continue;
       }
       bytes += size;
+      clock += 1;
+      entry.flushedAt = clock;
       entry.flushed = sendNow(change);
     }
   };
   return Object.assign(queue, { flush });
 }
 
+/**
+ * Whether the room taking `newer` leaves nothing of `older`, taken before it, so `older` need not
+ * be sent after it. A note put back after its removal does not: the removal took its lines too.
+ */
+function boardChangeReplaces(newer: RoomBoardChange, older: RoomBoardChange): boolean {
+  const cardOf = (change: RoomBoardChange) =>
+    change.type === "note.put" || change.type === "note.remove"
+      ? change.noteId
+      : change.type === "card.move" || change.type === "card.resize"
+        ? change.cardId
+        : undefined;
+  const edgeOf = (change: RoomBoardChange) =>
+    change.type === "edge.put" ||
+    change.type === "edge.remove" ||
+    change.type === "edge.shape" ||
+    change.type === "edge.pin"
+      ? change.edgeId
+      : undefined;
+  const card = cardOf(newer);
+  if (card !== undefined && card === cardOf(older)) {
+    if (newer.type === "note.remove") return true;
+    if (newer.type === "note.put") return older.type === "note.put" || older.type === "card.move";
+    return newer.type === older.type;
+  }
+  const edge = edgeOf(newer);
+  if (edge === undefined || edge !== edgeOf(older)) return false;
+  return newer.type === "edge.remove" || (newer.type === older.type && newer.type !== "edge.put");
+}
+
 interface WaitingBoardChange {
   readonly keys: ReadonlyArray<string>;
   readonly change: RoomBoardChange | undefined;
   flushed: Promise<boolean> | undefined;
+  flushedAt: number;
 }
 
 // Keepalive requests share 64 KiB of body; the rest is left for the pointer leaving the board.
@@ -1627,7 +1732,7 @@ export function resolveBoard(board: RoomBoard, edits: BoardEdits): RoomBoard {
   let edges = board.edges ?? [];
   const drawn: Array<RoomBoardEdge> = [];
   for (const edit of Object.values(edits)) {
-    if (!shows(board, edit)) continue;
+    if (settled(board, edit) === null) continue;
     const { target, value } = edit;
     if (target.kind === "card") {
       if (value !== null && "x" in value) positions[target.id] = { x: value.x, y: value.y };

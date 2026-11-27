@@ -197,6 +197,7 @@ import {
   boardChangeOutgrowsOlderHosts,
   boardChangeQueue,
   boardChangeQueueKey,
+  boardEditSent,
   boardCommentAgentAuthor,
   boardCommentLineTo,
   boardConnector,
@@ -1201,8 +1202,13 @@ export function RoomBoard({
   readonly onBack?: (() => void) | undefined;
   /** Opens the thread at the message a comment is pinned to. */
   readonly onOpenReply: (messageId: string) => void;
-  /** Sends one change to the room and says whether it was taken. Absent when they may not. */
-  readonly onChange: ((change: RoomBoardChange) => Promise<boolean>) | undefined;
+  /**
+   * Sends one change to the room and says whether it was taken. Absent when they may not. One
+   * that sends it again calls `retry` first, and does not when it says false.
+   */
+  readonly onChange:
+    | ((change: RoomBoardChange, retry?: () => boolean) => Promise<boolean>)
+    | undefined;
   /** `onChange` in a way that still arrives once the page has closed, where there is one. */
   readonly onChangeAsPageCloses?: ((change: RoomBoardChange) => Promise<boolean>) | undefined;
   /** Tells the room where this person's pointer is and what their board shows. */
@@ -1940,7 +1946,7 @@ export function RoomBoard({
     for (const change of boardResendChanges(shown, card)) {
       void queueChange(
         boardChangeQueueKey(shown, { kind: "edge", id: change.edgeId }, null),
-        () => onChange(change),
+        (retry) => onChange(change, retry),
         change,
       );
     }
@@ -1955,7 +1961,7 @@ export function RoomBoard({
       const change: RoomBoardChange = { type: "edge.pin", edgeId: edge.id, pinned };
       void queueChange(
         boardChangeQueueKey(shown, { kind: "edge", id: edge.id }, null),
-        () => onChange(change),
+        (retry) => onChange(change, retry),
         change,
       );
     }
@@ -2014,7 +2020,7 @@ export function RoomBoard({
               noteId: view.id,
               fromNoteId: source?.id ?? view.id,
             };
-            return queueChange(noteRef(view.id), () => onChange(change), change);
+            return queueChange(noteRef(view.id), (retry) => onChange(change, retry), change);
           },
         };
   const liveStore = use(RoomLiveContext);
@@ -2136,8 +2142,10 @@ export function RoomBoard({
     if (value === undefined || value === null || !("text" in value)) return;
     if (settledEdits[key] === undefined) return;
     pending.saved = true;
-    const change = boardChangeOf(target, settleBoardValue(value));
-    void queueChange(key, () => onChange(change), change);
+    const saved = settleBoardValue(value);
+    const change = boardChangeOf(target, saved);
+    setEdits((current) => boardEditSent(current, target, saved));
+    void queueChange(key, (retry) => onChange(change, retry), change);
   });
   const scheduleTypingSave = (target: BoardTarget, value: RoomBoardNote) => {
     // A comment posts when it is sent, never half-written.
@@ -2175,7 +2183,7 @@ export function RoomBoard({
     setEdits((current) => putBoardEdit(board, current, target, value, false));
     const change = boardChangeOf(target, value, before);
     const guideStep = boardGuideStepOfChange(change, before === null);
-    void queueChange(queue, () => onChange(change), change).then((taken) => {
+    void queueChange(queue, (retry) => onChange(change, retry), change).then((taken) => {
       if (taken) {
         if (guideStep !== null) markBoardGuideStep(guideStep);
         return;
@@ -2839,7 +2847,7 @@ export function RoomBoard({
     const was = gestureFrom.current.get(key);
     if (stopSavingTyping(key) && onChange !== undefined && was !== undefined && was !== null) {
       const change = boardChangeOf(target, settleBoardValue(was));
-      void queueChange(key, () => onChange(change), change);
+      void queueChange(key, (retry) => onChange(change, retry), change);
     }
     held.current.delete(key);
     gestureFrom.current.delete(key);
@@ -4362,7 +4370,7 @@ export function RoomBoard({
     const noteId = roomBoardNoteOfRef(on, to)?.id;
     if (fromNoteId === null || noteId === undefined) return;
     const change: RoomBoardChange = { type: "artifact.view", noteId, fromNoteId };
-    void queueChange(queue, () => onChange(change), change);
+    void queueChange(queue, (retry) => onChange(change, retry), change);
   };
   /** A box's "New artifact": a second one opens as a live view of the one the box rewrites. */
   const addBoxArtifact = (from: string) => {
@@ -4567,7 +4575,7 @@ export function RoomBoard({
   const changeComment = (noteId: string, change: RoomBoardChange) =>
     onChange === undefined
       ? Promise.resolve(false)
-      : queueChange(noteRef(noteId), () => onChange(change), change);
+      : queueChange(noteRef(noteId), (retry) => onChange(change, retry), change);
   const sendComment = async (
     note: RoomBoardNote,
     text: string,

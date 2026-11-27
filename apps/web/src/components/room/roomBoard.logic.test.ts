@@ -177,6 +177,7 @@ import {
   roomFetchCommand,
   screenToBoard,
   settleBoardEdits,
+  boardEditSent,
   boardEditsUnsent,
   settleBoardValue,
   visibleBoardRect,
@@ -836,6 +837,30 @@ describe("resolveBoard", () => {
     });
   });
 
+  it("keeps an undo over its own earlier changes as the room takes them, so redo is not skipped", () => {
+    const target = { kind: "note", id: "n" } as const;
+    const empty = { id: "n", text: "", x: 0, y: 0 };
+    const typed = { ...empty, text: "Ship it" };
+    const at = (notes: ReadonlyArray<RoomBoardNote>): RoomBoard => ({ positions: {}, notes });
+    // A new note, typed in with a pause that saved part of it, then taken back at once.
+    const added = putBoardEdit(at([]), NO_BOARD_EDITS, target, empty, false);
+    const typing = boardEditSent(
+      putBoardEdit(at([]), added, target, { ...empty, text: "Ship" }, true),
+      target,
+      { ...empty, text: "Ship" },
+    );
+    const written = putBoardEdit(at([]), typing, target, typed, false);
+    let edits = putBoardEdit(at([]), written, target, null, false);
+    const history = [{ target, before: null, after: typed }];
+    // The room catches up with the add and the typing before it takes the undo.
+    for (const room of [at([empty]), at([{ ...empty, text: "Ship" }]), at([typed])]) {
+      edits = settleBoardEdits(room, edits);
+      expect(resolveBoard(room, edits).notes).toEqual([]);
+      expect(boardHistoryChanges(resolveBoard(room, edits), history, "redo")).not.toBeNull();
+    }
+    expect(settleBoardEdits(at([]), edits)).toEqual(NO_BOARD_EDITS);
+  });
+
   it("shows a line drawn again over the one going away, in the queue the removal went in", () => {
     const note = { id: "n", text: "Ship", x: 0, y: 0 };
     const old = { id: "e", from: "note:n", to: "card:thread" };
@@ -1161,12 +1186,14 @@ describe("boardChangeQueue", () => {
     expect(flushed).toHaveLength(3);
     roomTakesAdd(true);
     await Promise.all([added, settle, ...results]);
-    // A flushed change the room did not take is sent again in its turn; the others are not.
+    // A flushed change the room did not take is sent again in its turn, and so is the redo
+    // flushed behind it, so the undo cannot land last; the others are not.
     const sentChanges = sent.map((change) => JSON.parse(change));
-    expect(sentChanges).toHaveLength(6);
+    expect(sentChanges).toHaveLength(7);
     expect(sentChanges).toEqual(expect.arrayContaining([behindSettle, tooBig]));
     expect(sentChanges.filter((change) => change.noteId === "c" || change.edgeId === "e")).toEqual([
       undo,
+      redo,
       react,
       afterReact,
       line,
@@ -1200,6 +1227,71 @@ describe("boardChangeQueue", () => {
     await second;
     expect(await line).toBe(true);
     expect(started).toEqual(["a", "b", "line"]);
+  });
+
+  it("never lets a retry of an older change land after a newer one sent as the page hid", async () => {
+    const queue = boardChangeQueue();
+    const landed: Array<RoomBoardChange> = [];
+    const put = (text: string): RoomBoardChange => ({
+      type: "note.put",
+      noteId: "n",
+      text,
+      x: 0,
+      y: 0,
+    });
+    // The first try of an in-flight change fails; it is retried once the test says so.
+    const failingOnce = (change: RoomBoardChange) => {
+      let failed: () => void = () => {};
+      const failing = new Promise<void>((resolve) => {
+        failed = resolve;
+      });
+      let sent: () => void = () => {};
+      const started = new Promise<void>((resolve) => {
+        sent = resolve;
+      });
+      const send = async (retry: () => boolean) => {
+        sent();
+        await failing;
+        if (!retry()) return true;
+        landed.push(change);
+        return true;
+      };
+      return { send, started, failed };
+    };
+    const flushNow = () =>
+      queue.flush((change) => {
+        landed.push(change);
+        return Promise.resolve(true);
+      });
+
+    // Typing that replaces the text being retried makes the retry unneeded.
+    const typed = failingOnce(put("old"));
+    const first = queue("note:n", typed.send, put("old"));
+    await typed.started;
+    const later = queue("note:n", async () => true, put("new"));
+    flushNow();
+    typed.failed();
+    expect([await first, await later]).toEqual([true, true]);
+    expect(landed).toEqual([put("new")]);
+
+    // A redo re-adds a note the retried undo removes, with its lines, so it is sent again after.
+    landed.length = 0;
+    const remove = { type: "note.remove", noteId: "n" } as const;
+    const undo = failingOnce(remove);
+    const undone = queue("note:n", undo.send, remove);
+    await undo.started;
+    const redone = queue(
+      "note:n",
+      async () => {
+        landed.push(put("new"));
+        return true;
+      },
+      put("new"),
+    );
+    flushNow();
+    undo.failed();
+    expect([await undone, await redone]).toEqual([true, true]);
+    expect(landed).toEqual([put("new"), remove, put("new")]);
   });
 });
 
