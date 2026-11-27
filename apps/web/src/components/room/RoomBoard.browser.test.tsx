@@ -692,6 +692,22 @@ describe("RoomBoard clicks", () => {
     await expect.element(screen.getByRole("status")).not.toBeInTheDocument();
   });
 
+  it("keeps the selection with a Shift-click on the empty board", async () => {
+    await using _viewport = await boardSizedViewport();
+    const board = renderBoard(notes);
+    await using screen = await board.screen;
+    await selectWithShift(screen.container, ["a", "b"]);
+    await expect.element(screen.getByRole("status")).toHaveTextContent("2 selected");
+
+    await commands.mouse([
+      { type: "down", x: 900, y: 600 },
+      { type: "keydown", key: "Shift" },
+      { type: "up", x: 900, y: 600 },
+      { type: "keyup", key: "Shift" },
+    ]);
+    expect(screen.container.querySelector('[role="status"]')?.textContent).toBe("2 selected");
+  });
+
   it("adds a card to the selection with Ctrl-click, and keeps a selected note out of its text on a click", async () => {
     const board = renderBoard(notes);
     await using screen = await board.screen;
