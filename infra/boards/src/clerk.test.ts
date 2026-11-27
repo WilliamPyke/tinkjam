@@ -49,7 +49,7 @@ const session = {
 
 const check: ClerkCheck = {
   issuer: ISSUER,
-  allowedOrigins: ["https://app.trellium.org", "http://localhost:5733"],
+  allowedOrigin: (origin) => ["https://app.trellium.org", "http://localhost:5733"].includes(origin),
   now: NOW_S,
   keyFor: async (kid) => (kid === "key-1" ? keyPair.publicKey : null),
 };
@@ -59,6 +59,15 @@ describe("Clerk session tokens", () => {
     expect(await verifyClerkSession(await tokenOf(session), check)).toBe("user_ada");
     const { azp: _, ...noAzp } = session;
     expect(await verifyClerkSession(await tokenOf(noAzp), check)).toBe("user_ada");
+  });
+
+  it("lets the host's own origin rule accept a page outside the fixed list", async () => {
+    const localCheck = {
+      ...check,
+      allowedOrigin: (origin: string) => origin === "http://localhost:6001",
+    };
+    const token = await tokenOf({ ...session, azp: "http://localhost:6001" });
+    expect(await verifyClerkSession(token, localCheck)).toBe("user_ada");
   });
 
   it.each([

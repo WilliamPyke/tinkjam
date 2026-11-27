@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --port 8799",
+    "dev": "wrangler dev --port 8799 --var ALLOW_LOCALHOST_ORIGINS:true",
     "deploy": "wrangler deploy",
     "test": "vp test run --config ../../vite.config.ts --dir .",
     "typecheck": "effect-tsgo tsrs --noEmit"
