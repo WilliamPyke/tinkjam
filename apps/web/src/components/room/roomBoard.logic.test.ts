@@ -1096,6 +1096,83 @@ describe("boardChangeQueue", () => {
     expect(held).toBe(0);
   });
 
+  it("sends the changes still waiting as the page goes away, in order, and not again", async () => {
+    const queue = boardChangeQueue();
+    const sent: Array<string> = [];
+    const flushed: Array<RoomBoardChange> = [];
+    const put = (noteId: string, text: string): RoomBoardChange => ({
+      type: "note.put",
+      noteId,
+      text,
+      x: 0,
+      y: 0,
+    });
+    const send = (change: RoomBoardChange) => () => {
+      sent.push(JSON.stringify(change));
+      return Promise.resolve(true);
+    };
+    const enqueue = (key: string | ReadonlyArray<string>, change: RoomBoardChange) =>
+      queue(key, send(change), change);
+    let roomTakesAdd: (taken: boolean) => void = () => {};
+    let addSent: () => void = () => {};
+    const adding = new Promise<void>((resolve) => {
+      addSent = resolve;
+    });
+    const added = queue(
+      "note:c",
+      () => {
+        addSent();
+        return new Promise<boolean>((resolve) => {
+          roomTakesAdd = resolve;
+        });
+      },
+      put("c", "third"),
+    );
+    await adding;
+    const undo = { type: "note.remove", noteId: "c" } as const;
+    const redo = put("c", "third");
+    const react = { type: "note.react", noteId: "c", emoji: "👍" } as const;
+    const afterReact = put("c", "edited");
+    const settle = queue("note:a", () => Promise.resolve(true));
+    const behindSettle = put("a", "first");
+    const line = { type: "edge.put", edgeId: "e", from: "note:b", to: "note:c" } as const;
+    const tooBig = put("b", "x".repeat(300));
+    const results = [
+      enqueue("note:c", undo),
+      enqueue("note:c", redo),
+      enqueue("note:c", react),
+      enqueue("note:c", afterReact),
+      enqueue("note:a", behindSettle),
+      enqueue("note:b", tooBig),
+      enqueue(["note:b", "note:c"], line),
+      enqueue("note:d", put("d", "fourth")),
+    ];
+    queue.flush((change) => {
+      flushed.push(change);
+      return Promise.resolve(change.type !== "note.remove" || flushed.length > 1);
+    }, 200);
+    // The note being added is already on its way. A reaction is sent once only, so it and what
+    // waits behind it stay queued, as does a change over the limit and the line waiting on it.
+    expect(flushed).toEqual([undo, redo, put("d", "fourth")]);
+    queue.flush((change) => {
+      flushed.push(change);
+      return Promise.resolve(true);
+    }, 200);
+    expect(flushed).toHaveLength(3);
+    roomTakesAdd(true);
+    await Promise.all([added, settle, ...results]);
+    // A flushed change the room did not take is sent again in its turn; the others are not.
+    const sentChanges = sent.map((change) => JSON.parse(change));
+    expect(sentChanges).toHaveLength(6);
+    expect(sentChanges).toEqual(expect.arrayContaining([behindSettle, tooBig]));
+    expect(sentChanges.filter((change) => change.noteId === "c" || change.edgeId === "e")).toEqual([
+      undo,
+      react,
+      afterReact,
+      line,
+    ]);
+  });
+
   it("sends a change in several queues only once each of them has gone", async () => {
     const queue = boardChangeQueue();
     const started: Array<string> = [];

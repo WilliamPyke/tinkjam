@@ -167,7 +167,8 @@ function writeAwaitingRowIds(ids: ReadonlySet<GuestMessageId>) {
 async function sendBoardChange(
   endpoint: GuestShareEndpoint,
   change: RoomBoardChange,
-  signal: AbortSignal,
+  // `keepalive`: sent as the page closes, which it outlives.
+  how: { readonly signal: AbortSignal } | { readonly keepalive: true },
 ): Promise<number | null> {
   try {
     const response = await guestShareRequest(endpoint, GUEST_BOARD_ROUTE, {
@@ -175,7 +176,7 @@ async function sendBoardChange(
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(change),
-        signal,
+        ...how,
       },
     });
     return response.status;
@@ -219,7 +220,7 @@ export async function postBoardChange(
   try {
     for (let tries = 0; ; tries += 1) {
       if (controller.signal.aborted) return false;
-      const status = await sendBoardChange(endpoint, change, controller.signal);
+      const status = await sendBoardChange(endpoint, change, { signal: controller.signal });
       if (controller.signal.aborted) return false;
       if (status !== null && status >= 200 && status < 300) return true;
       if (!boardChangeFailureIsTemporary(status)) return false;
@@ -1078,6 +1079,14 @@ function GuestThreadSession({
                 showRoomConversation();
               }}
               onChange={viewOnly ? undefined : (change) => postBoardChange(endpoint, change)}
+              onChangeAsPageCloses={
+                viewOnly
+                  ? undefined
+                  : (change) =>
+                      sendBoardChange(endpoint, change, { keepalive: true }).then(
+                        (status) => status !== null && status >= 200 && status < 300,
+                      )
+              }
               onCursor={viewOnly ? undefined : (presence) => postBoardCursor(endpoint, presence)}
               onPromptBox={agents ? promptBox : undefined}
               stopBox={agents ? stopBox : undefined}

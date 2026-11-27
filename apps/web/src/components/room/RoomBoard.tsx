@@ -1130,6 +1130,7 @@ export function RoomBoard({
   onBack,
   onOpenReply,
   onChange,
+  onChangeAsPageCloses,
   onCursor,
   onUseNote,
   ownerCode,
@@ -1202,6 +1203,8 @@ export function RoomBoard({
   readonly onOpenReply: (messageId: string) => void;
   /** Sends one change to the room and says whether it was taken. Absent when they may not. */
   readonly onChange: ((change: RoomBoardChange) => Promise<boolean>) | undefined;
+  /** `onChange` in a way that still arrives once the page has closed, where there is one. */
+  readonly onChangeAsPageCloses?: ((change: RoomBoardChange) => Promise<boolean>) | undefined;
   /** Tells the room where this person's pointer is and what their board shows. */
   readonly onCursor: ((presence: BoardPresence) => void) | undefined;
   /** Puts a card's text in this person's message box for the thread. It sends nothing. */
@@ -1358,6 +1361,21 @@ export function RoomBoard({
   // Whether deleting the boxes among them deletes their chats too: off unless the person ticks it.
   const [deletingChats, setDeletingChats] = useState(false);
   const [queueChange] = useState(() => boardChangeQueue(holdSendingBoardChange));
+  const sendWaitingChanges = useStableCallback(() => {
+    if (onChangeAsPageCloses !== undefined) queueChange.flush(onChangeAsPageCloses);
+  });
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- sends changes still queued as the page closes; on a phone, hidden is the only sure sign it may
+  useEffect(() => {
+    const hidden = () => {
+      if (document.visibilityState === "hidden") sendWaitingChanges();
+    };
+    window.addEventListener("pagehide", sendWaitingChanges);
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      window.removeEventListener("pagehide", sendWaitingChanges);
+      document.removeEventListener("visibilitychange", hidden);
+    };
+  }, [sendWaitingChanges]);
   // The view left here last time, which the board reopens on when it still shows a card.
   const [remembered] = useState(() =>
     viewKey === undefined ? undefined : rememberedRoomBoardView(viewKey),
@@ -1919,8 +1937,10 @@ export function RoomBoard({
   const resendCard = (card: BoardPromptCard) => {
     if (onChange === undefined) return;
     for (const change of boardResendChanges(shown, card)) {
-      void queueChange(boardChangeQueueKey(shown, { kind: "edge", id: change.edgeId }, null), () =>
-        onChange(change),
+      void queueChange(
+        boardChangeQueueKey(shown, { kind: "edge", id: change.edgeId }, null),
+        () => onChange(change),
+        change,
       );
     }
   };
@@ -1931,8 +1951,11 @@ export function RoomBoard({
       (edge) => card.edgeIds?.includes(edge.id) === true && (edge.pinned === true) !== pinned,
     );
     for (const edge of pinned ? lines.slice(0, 1) : lines) {
-      void queueChange(boardChangeQueueKey(shown, { kind: "edge", id: edge.id }, null), () =>
-        onChange({ type: "edge.pin", edgeId: edge.id, pinned }),
+      const change: RoomBoardChange = { type: "edge.pin", edgeId: edge.id, pinned };
+      void queueChange(
+        boardChangeQueueKey(shown, { kind: "edge", id: edge.id }, null),
+        () => onChange(change),
+        change,
       );
     }
   };
@@ -1984,14 +2007,14 @@ export function RoomBoard({
       ? undefined
       : {
           label: source?.artifact === undefined ? "Stop following" : "Keep this version",
-          run: () =>
-            queueChange(noteRef(view.id), () =>
-              onChange({
-                type: "artifact.copy",
-                noteId: view.id,
-                fromNoteId: source?.id ?? view.id,
-              }),
-            ),
+          run: () => {
+            const change: RoomBoardChange = {
+              type: "artifact.copy",
+              noteId: view.id,
+              fromNoteId: source?.id ?? view.id,
+            };
+            return queueChange(noteRef(view.id), () => onChange(change), change);
+          },
         };
   const liveStore = use(RoomLiveContext);
   // What a drag moves on the page, by edit key: the element and where it was drawn as the drag
@@ -2113,7 +2136,7 @@ export function RoomBoard({
     if (settledEdits[key] === undefined) return;
     pending.saved = true;
     const change = boardChangeOf(target, settleBoardValue(value));
-    void queueChange(key, () => onChange(change));
+    void queueChange(key, () => onChange(change), change);
   });
   const scheduleTypingSave = (target: BoardTarget, value: RoomBoardNote) => {
     // A comment posts when it is sent, never half-written.
@@ -2151,7 +2174,7 @@ export function RoomBoard({
     setEdits((current) => putBoardEdit(board, current, target, value, false));
     const change = boardChangeOf(target, value, before);
     const guideStep = boardGuideStepOfChange(change, before === null);
-    void queueChange(queue, () => onChange(change)).then((taken) => {
+    void queueChange(queue, () => onChange(change), change).then((taken) => {
       if (taken) {
         if (guideStep !== null) markBoardGuideStep(guideStep);
         return;
@@ -2815,7 +2838,7 @@ export function RoomBoard({
     const was = gestureFrom.current.get(key);
     if (stopSavingTyping(key) && onChange !== undefined && was !== undefined && was !== null) {
       const change = boardChangeOf(target, settleBoardValue(was));
-      void queueChange(key, () => onChange(change));
+      void queueChange(key, () => onChange(change), change);
     }
     held.current.delete(key);
     gestureFrom.current.delete(key);
@@ -4337,7 +4360,8 @@ export function RoomBoard({
     );
     const noteId = roomBoardNoteOfRef(on, to)?.id;
     if (fromNoteId === null || noteId === undefined) return;
-    void queueChange(queue, () => onChange({ type: "artifact.view", noteId, fromNoteId }));
+    const change: RoomBoardChange = { type: "artifact.view", noteId, fromNoteId };
+    void queueChange(queue, () => onChange(change), change);
   };
   /** A box's "New artifact": a second one opens as a live view of the one the box rewrites. */
   const addBoxArtifact = (from: string) => {
@@ -4533,7 +4557,7 @@ export function RoomBoard({
   const changeComment = (noteId: string, change: RoomBoardChange) =>
     onChange === undefined
       ? Promise.resolve(false)
-      : queueChange(noteRef(noteId), () => onChange(change));
+      : queueChange(noteRef(noteId), () => onChange(change), change);
   const sendComment = async (
     note: RoomBoardNote,
     text: string,
