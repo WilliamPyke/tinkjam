@@ -145,11 +145,11 @@ export function RoomArtifactBody({
         <p className="text-xs text-muted-foreground">
           {links?.unmade === true
             ? "This page isn't made yet. Ask your agent to write it: the first page goes along as context."
-            : "A page on the board that an agent writes, or you write yourself. Everyone sees it. To have an agent write it, use Attach my agent, or draw a line from an agent box to this card and ask it to write."}
+            : "A page everyone on the board can see. Write it yourself, or ask an agent to write it."}
         </p>
         {onWrite === undefined ? null : (
           <Button
-            size="xs"
+            size="sm"
             variant="outline"
             onPointerDown={stopPointer}
             onClick={onWrite}
@@ -677,12 +677,34 @@ function RoomArtifactEditor({
           }
         }}
       />
-      <p className="shrink-0 text-2xs text-muted-foreground">
-        Saves when you {boardTouchFirst() ? "tap" : "click"} away or press Ctrl+Enter. Esc cancels.
-        {text.length > ROOM_ARTIFACT_MAX_LENGTH * 0.9
-          ? ` ${text.length.toLocaleString()} of ${ROOM_ARTIFACT_MAX_LENGTH.toLocaleString()} characters.`
-          : ""}
-      </p>
+      <div className="flex shrink-0 items-end gap-1.5">
+        <p className="min-w-0 flex-1 text-2xs text-muted-foreground">
+          {boardTouchFirst()
+            ? "Saves when you tap away."
+            : "Saves when you click away or press Ctrl+Enter. Esc cancels."}
+          {text.length > ROOM_ARTIFACT_MAX_LENGTH * 0.9
+            ? ` ${text.length.toLocaleString()} of ${ROOM_ARTIFACT_MAX_LENGTH.toLocaleString()} characters.`
+            : ""}
+        </p>
+        <Button
+          type="button"
+          size="xs"
+          variant="ghost"
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => finish(false)}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          size="xs"
+          disabled={text.trim() === "" || text.trim() === initial.trim()}
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => finish(true)}
+        >
+          Save
+        </Button>
+      </div>
     </div>
   );
 }
@@ -727,6 +749,7 @@ function RoomArtifactToolbar({
       className={cn(
         // Its gap is its own padding, so the pointer crosses from the card to it without leaving.
         "pointer-events-none invisible absolute bottom-full left-1/2 z-20 flex -translate-x-1/2 pb-2.5",
+        "group-data-[board-selected]/item:-translate-y-8",
         "[@media(hover:hover)]:group-hover/item:pointer-events-auto [@media(hover:hover)]:group-hover/item:visible",
         "group-focus-within/item:pointer-events-auto group-focus-within/item:visible",
         "group-data-[board-selected]/item:pointer-events-auto group-data-[board-selected]/item:visible",
