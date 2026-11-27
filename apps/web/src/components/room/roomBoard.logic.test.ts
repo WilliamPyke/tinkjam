@@ -103,6 +103,7 @@ import {
   BOARD_TOUCH_HOLD_MS,
   BOARD_TOUCH_SLOP,
   boardTouchPress,
+  boardCardTouchScale,
   boardTouchScale,
   boardTypingRect,
   fitBoardOnSurface,
@@ -3841,6 +3842,18 @@ describe("boardTouchPress", () => {
     expect(boardTouchScale(1)).toBe(1);
     expect(boardTouchScale(0.5)).toBe(2);
     expect(boardTouchScale(0.2)).toBe(4);
+  });
+
+  it.each([
+    [2, 1],
+    [1, 1],
+    [0.8, 1.25],
+    [0.7, 1.5],
+    [0.6, 1.75],
+    [0.5, 2],
+    [0.2, 2],
+  ])("grows a card's buttons at %s zoom by %s", (zoom, scale) => {
+    expect(boardCardTouchScale(zoom)).toBe(scale);
   });
 });
 

@@ -4127,6 +4127,16 @@ const TOUCH_CONTROL_MAX_SCALE = 4;
 export const boardTouchScale = (zoom: number): number =>
   Math.min(TOUCH_CONTROL_MAX_SCALE, Math.max(1, 1 / zoom));
 
+const CARD_TOUCH_STEPS = [1, 1.25, 1.5, 1.75, 2] as const;
+
+/**
+ * How much the buttons inside cards grow on a touch screen so they stay finger-sized as the board
+ * zooms out: the smallest step that keeps them their full size, up to twice it, where a card's
+ * row still holds them. In steps, so a zoom restyles the cards only as it crosses one.
+ */
+export const boardCardTouchScale = (zoom: number): number =>
+  CARD_TOUCH_STEPS.find((step) => step * zoom >= 1) ?? CARD_TOUCH_STEPS.at(-1)!;
+
 /** About how much of a phone's screen, from the top, its keyboard leaves in sight. */
 const KEYBOARD_FREE_SHARE = 0.5;
 

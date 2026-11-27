@@ -18,7 +18,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import { BoardChip } from "./BoardChrome";
+import { BOARD_CARD_TOUCH_CLASS, BoardChip } from "./BoardChrome";
 import {
   BOARD_MARK_MESSAGE,
   type BoardMarkPick,
@@ -758,7 +758,12 @@ function RoomArtifactToolbar({
       )}
       onPointerDown={stopPointer}
     >
-      <div className="flex items-center gap-0.5 rounded-xl border border-board-hairline bg-card p-1 whitespace-nowrap text-card-foreground shadow-board">
+      <div
+        className={cn(
+          "flex items-center gap-0.5 rounded-xl border border-board-hairline bg-card p-1 whitespace-nowrap text-card-foreground shadow-board",
+          BOARD_CARD_TOUCH_CLASS,
+        )}
+      >
         {onRefresh === undefined ? null : (
           <Button
             size="xs"

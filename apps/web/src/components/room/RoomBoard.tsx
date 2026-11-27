@@ -71,6 +71,7 @@ import {
 import {
   type ClipboardEvent,
   type ComponentProps,
+  type CSSProperties,
   type DragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent,
@@ -176,6 +177,7 @@ import {
   boardTakenRects,
   boardAddSection,
   boardAddSpot,
+  boardCardTouchScale,
   boardCopySkipped,
   boardCodeEdgeIds,
   boardAgents,
@@ -447,6 +449,7 @@ import { BoardSnapGuides, createBoardSnapStore } from "./RoomBoardSnapGuides";
 import {
   AddedBy,
   BOARD_HOVER_CHROME_CLASS,
+  BOARD_CARD_TOUCH_CLASS,
   BOARD_ICON_BUTTON_CLASS,
   BOARD_SELECTED_CHROME_CLASS,
   BOARD_TITLE_BAR_CLASS,
@@ -1316,6 +1319,9 @@ export function RoomBoard({
   const unsavedView = useRef<BoardView | null>(null);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const fitted = useRef(false);
+  // The view the board opened on, refitted as the surface settles (a sidebar folding as the board
+  // opens) until the viewer moves it.
+  const openedOn = useRef<BoardView | null>(null);
   // The view the board opened on when it showed only its start; a hint offers the rest until it moves.
   const [firstView, setFirstView] = useState<BoardView | null>(null);
   const canEdit = room !== null && onChange !== undefined;
@@ -1558,7 +1564,14 @@ export function RoomBoard({
     shown.notes.length >= fitAwaits;
   const fitFirst = useStableCallback(() => {
     const area = boardAreaOf(surfaceRef.current);
-    if (fitted.current || !fittable || area === null || area.width === 0 || area.height === 0) {
+    const refit = fitted.current && view === openedOn.current;
+    if (
+      (fitted.current && !refit) ||
+      !fittable ||
+      area === null ||
+      area.width === 0 ||
+      area.height === 0
+    ) {
       return;
     }
     fitted.current = true;
@@ -1572,16 +1585,17 @@ export function RoomBoard({
       covered: chromeCoverOf(surfaceRef.current),
       margin: FIT_MARGIN,
     });
+    const opens =
+      refit ||
+      view === INITIAL_BOARD_VIEW ||
+      (view === remembered && openingBoardView(view, area, rects) === null);
     setFirstView(first.whole ? null : first.view);
-    setView((current) =>
-      current === INITIAL_BOARD_VIEW ||
-      (current === remembered && openingBoardView(current, area, rects) === null)
-        ? first.view
-        : current,
-    );
+    if (!opens) return;
+    openedOn.current = first.view;
+    setView(first.view);
   });
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- the first view is measured from the cards and the surface as the browser laid them out
-  useLayoutEffect(fitFirst, [fitFirst, fittable]);
+  useLayoutEffect(fitFirst, [fitFirst, fittable, surfaceSize]);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keeps the view in this device's storage, written once it settles
   useEffect(() => {
     if (viewKey === undefined || !fitted.current) return;
@@ -6674,7 +6688,12 @@ export function RoomBoard({
                   "absolute top-0 left-0 origin-top-left [--spacing:4px]",
                   following !== null && "transition-transform duration-200 ease-out",
                 )}
-                style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}
+                style={
+                  {
+                    transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`,
+                    "--board-card-touch-scale": boardCardTouchScale(view.zoom),
+                  } as CSSProperties
+                }
               >
                 {shown.notes.map((note) => {
                   if (note.section !== true) return null;
@@ -8517,7 +8536,7 @@ function BoardNote({
           </div>
         ) : null}
         {artifact && (onAttachAgent !== undefined || onAsk !== undefined) ? (
-          <div className="flex shrink-0 flex-wrap gap-1 px-3 pb-1.5">
+          <div className={cn("flex shrink-0 flex-wrap gap-1 px-3 pb-1.5", BOARD_CARD_TOUCH_CLASS)}>
             {onAsk === undefined ? null : (
               <WhatItDoes hint="Ask one of your agent boxes to change this artifact. Its reply replaces what it shows, for everyone; Restore previous brings this version back.">
                 <Button

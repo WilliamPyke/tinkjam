@@ -29,7 +29,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ComposerPendingApprovalActions } from "../chat/ComposerPendingApprovalActions";
 import { guestMessageArtifactTitle } from "../chat/roomBoardPrompt";
 import { BoardProgressLine } from "./RoomBoardArtifact";
-import { BoardChip } from "./BoardChrome";
+import { BOARD_CARD_TOUCH_CLASS, BoardChip } from "./BoardChrome";
 import type { BoardAgentOutcome } from "./boardAgents.logic";
 import {
   type BoardPeople,
@@ -66,7 +66,7 @@ function BoxReply({
 }) {
   const [source, setSource] = useState(false);
   if (!isBoardHtmlArtifact(reply)) {
-    return <p className="line-clamp-4 whitespace-pre-wrap [overflow-wrap:anywhere]">{reply}</p>;
+    return <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{reply}</p>;
   }
   const title = boardHtmlTitle(reply);
   return (
@@ -190,7 +190,7 @@ export function BoxBoardWork({
       <p className="min-w-0 flex-1 [overflow-wrap:anywhere]">
         {undone ? `Undone: ${line.charAt(0).toLowerCase()}${line.slice(1)}` : line}
       </p>
-      <div className="flex gap-1">
+      <div className={cn("flex gap-1", BOARD_CARD_TOUCH_CLASS)}>
         {undone ? null : (
           <Button
             size="micro-touch"
