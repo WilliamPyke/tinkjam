@@ -6,12 +6,13 @@ import { holdChunkReload } from "~/lib/chunkReloadGuard";
 import { ConnectionNote, useOnline } from "../shell/OfflineNote";
 
 let waitingChanges = 0;
+let sendingChanges = 0;
 const waitingByShare = new Map<string, number>();
 const listeners = new Set<() => void>();
 
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", (event) => {
-    if (waitingChanges === 0) return;
+    if (waitingChanges === 0 && sendingChanges === 0) return;
     event.preventDefault();
     event.returnValue = "";
   });
@@ -42,6 +43,22 @@ export function holdBoardChange(shareId: string): () => void {
     else waitingByShare.set(shareId, waiting);
     releaseChunkReload();
     notify();
+  };
+}
+
+/**
+ * Counts one board change as on its way, queued or sent but not answered yet, so leaving or
+ * reloading the page asks first. Not shown on the board: nearly every change arrives at once.
+ */
+export function holdSendingBoardChange(): () => void {
+  sendingChanges += 1;
+  const releaseChunkReload = holdChunkReload();
+  let settled = false;
+  return () => {
+    if (settled) return;
+    settled = true;
+    sendingChanges -= 1;
+    releaseChunkReload();
   };
 }
 

@@ -1074,6 +1074,28 @@ describe("boardChangeQueue", () => {
     expect(started).toEqual(["add note", "move card", "write text"]);
   });
 
+  it("holds a change from when it is queued until the room answers it", async () => {
+    let held = 0;
+    const queue = boardChangeQueue(() => {
+      held += 1;
+      return () => {
+        held -= 1;
+      };
+    });
+    let roomTakesRemove: (taken: boolean) => void = () => {};
+    const answer = new Promise<boolean>((resolve) => {
+      roomTakesRemove = resolve;
+    });
+    const removed = queue("note:n", () => answer);
+    // A redo pressed right after the undo waits behind it, not yet sent: leaving now loses it.
+    const redone = queue("note:n", async () => true);
+    expect(held).toBe(2);
+    roomTakesRemove(true);
+    await removed;
+    await redone;
+    expect(held).toBe(0);
+  });
+
   it("sends a change in several queues only once each of them has gone", async () => {
     const queue = boardChangeQueue();
     const started: Array<string> = [];
