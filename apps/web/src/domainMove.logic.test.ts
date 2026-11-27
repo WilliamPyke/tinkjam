@@ -94,7 +94,7 @@ const step = (over: Partial<Parameters<typeof moveStep>[0]>) =>
     origin: NEW,
     current: NEW,
     origins: [NEW, OLD],
-    path: "/guest",
+    path: "/join",
     search: "?host=boards.tinkjam.com",
     hash: "#invite",
     referrer: "",
@@ -123,7 +123,7 @@ describe("moving between our domains", () => {
     if (sent.kind !== "go") throw new Error("expected the older address to leave");
     const url = new URL(sent.href);
     expect(url.origin).toBe(NEW);
-    expect(url.pathname).toBe("/guest");
+    expect(url.pathname).toBe("/join");
     expect(url.searchParams.get("host")).toBe("boards.tinkjam.com");
     expect(url.searchParams.get("__clerk_db_jwt")).toBe("dev.jwt=");
     const payload = unpackMove(url.hash);
@@ -136,11 +136,11 @@ describe("moving between our domains", () => {
       step({ search: url.search, hash: url.hash, ...over });
     expect(arrive({ referrer: `${OLD}/` })).toEqual({
       kind: "arrived",
-      href: `/guest${url.search}#invite`,
+      href: `/join${url.search}#invite`,
       payload,
       done: true,
     });
-    const plain = "/guest?host=boards.tinkjam.com#invite";
+    const plain = "/join?host=boards.tinkjam.com#invite";
     for (const [over, done] of [
       [{ referrer: `${OLD}/`, moved: true }, true],
       [{ referrer: "" }, true],
@@ -159,7 +159,7 @@ describe("moving between our domains", () => {
   it("asks the older address once per browser, and only from the app's own pages", () => {
     expect(step({})).toEqual({
       kind: "go",
-      href: `${OLD}/move?to=%2Fguest%3Fhost%3Dboards.tinkjam.com#invite`,
+      href: `${OLD}/move?to=%2Fjoin%3Fhost%3Dboards.tinkjam.com#invite`,
       asking: true,
     });
     for (const over of [
@@ -194,7 +194,7 @@ describe("moving between our domains", () => {
     expect(step({ search: arrived.search, hash: arrived.hash, referrer: `${OLD}/` })).toMatchObject(
       {
         kind: "arrived",
-        href: `/guest${arrived.search}#invite`,
+        href: `/join${arrived.search}#invite`,
         payload: { kept: { "t3code:board-name:v1": "Ada" } },
         done: true,
       },
@@ -208,7 +208,7 @@ describe("moving between our domains", () => {
       "t3code:theme": "dark",
     };
     const cookie = "__clerk_db_jwt_ab12=dev.jwt=";
-    const href = `${NEW}/guest?host=boards.tinkjam.com#invite`;
+    const href = `${NEW}/join?host=boards.tinkjam.com#invite`;
     const session: Record<string, string> = {};
     const asked = step({});
     if (asked.kind !== "go") throw new Error("expected the current address to ask");
@@ -218,8 +218,8 @@ describe("moving between our domains", () => {
     // The older address hands over through its static page, as the app there would.
     const fromApp = step({ origin: OLD, read: (key) => stored[key] ?? null, cookie });
     if (fromApp.kind !== "go") throw new Error("expected the older address to leave");
-    const toMovePage = runAppPage(`${OLD}/guest?host=boards.tinkjam.com#invite`, { stored });
-    expect(toMovePage).toBe("/move?to=%2Fguest%3Fhost%3Dboards.tinkjam.com#invite");
+    const toMovePage = runAppPage(`${OLD}/join?host=boards.tinkjam.com#invite`, { stored });
+    expect(toMovePage).toBe("/move?to=%2Fjoin%3Fhost%3Dboards.tinkjam.com#invite");
     expect(runMovePage(new URL(toMovePage ?? "", OLD).href, stored, cookie)).toBe(fromApp.href);
 
     const desktop = "t3code://app";
@@ -236,12 +236,23 @@ describe("moving between our domains", () => {
       expect(step(over), name).toEqual({ kind: "stay" });
     }
     for (const origin of ["http://localhost:5733", desktop]) {
-      expect(runAppPage(`${origin}/guest#invite`), origin).toBeNull();
+      expect(runAppPage(`${origin}/join#invite`), origin).toBeNull();
       expect(step({ origin }), origin).toEqual({ kind: "stay" });
     }
     // An arrival is the app's to take in.
-    const arrival = `${NEW}/guest${packMove({ read: () => null, hash: "#invite" })}`;
+    const arrival = `${NEW}/join${packMove({ read: () => null, hash: "#invite" })}`;
     expect(runAppPage(arrival)).toBeNull();
+
+    // A board link opens at once; the next other page asks. The older address still hands over.
+    const board = { path: "/guest", search: "?host=boards.tinkjam.com" };
+    expect(runAppPage(`${NEW}/guest?host=boards.tinkjam.com#invite`)).toBeNull();
+    expect(step(board)).toEqual({ kind: "stay" });
+    expect(runAppPage(`${NEW}/r/blue-fox`)).toBeNull();
+    expect(step({ path: "/r/blue-fox", search: "", hash: "" })).toEqual({ kind: "stay" });
+    expect(runAppPage(`${OLD}/guest?host=boards.tinkjam.com#invite`, { stored })).toBe(
+      "/move?to=%2Fguest%3Fhost%3Dboards.tinkjam.com#invite",
+    );
+    expect(step({ ...board, origin: OLD })).toMatchObject({ kind: "go", asking: false });
   });
 
   it("sends the static page's hand-over only to the app's current address", () => {
