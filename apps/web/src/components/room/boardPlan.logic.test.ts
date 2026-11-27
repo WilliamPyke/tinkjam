@@ -198,6 +198,22 @@ describe("boardPlanTaskPlace", () => {
     expect(fifth).toEqual({ x: 464, y: 592, grow: { id: "s", size: { w: 1000, h: 472 } } });
   });
 
+  it("keeps clear of a dragged task whose measured height is shorter than it draws", () => {
+    // A narrow section holds one column, and a task dragged into it sits off the grid. The
+    // height the board measured before the task grew a due day is shorter than it draws now:
+    // a slot that only clears the measured height would land on it.
+    const board: RoomBoard = {
+      positions: {},
+      notes: [
+        { id: "s", text: "Tasks", x: 440, y: 328, section: true, size: { w: 380, h: 420 } },
+        task("dragged", { x: 548, y: 440 }),
+      ],
+    };
+    const at = boardPlanTaskPlace(board, [], () => 126);
+    expect(at).not.toMatchObject({ x: 464, y: 592 });
+    expect(at).toEqual({ x: 464, y: 800, grow: { id: "s", size: { w: 380, h: 680 } } });
+  });
+
   it("gives a task the size of the newest one, so a pile an agent or a template made stays even", () => {
     const size = { w: 192, h: 184 };
     const sized = boardPlanTaskPlace({ positions: {}, notes: [task("a", { size })] }, []);

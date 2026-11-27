@@ -131,6 +131,10 @@ const rememberPlace = (place: NewBoardPlace) => {
   }
 };
 
+// A template names the board it makes, still selected for typing when no name was given.
+const newBoardTitle = (template: BoardTemplate, title: string | null) =>
+  title ?? (template.id === BLANK_BOARD_TEMPLATE.id ? UNTITLED_BOARD : template.name);
+
 // The template a board waits to be made with while the user picks its project.
 const pickerOpenAtom = Atom.make<BoardTemplate | null>(null).pipe(
   Atom.keepAlive,
@@ -269,7 +273,7 @@ function useCreateBoard() {
       input: {
         threadId,
         projectId: project.id,
-        title: title ?? UNTITLED_BOARD,
+        title: newBoardTitle(template, title),
         ...defaults,
         interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
         branch: null,
@@ -304,7 +308,7 @@ function useCreateBoard() {
     const notes = changes.filter((change) => change.type === "note.put").length;
     if (notes > 0) fitRoomBoardOnOpen(roomBoardViewKey(ref), notes);
     // Typing on a new board names it; it never reaches a prompt the user has not clicked into.
-    if (title === null) nameBoardOnOpen(ref);
+    if (title === null) nameBoardOnOpen(ref, newBoardTitle(template, title));
     // Open it now; the rest of the template lands on the open board.
     void navigate(newBoardLocation(ref));
     void (async () => {
@@ -399,7 +403,7 @@ function useCreateCloudBoard() {
       appAtomRegistry.set(cloudNameAtom, template);
       return false;
     }
-    const created = await createCloudBoard({ name, title: title ?? UNTITLED_BOARD });
+    const created = await createCloudBoard({ name, title: newBoardTitle(template, title) });
     if (typeof created === "string") {
       toastManager.add({ type: "error", title: "Could not start a board", description: created });
       return false;
@@ -408,7 +412,7 @@ function useCreateCloudBoard() {
     const ref = scopeThreadRef(guestEnvironmentId(created.shareId), created.threadId);
     const notes = changes.filter((change) => change.type === "note.put").length;
     if (notes > 0) fitRoomBoardOnOpen(`guest:${created.shareId}`, notes);
-    if (title === null) nameBoardOnOpen(ref);
+    if (title === null) nameBoardOnOpen(ref, newBoardTitle(template, title));
     // Straight onto the new board, wherever it was started from; its template lands there live.
     void navigate(guestShareLocation(created));
     void putOnCloudBoard(created, changes).then((complete) => {

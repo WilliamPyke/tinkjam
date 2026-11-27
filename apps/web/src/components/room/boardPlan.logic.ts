@@ -301,7 +301,11 @@ function boardPlanTaskSpot(
 ): BoardPlanTaskPlace {
   const rectOf = (note: RoomBoardNote): BoardRect => {
     const rect = boardNoteRect(note);
-    return { ...rect, height: heightOf(note) ?? rect.height };
+    // A measured height can be shorter than the card draws now: it was taken before a due day or
+    // a line of text added in the Plan grew it, and the board draws none again until it shows.
+    // Never trust one under the height the card is given or guessed, or a slot clears its top
+    // and lands on its bottom.
+    return { ...rect, height: Math.max(heightOf(note) ?? 0, rect.height) };
   };
   const sections = board.notes.filter((note) => note.section === true);
   const cards = boardItemRects({ ...board, notes: [] }, cardIds);

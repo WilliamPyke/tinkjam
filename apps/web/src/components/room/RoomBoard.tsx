@@ -1685,6 +1685,7 @@ export function RoomBoard({
       area,
       covered: chromeCoverOf(surfaceRef.current),
       margin: FIT_MARGIN,
+      forceFit: fitAwaits > 0,
     });
     const opens =
       refit ||
@@ -4504,10 +4505,19 @@ export function RoomBoard({
   const placeCommentAt = (at: BoardPoint | null, under: string | null) => {
     setPlacingComment(false);
     if (at === null || !canEdit || full) return;
-    const half = (BOARD_PIN_SIZE * pinScale) / 2;
+    const size = BOARD_PIN_SIZE * pinScale;
+    const half = size / 2;
     const id = randomUUID();
     const on = under === null || isSectionRef(under) ? null : under;
-    setDraftComment({ id, on, ...settleBoardValue({ x: at.x - half, y: at.y - half }) });
+    const target = on === null ? undefined : boxes.get(on);
+    const spot =
+      target === undefined
+        ? { x: at.x - half, y: at.y - half }
+        : {
+            x: target.x + target.width + 8 / view.zoom,
+            y: at.y - half,
+          };
+    setDraftComment({ id, on, ...settleBoardValue(spot) });
     setOpenComment(id);
   };
   // Enter or Space on a card, or a control in it, picks the card for the Line or Comment tool as a
