@@ -245,7 +245,7 @@ export function SelectionBar({
       data-selection-bar
       data-selection-docked={docked ? "" : undefined}
       className={cn(
-        "absolute top-2 left-2 z-20 flex items-center gap-1 rounded-xl border border-board-hairline bg-card py-1 ps-3 pe-1 text-xs text-card-foreground shadow-board",
+        "absolute top-2 left-2 z-20 flex items-center gap-1 rounded-xl border border-board-hairline bg-card py-1 ps-3 pe-1 text-ui-sm text-card-foreground shadow-board",
         hidden && "invisible",
       )}
       onPointerDown={(event) => event.stopPropagation()}
@@ -310,7 +310,7 @@ export function SelectionBar({
       ) : (
         <>
           {actions.map((action) => (
-            <Button key={action.label} size="micro" variant="ghost-muted" onClick={action.run}>
+            <Button key={action.label} size="ui-sm" variant="ghost" onClick={action.run}>
               {action.icon}
               {action.label}
             </Button>
@@ -323,8 +323,8 @@ export function SelectionBar({
             )
           ) : (
             <Button
-              size="micro"
-              variant="ghost-muted"
+              size="ui-sm"
+              variant="ghost"
               aria-label={deleteLabel}
               data-selection-delete
               onClick={onDelete}
@@ -333,7 +333,7 @@ export function SelectionBar({
               Delete
             </Button>
           )}
-          <Button size="micro" variant="ghost-muted" onClick={onClear}>
+          <Button size="ui-sm" variant="ghost" onClick={onClear}>
             <XIcon />
             Clear
           </Button>
