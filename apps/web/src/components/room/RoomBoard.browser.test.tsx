@@ -1215,7 +1215,7 @@ describe("RoomBoard keys and pointer", () => {
     await using screen = await board.screen;
     const guide = screen.getByRole("region", { name: "Getting started" });
     await expect.element(guide).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Board menu" }));
+    await userEvent.click(screen.getByRole("button", { name: "Board menu for Launch" }));
     await userEvent.click(page.getByRole("menuitem", { name: "Getting started" }));
     await expect.element(guide).toBeVisible();
     const noteStep = () => screen.container.querySelector('[data-board-guide-step="note"]');
