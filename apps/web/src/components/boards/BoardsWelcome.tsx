@@ -165,6 +165,7 @@ export function StartBoardForm({
   };
   return (
     <form className={className} onSubmit={start}>
+      {heading}
       <fieldset className="flex min-w-0 flex-col">
         <legend className="sr-only">Start with</legend>
         <ul className="grid grid-cols-3 gap-2" data-welcome-templates>
@@ -215,7 +216,6 @@ export function StartBoardForm({
           </InlineButton>
         </div>
       </fieldset>
-      {heading}
       <div className="flex flex-col gap-3.5">
         {typing ? (
           <label className="flex min-w-0 flex-col gap-1.5 text-ui-sm font-semibold text-foreground">
