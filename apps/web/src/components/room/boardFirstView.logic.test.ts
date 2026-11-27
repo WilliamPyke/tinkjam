@@ -53,11 +53,20 @@ describe("the first view of a board", () => {
     const right = area.width - (left + middle.width * centred.zoom);
     expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
 
-    const huge = { x: 0, y: 500, width: 1440, height: 520 };
-    const phone = { width: 390, height: 800 };
-    const corner = firstBoardView({ rects: sample, start: huge, area: phone, covered, margin: 72 });
+    const huge = { x: 0, y: 500, width: 2400, height: 520 };
+    const corner = firstBoardView({ rects: sample, start: huge, area, covered, margin: 72 });
     expect(corner.view.zoom).toBe(BOARD_FIRST_VIEW_MIN_ZOOM);
-    expect(corner.view.x + huge.x * corner.view.zoom).toBe(16);
+    expect(corner.view.x + huge.x * corner.view.zoom).toBe(72);
+  });
+
+  it("opens a phone fitted to its cards, the same as Fit all", () => {
+    const phone = { width: 390, height: 844 };
+    expect(
+      firstBoardView({ rects: sample, start: goals, area: phone, covered, margin: 72 }),
+    ).toEqual({
+      view: fitBoardOnSurface(sample, phone, covered, 72),
+      whole: true,
+    });
   });
 
   it("starts at the first card when the board marks no start", () => {

@@ -11,7 +11,7 @@ type ManagedAuthShell = ComponentType<ManagedAuthShellProps>;
 
 type ClerkLoad =
   | { readonly status: "idle" | "loading" | "failed" }
-  | { readonly status: "ready"; readonly Shell: ManagedAuthShell };
+  | { readonly status: "ready"; readonly Shell: ManagedAuthShell; readonly attempt: number };
 
 let loadShell: (() => Promise<ManagedAuthShell>) | null = null;
 let pending: Promise<void> | null = null;
@@ -37,19 +37,35 @@ export function configureManagedAuth(load: () => Promise<ManagedAuthShell>): voi
   loadShell = load;
 }
 
-/** Loads sign-in (Clerk) once; resolves when it is ready or could not load. */
+const RETRY_AFTER_MS = 1_500;
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Loads sign-in (Clerk), with one quiet retry before the page gives up. */
 export function requestClerk(): Promise<void> {
   if (pending !== null) return pending;
   if (loadShell === null) return Promise.resolve();
   settle({ status: "loading" });
-  pending = loadShell().then(
-    (Shell) => settle({ status: "ready", Shell }),
-    () => {
-      pending = null;
-      settle({ status: "failed" });
-    },
-  );
+  const load = loadShell;
+  pending = load()
+    .catch(() => wait(RETRY_AFTER_MS).then(load))
+    .then(
+      (Shell) => settle({ status: "ready", Shell, attempt: 0 }),
+      () => {
+        pending = null;
+        settle({ status: "failed" });
+      },
+    );
   return pending;
+}
+
+/** Retries sign-in where it failed, without loading the whole page again. */
+export function retryClerk(): void {
+  if (current.status === "ready") {
+    settle({ ...current, attempt: current.attempt + 1 });
+    return;
+  }
+  void requestClerk();
 }
 
 export const useClerkLoadFailed = () => useClerkLoad().status === "failed";
@@ -59,7 +75,7 @@ export function ManagedAuthRoot({ publishableKey, navigate, children }: ManagedA
   const load = useClerkLoad();
   if (load.status !== "ready") return children;
   return (
-    <load.Shell publishableKey={publishableKey} navigate={navigate}>
+    <load.Shell key={load.attempt} publishableKey={publishableKey} navigate={navigate}>
       {children}
     </load.Shell>
   );

@@ -1,7 +1,7 @@
 import { ClerkFailed, ClerkLoading, SignIn } from "@clerk/react";
 import { useNavigate } from "@tanstack/react-router";
 import { XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cloudBoardsOrigin } from "~/guest/cloudBoardsHost";
 import { PRIVACY_POLICY_URL } from "~/legalLinks";
@@ -14,7 +14,7 @@ import { Skeleton } from "../ui/skeleton";
 import { signInScreenAppearance } from "./clerkAppearance";
 import { signInFromBoard, type SignInPageRequest } from "./authRedirect";
 import { useClerkMounted } from "./clerkHooks";
-import { requestClerk, useClerkLoadFailed } from "./lazyClerk";
+import { requestClerk, retryClerk, useClerkLoadFailed } from "./lazyClerk";
 import { clearSignInPageRequestOnLeave, readSignInPageRequest } from "./signInPageRequest";
 
 /**
@@ -85,18 +85,48 @@ const signInLoading = (
   </div>
 );
 
-const signInFailed = (
-  <p role="alert" className="text-base text-foreground">
-    Sign-in could not load. Check your internet connection, then reload this page.
-  </p>
-);
+function SignInFailed() {
+  return (
+    <div role="alert" className="flex flex-col items-start gap-4">
+      <p className="text-base text-foreground">
+        Sign-in could not load. Check your internet connection, then try again.
+      </p>
+      <Button type="button" variant="outline" onClick={retryClerk}>
+        Try again
+      </Button>
+    </div>
+  );
+}
 
 function SignInForm({ request }: { readonly request: SignInPageRequest }) {
   return (
     <>
       <ClerkLoading>{signInLoading}</ClerkLoading>
-      <ClerkFailed>{signInFailed}</ClerkFailed>
-      <div data-sign-in-form>
+      <ClerkFailed>
+        <SignInFailed />
+      </ClerkFailed>
+      <SignInWidget request={request} />
+    </>
+  );
+}
+
+function SignInWidget({ request }: { readonly request: SignInPageRequest }) {
+  const widget = useRef<HTMLDivElement>(null);
+  const [verifying, setVerifying] = useState(false);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- watches Clerk's widget DOM, which React does not own, for its verification state
+  useEffect(() => {
+    const root = widget.current;
+    if (root === null) return;
+    const update = () =>
+      setVerifying(root.textContent?.includes("Verifying your request") ?? false);
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(root, { subtree: true, childList: true, characterData: true });
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <>
+      <div data-sign-in-form ref={widget}>
         <SignIn
           routing="path"
           path="/sign-in"
@@ -108,6 +138,13 @@ function SignInForm({ request }: { readonly request: SignInPageRequest }) {
             : {})}
         />
       </div>
+      <div aria-live="polite">
+        {verifying ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Checking your connection. This can take up to a minute.
+          </p>
+        ) : null}
+      </div>
     </>
   );
 }
@@ -117,5 +154,5 @@ function SignInStarting() {
   const failed = useClerkLoadFailed();
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- starts loading Clerk, which lives outside React, for a page opened without it
   useEffect(() => void requestClerk(), []);
-  return failed ? signInFailed : signInLoading;
+  return failed ? <SignInFailed /> : signInLoading;
 }
