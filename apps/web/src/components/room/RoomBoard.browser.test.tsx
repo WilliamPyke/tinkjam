@@ -342,7 +342,7 @@ describe("RoomBoard sections", () => {
     ]);
     const { onChange } = board;
     await using screen = await board.screen;
-    for (const name of ["Section title", "Thread name"]) {
+    for (const name of ["Section title", "Agent box name"]) {
       const field = screen.getByRole("textbox", { name, exact: true });
       // A section's title is a field of its own; a card's title, like its text, takes a double-click.
       if (name === "Section title") await userEvent.click(field);
@@ -374,7 +374,7 @@ describe("RoomBoard sections", () => {
       },
     );
     await using screen = await board.screen;
-    const title = screen.getByRole("textbox", { name: "Thread name", exact: true });
+    const title = screen.getByRole("textbox", { name: "Agent box name", exact: true });
     await userEvent.dblClick(title);
     await expect.element(title).toHaveFocus();
     await userEvent.keyboard("{Escape}");

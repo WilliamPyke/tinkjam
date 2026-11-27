@@ -33,6 +33,7 @@ import { type ReactNode } from "react";
 import { formatRelativeTimeLabel } from "../timestampFormat";
 import { type Project, type SidebarThreadSummary, type Thread } from "../types";
 import { isSidebarHiddenThread } from "./Sidebar.logic";
+import type { HomeBoard } from "./boards/boardsHome.logic";
 
 export const RECENT_THREAD_LIMIT = 12;
 export const ITEM_ICON_CLASS = "size-4 text-icon-muted";
@@ -560,6 +561,28 @@ function scorePaletteItem(
 
 const BOARD_SEARCH_GROUP = "board-search";
 const BOARD_SEARCH_LIMIT = 8;
+const BOARD_LIST_GROUP = "boards-search";
+
+/** The boards the home lists, as rows that open them, found by name or workspace. */
+export function buildBoardActionItems(input: {
+  readonly boards: ReadonlyArray<HomeBoard>;
+  readonly icon: ReactNode;
+  readonly openBoard: (board: HomeBoard) => Promise<void>;
+}): CommandPaletteActionItem[] {
+  return input.boards.map((board) => {
+    const workspace = board.kind === "joined" ? board.workspaceName : null;
+    const description = workspace ?? (board.kind === "team" ? "Team" : null);
+    return {
+      kind: "action",
+      value: `board-open:${board.key}`,
+      searchTerms: workspace === null ? [board.title] : [board.title, workspace],
+      title: board.title,
+      ...(description === null ? {} : { description }),
+      icon: input.icon,
+      run: () => input.openBoard(board),
+    };
+  });
+}
 
 /**
  * Equal match classes put commands before threads, so "new" runs "New thread".
@@ -581,6 +604,8 @@ export function filterCommandPaletteGroups(input: {
   threadMessageItems?: ReadonlyArray<CommandPaletteActionItem>;
   /** The cards and people of the board on screen, found only by what is typed. */
   boardSearchItems?: ReadonlyArray<CommandPaletteActionItem>;
+  /** Every board the person has, found only by what is typed. */
+  boardListItems?: ReadonlyArray<CommandPaletteActionItem>;
   now?: number;
 }): CommandPaletteGroup[] {
   if (input.allOptions && input.isInSubmenu) {
@@ -617,6 +642,13 @@ export function filterCommandPaletteGroups(input: {
   // On equal match classes, groups keep this order: threads, what people search
   // for most, right after commands.
   if (searchesEverything) {
+    if (input.boardListItems && input.boardListItems.length > 0) {
+      searchableGroups.push({
+        value: BOARD_LIST_GROUP,
+        label: "Boards",
+        items: input.boardListItems,
+      });
+    }
     if (input.boardSearchItems && input.boardSearchItems.length > 0) {
       searchableGroups.push({
         value: BOARD_SEARCH_GROUP,
@@ -665,7 +697,7 @@ export function filterCommandPaletteGroups(input: {
     const limit =
       group.value === "threads-search"
         ? PALETTE_THREAD_LIMIT
-        : group.value === BOARD_SEARCH_GROUP
+        : group.value === BOARD_SEARCH_GROUP || group.value === BOARD_LIST_GROUP
           ? BOARD_SEARCH_LIMIT
           : group.value === "nested-search" || (searchesEverything && threadsMatch)
             ? PALETTE_SECONDARY_LIMIT

@@ -132,11 +132,11 @@ export function boardAskTargets(
         const model = modelOf(box.id);
         return {
           id: box.id,
-          label: box.title === "" ? "Untitled thread" : box.title,
+          label: box.title === "" ? "Untitled agent box" : box.title,
           ...(model === undefined || model.trim() === "" ? {} : { model }),
         };
       }),
-    ...(canAddBox ? [{ id: BOARD_ASK_NEW_BOX, label: "New thread box" }] : []),
+    ...(canAddBox ? [{ id: BOARD_ASK_NEW_BOX, label: "New agent box" }] : []),
   ];
 }
 

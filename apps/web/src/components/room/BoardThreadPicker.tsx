@@ -37,9 +37,9 @@ export function BoardThreadPicker({
     >
       <DialogPopup className="max-w-md" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Add one of your threads</DialogTitle>
+          <DialogTitle>Add one of your chats</DialogTitle>
           <DialogDescription>
-            The room will see this thread's prompts and replies from now on.
+            The room will see this chat's prompts and replies from now on.
           </DialogDescription>
         </DialogHeader>
         <ThreadPicker

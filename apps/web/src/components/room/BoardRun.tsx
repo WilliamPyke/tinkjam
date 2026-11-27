@@ -134,7 +134,7 @@ export function BoardRunPopover({
               ? count === 1
                 ? "The box's agent does it and answers on the task. It stays in progress until someone ticks it off."
                 : "One box's agent does them in order and answers on each. They stay in progress until someone ticks them off."
-              : "Each task gets a new thread box beside it, whose agent answers on it. Each stays in progress until someone ticks it off."}
+              : "Each task gets a new agent box beside it, whose agent answers on it. Each stays in progress until someone ticks it off."}
           </p>
           <div className="flex min-w-0 items-center gap-1.5">
             <div className="min-w-0 flex-1">
@@ -142,7 +142,7 @@ export function BoardRunPopover({
                 <BoardAskTargetSelect targets={targets} value={target} onChange={setTarget} />
               ) : (
                 <p className="truncate text-xs">
-                  {count === 1 ? "1 new thread box" : `${count} new thread boxes`}
+                  {count === 1 ? "1 new agent box" : `${count} new agent boxes`}
                 </p>
               )}
             </div>

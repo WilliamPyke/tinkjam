@@ -125,8 +125,8 @@ describe("boardAskTargets and boardAskDefaultTarget", () => {
 
   it("offers only the boxes this person may prompt, and a new one when they may add it", () => {
     expect(boardAskTargets(boxes, "sam", true)).toEqual([
-      { id: "mine", label: "Untitled thread" },
-      { id: BOARD_ASK_NEW_BOX, label: "New thread box" },
+      { id: "mine", label: "Untitled agent box" },
+      { id: BOARD_ASK_NEW_BOX, label: "New agent box" },
     ]);
     expect(boardAskTargets(boxes, null, false)).toEqual([{ id: "thread", label: "Room" }]);
     expect(boardAskTargets(boxes, "ann", false)).toEqual([]);
@@ -145,13 +145,13 @@ describe("boardAskTargets and boardAskDefaultTarget", () => {
     const targets = [
       { id: "mine", label: "Mine" },
       { id: "thread", label: "Room" },
-      { id: BOARD_ASK_NEW_BOX, label: "New thread box" },
+      { id: BOARD_ASK_NEW_BOX, label: "New agent box" },
     ];
     expect(boardAskDefaultTarget(targets, { selectedBoxes, artifactBox, lastUsed })).toBe(expected);
   });
 
   it("starts on a new box when there is none, and on nothing when nothing is offered", () => {
-    const onlyNew = [{ id: BOARD_ASK_NEW_BOX, label: "New thread box" }];
+    const onlyNew = [{ id: BOARD_ASK_NEW_BOX, label: "New agent box" }];
     expect(boardAskDefaultTarget(onlyNew, { selectedBoxes: [], lastUsed: null })).toBe(
       BOARD_ASK_NEW_BOX,
     );

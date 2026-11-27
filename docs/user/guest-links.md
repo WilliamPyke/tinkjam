@@ -46,19 +46,19 @@ stops sharing or replaces the link. You can send or dismiss guest messages from 
 
 On web, every thread has a board: choose **Open board** in the thread's menu or the command
 palette, or **Board** in a shared thread's header. The board is where the room works: the
-thread, each guest, and every [thread box](#thread-boxes) appear as cards you can drag, with what
+thread, each guest, and every [agent box](#agent-boxes) appear as cards you can drag, with what
 each guest has waiting for you, and you can add notes.
 
 To start a new board from a layout, open the arrow beside **New board** on Boards, or **New board
 from template…** in the command palette: **Plan a feature**, **Bug bash**, **Design review** and
-**Retro** come with sections, placeholder notes to fill in and lines into the thread box. **Research
-with agents** and **Build with agents** also add named thread boxes and an artifact; their boxes
+**Retro** come with sections, placeholder notes to fill in and lines into the agent box. **Research
+with agents** and **Build with agents** also add named agent boxes and an artifact; their boxes
 start empty and use your default model unless you pick another. **Blank** is the default,
 and **New board** itself still makes a blank board in one click.
 
 You can plan on a board before inviting anyone. A thread you have not shared opens on an empty
 board, kept on the thread from your first change, and its header says **Not shared**. Everything
-that needs no guest works there: cards, lines, colours, comment threads, thread boxes running on
+that needs no guest works there: cards, lines, colours, comment threads, agent boxes running on
 your agent, and artifacts. **Share** in the board's header opens the same dialog as **Share with
 guests**, to make, extend, replace or stop the link or clear the board. Once shared, the header names who
 joined (click the names to manage guests) and has **Stop sharing**. The thread's card says when your agent is
@@ -94,7 +94,7 @@ the cards near it, to even gaps between them, and to a section's padding, and a 
 what it lines up with. Hold Ctrl (Cmd on a Mac) while dragging to put it exactly where you let go.
 
 A note can be one of six colours: choose the palette on it. Anyone can recolour a note, and your
-next notes take the colour you picked last. React to a note, task, link, artifact or thread box
+next notes take the colour you picked last. React to a note, task, link, artifact or agent box
 with the smiley on it; reactions show under the card with how many, and clicking one adds or takes
 back your own. When the owner removes a guest, that guest's reactions go too.
 
@@ -109,7 +109,7 @@ notes at once, and has:
 - **Tidy**, which lines the selected cards up in an even grid from where the top-left one was, in
   the order you read them, moving it right or down only as far as it takes to clear other cards.
 - **Duplicate** (or Ctrl+D, Cmd+D on a Mac), which copies the selected notes, tasks and links next
-  to them as your own cards and selects the copies. Thread boxes, artifacts, code and pull request
+  to them as your own cards and selects the copies. Agent boxes, artifacts, code and pull request
   windows, comment threads and sections are not copied, and the board says so. Ctrl+C then Ctrl+V (Cmd on a Mac) does the same, placing the copies at
   your pointer, on this board or another one open in the same browser. Pasting text copied anywhere else makes a note of it, and pasting a link makes a
   link card.
@@ -126,7 +126,7 @@ board, unless the section is selected: then it moves the section. Click its titl
 Resize it from its bottom corners, up to 20,000 pixels a side (other cards go up to 8,000), and
 colour it like a note. A section never goes to an agent and takes no
 lines. Only whoever added it, or the owner, can rename or delete it. Deleting a section with cards
-on it asks whether to keep them where they are or delete them too. Enter or clicking away saves a section's, thread box's or artifact's title;
+on it asks whether to keep them where they are or delete them too. Enter or clicking away saves a section's, agent box's or artifact's title;
 Escape puts back the one it had.
 
 Ctrl+Z (Cmd+Z on a Mac) undoes your own last change on the board, and Ctrl+Shift+Z or Ctrl+Y
@@ -143,9 +143,9 @@ on the board. A card the drop would do nothing for is simply moved there. Nothin
 whose agent has a card on the board can instead drag a note onto **Your agent** or choose **Give
 to my agent**: it opens as a draft in their own Tinkjam, as a task does below.
 
-### Thread boxes
+### Agent boxes
 
-A thread box is a conversation of its own on the board. The thread's own card is the owner's
+An agent box is a conversation of its own on the board. The thread's own card is the owner's
 first one; anyone in the room can add more, and each belongs to whoever added it. Write in a box's
 message box and press Send. The model the box will use shows beside it, and whoever added the box
 can pick another there. The box keeps that model for everyone, after a reload too, until someone
@@ -174,7 +174,7 @@ your boxes on that board.
 Only the person who added a box can prompt it. The box's message box says where the prompt goes
 before you send it.
 
-To bring a thread you already have onto the board, open the toolbar's **Thread** menu and choose
+To bring a thread you already have onto the board, open the toolbar's **Agent box** menu and choose
 **Add one of your threads**, then pick it. The owner picks from the threads on their machine; a
 guest can do this once a machine of theirs is in the room, and picks from that machine's threads.
 A thread that is shared itself, or keeps a board of its own, is not listed. The box takes the thread's name and shows its last finished turn. From then on the room sees that
@@ -190,7 +190,7 @@ fills shows the reply as it is written, a few seconds behind for a box on a gues
 Deleting a box asks first, and its chat stays in your list unless you tick **Also delete the
 chat**. If you archive or delete a box's thread, the box's
 next prompt starts a new thread for it. A board holds up to 12
-thread boxes.
+agent boxes.
 
 ### What your agent can do on the board
 
@@ -219,7 +219,7 @@ cannot reach the board.
 To ask about particular cards, select them and choose **Ask an agent** on the selection bar (under
 **More** on a phone), in the right-click menu, or press Alt+A (Option+A on a Mac). Type what you
 want, or pick one of the suggestions that fit what you selected, such as **Turn into tasks**, and
-choose which of your boxes takes it, or **New thread box** to add one beside the cards. Each box
+choose which of your boxes takes it, or **New agent box** to add one beside the cards. Each box
 shows the model it last ran on, and the model picker beside the list sets the model the prompt runs
 on, a new box's too. The cards go with that one prompt along lines into the box, as if you had
 drawn them, so everyone sees what the agent was given. Escape or clicking away closes it with
@@ -236,7 +236,7 @@ they could undo, and **Redo** it. A card someone changed after the agent did sta
 ### See every agent at once
 
 **Agents** in the board's header (Alt+G, Option+G on a Mac, or under **More** on a phone) lists
-every thread box and the board's own thread: whose it is, its model, what it is doing (such as
+every agent box and the board's own thread: whose it is, its model, what it is doing (such as
 "Working · 1m 12s", "Waiting for approval", "Needs you", "Done", "Stopped" or "Failed") and what it
 last did to the board. What needs you comes first, then what is working. Click one to go to it. A
 guest's prompt waiting for you, or an approval your own agent asks for, can be answered right
@@ -283,24 +283,24 @@ Each person deletes their own replies, and the owner can delete any; only whoeve
 or the owner, deletes the whole thread. A thread whose pin sits on a card, or that has a line to
 it, is deleted with the card, and one Undo brings both back.
 
-A thread with a line into a thread box goes with its prompts whole, every comment with who wrote
+A thread with a line into an agent box goes with its prompts whole, every comment with who wrote
 it; a very long thread sends its first comment and its newest replies. A new comment placed on a
-thread box or an artifact gets that line by itself once you write it, unless the board already
+agent box or an artifact gets that line by itself once you write it, unless the board already
 holds all the lines it can. Moving a pin later does not change its lines.
 
 To bring an agent into a thread, type your question in the reply field (or leave it empty) and
-choose the bot button beside Send, then one of your thread boxes. Your question goes in as your
+choose the bot button beside Send, then one of your agent boxes. Your question goes in as your
 reply, and that box's agent gets the whole thread and answers it. Its answer lands in the thread
 with its formatting, cut to about 1,200 characters, marked with whose agent wrote it and the model,
 and everyone in the room sees it,
 along with a line while the agent works. You can only ask your own agent: the owner can ask the
 room thread's card or any of their boxes; a guest can ask once a machine of theirs joined the room
-and they have a thread box of their own there. The person whose agent it was, or the owner, can
+and they have an agent box of their own there. The person whose agent it was, or the owner, can
 delete an answer like any reply. A thread deleted before the answer arrives gets nothing.
 
 ### Lines between cards
 
-Lines carry meaning. A note, task, link, comment, comment thread or artifact with a line into a thread box goes
+Lines carry meaning. A note, task, link, comment, comment thread or artifact with a line into an agent box goes
 with the next prompt to that box, each with who wrote it, so anyone can steer a box by attaching a
 note to it. Once sent, a card stays out of that box's later prompts until it changes: an edited
 note or a comment thread with a new reply goes once more. Pin a card (**Always send**) to send it
@@ -320,16 +320,16 @@ owner's instruction. A guest's cards are written into their message's text, so t
 all of it before sending.
 
 A line from a section works as a line from every card in it: draw it from one of the dots on
-the section's sides to a thread box (or the artifact a box rewrites) and each card inside goes as above. A card
+the section's sides to an agent box (or the artifact a box rewrites) and each card inside goes as above. A card
 counts while its middle is inside the section, so dragging one in or out changes what goes. The
 box's message shows them as one chip, such as "Research (5 cards)".
 
-A line from a thread box to an artifact means that box's replies fill the artifact.
+A line from an agent box to an artifact means that box's replies fill the artifact.
 
 ### Artifacts
 
 An **Artifact** is a card agents write into. Add one, give it a title, and draw a line to it from a
-thread box. Each prompt to that box tells its agent that its reply fills the artifact, with what
+agent box. Each prompt to that box tells its agent that its reply fills the artifact, with what
 the artifact shows now to revise. While the turn runs, everyone on the board watches the artifact
 being written, about once a second and scrolled to the newest text; a page shows as its source
 until it is done, so a half-written page never runs. Once it finishes, the artifact shows the
@@ -366,7 +366,7 @@ fills the artifact.
 Many sources (Linear, GitHub, Notion, Jira, Superhuman, private Google Docs) do not show inside a
 link card. To let everyone read one, choose **Bring in with my agent** on its link card, or
 **Add and bring in** when you add the link from the toolbar. Tinkjam writes a prompt in one of
-your own thread boxes (the one you selected, else the one you used last; with several it asks
+your own agent boxes (the one you selected, else the one you used last; with several it asks
 which) asking your agent to open the link with the tools you connected to it (a
 Linear or Google Drive connection, for example) and write a snapshot of it: for an issue its
 status, assignee and latest comments, for a spreadsheet its sheets and first rows, for a design
@@ -378,15 +378,15 @@ The reply becomes an artifact beside the link card, joined to it by a line, that
 read. It says what it is a snapshot of, whose agent read it and how long ago, with **Open source**
 to go to the original. **Refresh** asks your own agent to read it again into the same card; the
 previous snapshot stays under **Restore previous**. A snapshot counts toward the board's 6
-artifacts. A line from a snapshot, or from its link card, into a thread box sends what the
+artifacts. A line from a snapshot, or from its link card, into an agent box sends what the
 snapshot says with that box's next prompt; a long one is cut to its start, and the agent is told
 so.
 
 ### Code windows
 
-A **Code** window shows what a thread box's agent changed: each file with its lines added and
+A **Code** window shows what an agent box's agent changed: each file with its lines added and
 removed, and a file's diff when you click it. Add one from the board's tools and draw a line to it
-from a thread box, or choose **New code window** on the box. It updates each time the box's turn
+from an agent box, or choose **New code window** on the box. It updates each time the box's turn
 ends; **Last turn only** narrows it to that turn. Everyone in the room sees the file list. A diff
 is read from the machine that ran the agent, so the diffs of a guest's box open only on that
 guest's own machine. A board holds up to 6 code windows, a window lists up to 50 files, and a very
@@ -396,8 +396,8 @@ large file says it is too large to show.
 
 A **Pull request** window shows one GitHub pull request, kept current: its title, whether it is
 open, a draft, merged or closed, its checks (and which are failing), commits, files and lines
-changed, and its branches. Choose **Pull request** in the board's tools and paste its address,
-paste a pull request address on the board, or choose **Show pull request** on a thread box whose
+changed, and its branches. Choose **GitHub pull request** in the board's tools and paste its address,
+paste a pull request address on the board, or choose **Show pull request** on an agent box whose
 thread has one. Only the owner's Tinkjam reads GitHub, with the owner's own sign-in, so guests need
 no GitHub access, and a pull request the owner's account cannot see says so. It reads again when
 added, when anyone chooses **Refresh**, and every few minutes while someone has the board open.
@@ -420,8 +420,8 @@ failed turn leaves the task unanswered, and nobody's turn answers a task someone
 To hand tasks to agents in one step, select them and choose **Run with an agent** on the
 selection bar or in the right-click menu, choose **Run with an agent** on one task, or choose
 **Run this section's tasks** in a section's menu. **One box for all** sends them, in order, as one
-prompt to one of your thread boxes that is not busy, or to a new one. **A box per task** puts each
-in a new thread box of its own beside it, up to 4 at once. The model shown is the one they run on.
+prompt to one of your agent boxes that is not busy, or to a new one. **A box per task** puts each
+in a new agent box of its own beside it, up to 4 at once. The model shown is the one they run on.
 A guest's run waits for the owner like any other prompt of theirs, unless it runs on their own
 machine.
 
@@ -429,7 +429,7 @@ Each task being run shows its box's name and how it is going, such as **Working*
 the owner** or **Didn't finish**; click it to go to the box. Running a task puts it in progress;
 when the box's turn finishes, the box answers it, and it stays in progress until someone ticks it
 off. Whoever runs the box's agent can **Stop** it from the task; a stopped or failed run leaves the
-task open, and **Clear** takes its mark off. Tasks run only in your own thread boxes, not in the
+task open, and **Clear** takes its mark off. Tasks run only in your own agent boxes, not in the
 room thread's own card; use **Take it to my agent** for that.
 
 ### Plan the work
@@ -464,8 +464,8 @@ The board belongs to the room. Guests open the same one with **Board** in the th
 everyone sees a card land where it was dropped and a note once its author clicks away from it.
 Anyone in the room can move, resize, connect and edit any card, and tick or assign any task; each
 card names who added it. Only that person and the owner can delete a card, a comment included, or
-rename a thread box. A board holds up to 50 notes, tasks, links, comments, comment threads,
-artifacts and thread boxes of 280 characters, and 100 lines. An agent sees a card only when it is [on a line into a box](#lines-between-cards) someone
+rename an agent box. A board holds up to 50 notes, tasks, links, comments, comment threads,
+artifacts and agent boxes of 280 characters, and 100 lines. An agent sees a card only when it is [on a line into a box](#lines-between-cards) someone
 prompts, and then only that person's own agent, or the owner's once the owner sends a guest's
 message.
 
@@ -474,7 +474,7 @@ expired, stopping sharing and archiving the thread all keep it: the next link op
 threads and artifacts. While the thread is not shared you keep working on it alone, and your thread
 boxes keep showing their turns. Its guests have to join again, as new people. What people from an earlier
 link added stays under the name they had, but it is nobody's now, so only the owner can delete it,
-and a task cannot be given to them. Their own thread boxes stay as cards showing their last turns,
+and a task cannot be given to them. Their own agent boxes stay as cards showing their last turns,
 and no one can prompt them; the owner's boxes keep their threads. To start over, choose **Clear
 board** in the **Share with guests** dialog, which removes every card, line and comment thread for
 everyone, including from a board kept while the thread is not shared. Removing a guest is
@@ -525,7 +525,7 @@ Signed in, the bell on the boards home and in a board's header is your inbox. It
 
 Someone signed in who can only view a board can choose **Ask for edit access**, with a short note if they like. Whoever made the board, and the owners of its workspace, get it in their inbox with **Approve** and **Decline**; approving lets them edit at once, on the page they have open. One request per person per board can wait at a time. On a board kept on a computer, mentions show, but nothing goes to an inbox.
 
-A cloud board has no agent of its own. Each person brings theirs. When you make a cloud board and this browser has one computer connected, your agent comes along by itself, so **Thread** and **Ask an agent** work at once. Otherwise, or on a board someone invited you to, choose **Thread**, **Ask an agent** or **Attach my agent**. **Bring your agent** lists your computers with whether each is online; choose **Bring my agent** on one and your agent's box appears in the middle of your view, ready for your first prompt, in no project or the project you pick (the next time, the one you picked last). Your thread boxes then run on that computer, and only you can prompt them. A box whose person is not on the board shows **Offline**.
+A cloud board has no agent of its own. Each person brings theirs. When you make a cloud board and this browser has one computer connected, your agent comes along by itself, so **Agent box** and **Ask an agent** work at once. Otherwise, or on a board someone invited you to, choose **Agent box**, **Ask an agent** or **Attach my agent**. **Bring your agent** lists your computers with whether each is online; choose **Bring my agent** on one and your agent's box appears in the middle of your view, ready for your first prompt, in no project or the project you pick (the next time, the one you picked last). Your agent boxes then run on that computer, and only you can prompt them. A box whose person is not on the board shows **Offline**.
 
 ### Connect your computer with Tinkjam Sync
 
@@ -626,7 +626,7 @@ join, and the thread header says **Your turns show in the room** while it is on.
 room** there to stop; your thread keeps working as a plain copy, and what the room already shows
 stays until the owner stops sharing.
 
-A turn in the thread behind one of your [thread boxes](#thread-boxes) also says, while it runs,
+A turn in the thread behind one of your [agent boxes](#agent-boxes) also says, while it runs,
 what your agent is doing in a few words ("Thinking", "Running a command", "Waiting for
 approval") and its reply as far as it is written, so the room can watch the box and its artifact.
 

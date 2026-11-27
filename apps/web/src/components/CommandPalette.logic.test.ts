@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import type { Thread } from "../types";
 import { makeThreadFixture } from "../test-fixtures";
+import { listHomeBoards } from "./boards/boardsHome.logic";
 import {
   commandPaletteEnterItem,
   newThreadNoProjectIndex,
@@ -9,6 +10,7 @@ import {
   resolveCommandPaletteProject,
   buildThreadActionItems,
   buildLinkedThreadActionItems,
+  buildBoardActionItems,
   filterPinnedBrowseEntries,
   filterCommandPaletteGroups,
   reduceCommandPaletteUiState,
@@ -469,6 +471,68 @@ describe("buildThreadActionItems", () => {
       }).map((group) => group.label);
     expect(labels("lakebed")).toEqual(["Projects", "Threads"]);
     expect(labels("lake")).toEqual(["Threads", "Projects"]);
+  });
+
+  it("finds every kind of board the home lists by its name, and opens the one picked", async () => {
+    const boards = listHomeBoards({
+      threads: [
+        {
+          environmentId: "env-1",
+          id: "thread-own",
+          projectId: "project-1",
+          title: "Onboarding journey",
+          updatedAt: "2026-11-19T00:00:00.000Z",
+          latestUserMessageAt: null,
+          archivedAt: null,
+          deletedAt: null,
+          hasRoomBoard: true,
+        },
+      ],
+      joined: [
+        {
+          shareId: "share-cloud",
+          threadId: "thread-cloud",
+          title: "Q3 launch plan",
+          joinedAt: "2026-11-20T00:00:00.000Z",
+          cloud: true,
+          maker: true,
+        },
+        {
+          shareId: "share-workspace",
+          threadId: "thread-workspace",
+          title: "Pricing page",
+          joinedAt: "2026-11-21T00:00:00.000Z",
+          workspaceName: "Design team",
+        },
+      ],
+      teams: [{ id: "team-1", name: "Launch crew" }],
+      isOwnEnvironment: () => true,
+    });
+    const openBoard = vi.fn(async () => undefined);
+    const search = (query: string) =>
+      filterCommandPaletteGroups({
+        activeGroups: [],
+        query,
+        isInSubmenu: false,
+        projectSearchItems: [],
+        threadSearchItems: [],
+        boardListItems: buildBoardActionItems({ boards, icon: null, openBoard }),
+      });
+    const found = search("Q3 launch plan");
+    expect(found.map((group) => group.label)).toEqual(["Boards"]);
+    expect(found[0]?.items.map((item) => item.title)).toEqual(["Q3 launch plan"]);
+    expect(search("pricing")[0]?.items.map((item) => item.title)).toEqual(["Pricing page"]);
+    expect(search("onboarding")[0]?.items.map((item) => item.title)).toEqual([
+      "Onboarding journey",
+    ]);
+    expect(search("launch")[0]?.items.map((item) => item.title)).toEqual([
+      "Q3 launch plan",
+      "Launch crew",
+    ]);
+    const picked = found[0]?.items[0];
+    if (picked?.kind !== "action") throw new Error("expected an action");
+    await picked.run();
+    expect(openBoard).toHaveBeenCalledWith(expect.objectContaining({ key: "joined:share-cloud" }));
   });
 
   it("keeps a command first over a thread in daily use that matches as well", () => {

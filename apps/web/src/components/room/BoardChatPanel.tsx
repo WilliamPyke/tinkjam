@@ -41,7 +41,7 @@ export function BoardChatPanel({
       toastManager.add({
         type: "info",
         title: "Command copied",
-        description: "Open the full thread to run it in its terminal.",
+        description: "Open the full chat to run it in its terminal.",
       }),
   });
   // The board has no diff panel or terminal of its own: a diff opens in the full thread.
@@ -65,14 +65,14 @@ export function BoardChatPanel({
               <Button
                 variant="ghost"
                 size="icon-xs"
-                aria-label="Open the full thread"
+                aria-label="Open the full chat"
                 onClick={onPopOut}
               />
             }
           >
             <ExternalLinkIcon />
           </TooltipTrigger>
-          <TooltipPopup side="bottom">Open the full thread</TooltipPopup>
+          <TooltipPopup side="bottom">Open the full chat</TooltipPopup>
         </Tooltip>
         <Button variant="ghost" size="icon-xs" aria-label="Close conversation" onClick={onClose}>
           <XIcon />

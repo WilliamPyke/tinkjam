@@ -951,7 +951,7 @@ function GuestThreadSession({
     ) : null;
   const sideRef = sideBox === null ? undefined : boxThread(sideBox);
   const sideTitle =
-    view.board?.notes.find((note) => note.id === sideBox)?.text.trim() || "Thread box";
+    view.board?.notes.find((note) => note.id === sideBox)?.text.trim() || "Agent box";
   const closeSide = () => {
     setSideBox(null);
     setPanelOpen(false);

@@ -1,5 +1,4 @@
 import { useAtomValue } from "@effect/atom-react";
-import { isGuestEnvironment, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   EnvironmentId,
   ROOM_BOARD_SUMMARY_MAX_BOARDS,
@@ -20,35 +19,18 @@ import {
   useBoardAccount,
 } from "~/guest/boardAccount";
 import { useInboxCount } from "~/guest/inbox";
-import { sharedThreadLocationOf } from "~/guest/boardAddress";
-import {
-  accountBoardsAtom,
-  guestShareLocation,
-  guestSharesAtom,
-  isCloudShare,
-  localBoardPreviewsAtom,
-} from "~/guest/guestShares";
-import {
-  openListedBoard,
-  refreshWorkspaceList,
-  useWorkspaceScope,
-  useWorkspaces,
-} from "~/guest/workspaces";
+import { guestSharesAtom, isCloudShare } from "~/guest/guestShares";
+import { refreshWorkspaceList, useWorkspaceScope, useWorkspaces } from "~/guest/workspaces";
 import { getLocalStorageItem, setLocalStorageItem } from "~/hooks/useLocalStorage";
 import { cn } from "~/lib/utils";
 import { useNowMinute } from "~/hooks/useNowMinute";
 import { workspaceAreaProps } from "~/lib/workspaceFocus";
-import {
-  useAllEnvironmentShellsBootstrapped,
-  useProjects,
-  useThreadShells,
-} from "~/state/entities";
+import { useAllEnvironmentShellsBootstrapped } from "~/state/entities";
 import { useEnvironmentQuery } from "~/state/query";
 import { serverEnvironment } from "~/state/server";
-import { readTeamBoard, useTeams } from "~/teams/teams";
+import { readTeamBoard } from "~/teams/teams";
 
 import { BOARD_PERSON_COLORS } from "../room/roomBoard.logic";
-import { roomBoardLocation } from "../room/roomBoardNavigation";
 import { AvatarStack } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button, InlineButton } from "../ui/button";
@@ -78,12 +60,11 @@ import {
   boardTimeLabel,
   boardsInScope,
   homeContent,
-  joinedBoardSources,
   listHomeBoards,
   sortHomeBoards,
   teamBoardShapes,
-  withWorkspaceBoards,
 } from "./boardsHome.logic";
+import { homeBoardLocation, openHomeBoard, useHomeBoardSources } from "./homeBoards";
 import { noteHomeShown, useFirstRunFocusOffered } from "./homeFocus";
 import { BLANK_BOARD_TEMPLATE, boardTemplateShapes } from "./boardTemplates";
 import {
@@ -132,11 +113,8 @@ function useAccountSettled(account: BoardAccountState): boolean {
 
 /** Every board the user has, most recently opened first, and the way to start one. */
 export function BoardsHome() {
-  const threads = useThreadShells();
-  const projects = useProjects();
+  const sources = useHomeBoardSources();
   const joined = useAtomValue(guestSharesAtom);
-  const accountBoards = useAtomValue(accountBoardsAtom);
-  const localPreviews = useAtomValue(localBoardPreviewsAtom);
   const account = useBoardAccount();
   const accountSettled = useAccountSettled(account);
   const [sort, setSort] = useState(readSort);
@@ -149,35 +127,11 @@ export function BoardsHome() {
   const workspaces = useWorkspaces();
   const scope = useWorkspaceScope();
   const workspace = workspaces?.find((candidate) => candidate.id === scope) ?? null;
-  const { teams } = useTeams();
   const bootstrapped = useAllEnvironmentShellsBootstrapped();
   const startNewBoard = useStartNewBoard();
   const waiting = useNewBoardWaiting();
   const [query, setQuery] = useState("");
-  const projectName = (environmentId: string, projectId: string) =>
-    projects.find((project) => project.environmentId === environmentId && project.id === projectId)
-      ?.title;
-  const sources = {
-    threads,
-    joined: withWorkspaceBoards(
-      joinedBoardSources({
-        // A board only looked at from a view link is not one of theirs: it is under Viewed.
-        local: joined
-          .filter((share) => share.viewOnly !== true)
-          .map((share) => ({
-            ...share,
-            cloud: isCloudShare(share),
-            maker: share.made === true,
-            preview: localPreviews[share.shareId],
-          })),
-        listed: accountBoards,
-      }),
-      workspaces,
-    ),
-    teams: teams ?? [],
-    isOwnEnvironment: (environmentId: string) => !isGuestEnvironment(environmentId),
-    projectName,
-  };
+  const { projectName } = sources;
   const all = listHomeBoards(sources);
   // A search looks through every board, whichever workspace is shown.
   const searching = query.trim() !== "";
@@ -594,15 +548,15 @@ function BoardTile({
   const [opening, setOpening] = useState(false);
   // A board only the account lists gets a session here first, as the same person on it.
   const openRemote = async () => {
-    if (board.kind !== "joined" || opening) return;
+    if (opening) return;
     setOpening(true);
-    const opened = await openListedBoard(board);
+    const opened = await openHomeBoard(board);
     setOpening(false);
     if (typeof opened === "string") {
       toastManager.add({ type: "error", title: opened });
       return;
     }
-    void navigate(guestShareLocation(opened));
+    void navigate(opened);
   };
   const relation =
     board.kind === "own"
@@ -643,7 +597,7 @@ function BoardTile({
       data-board-live={live || undefined}
     >
       <Link
-        {...tileLink(board)}
+        {...homeBoardLocation(board)}
         {...(board.kind === "joined" && board.remote
           ? {
               onClick: (event: MouseEvent) => {
@@ -757,17 +711,4 @@ function useTeamBoardShapes(
     };
   }, [teamId]);
   return read !== null && read.teamId === teamId ? read.shapes : undefined;
-}
-
-function tileLink(board: HomeBoard) {
-  switch (board.kind) {
-    case "own":
-      return roomBoardLocation(
-        scopeThreadRef(EnvironmentId.make(board.environmentId), ThreadId.make(board.threadId)),
-      );
-    case "joined":
-      return sharedThreadLocationOf(board, board.cloud);
-    case "team":
-      return { to: "/teams/$teamId" as const, params: { teamId: board.teamId } };
-  }
 }
