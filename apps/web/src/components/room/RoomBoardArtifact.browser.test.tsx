@@ -41,6 +41,17 @@ describe("RoomArtifactBody", () => {
     expect(cover()).toBeNull();
   });
 
+  it("opens its page from the keyboard", async () => {
+    const onUse = vi.fn();
+    const page = "<!doctype html><html><body><h1>Pricing mockup</h1></body></html>";
+    await using screen = await render(<RoomArtifactBody artifact={written(page)} onUse={onUse} />);
+    const cover = screen.getByRole("button", { name: "Click to interact" });
+    cover.element().focus();
+    await expect.element(cover).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(onUse).toHaveBeenCalledOnce();
+  });
+
   it("turns a click in a marked-up page into a pick, and what is typed into a mark", async () => {
     const onAdd = vi.fn();
     // The page clicks its own button once, the first time it is told it is marked up, as a person
