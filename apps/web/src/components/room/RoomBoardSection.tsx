@@ -24,6 +24,12 @@ const stopPointer = (event: PointerEvent) => event.stopPropagation();
 
 const SECTION_TITLE_SIZE = "calc(17px * min(var(--board-line-scale, 1), 2.5))";
 
+/** A section's first words, short enough to be part of a control's accessible name. */
+const sectionExcerpt = (text: string) => {
+  const words = text.trim().replace(/\s+/g, " ");
+  return words.length > 80 ? `${words.slice(0, 79)}…` : words;
+};
+
 // A band along each edge that the section is moved by, thicker as the board zooms out. The top
 // one reaches little into the title bar, and the sides start under it, clear of its buttons.
 const FRAME_EDGES = [
@@ -77,6 +83,8 @@ export function BoardSection({
   // Once this person types here, their own draft shows until they leave it.
   const [drafting, setDrafting] = useState(false);
   const text = (drafting ? null : boardLiveText(note.text, liveDrag)) ?? note.text;
+  const excerpt = sectionExcerpt(text);
+  const sectionName = excerpt === "" ? "Section" : `Section: ${excerpt}`;
   // A click on the title types in it; a drag from it moves the section.
   const grab = canMove
     ? dragHandlers(onMove, onDrop, (_event, on) => {
@@ -89,6 +97,8 @@ export function BoardSection({
   const scales = boardScaleStyle(use(BoardScaleContext));
   return (
     <div
+      role="group"
+      aria-label={sectionName}
       className={cn(
         // Its title, edges and grips take the pointer; pressing inside pans or selects the board.
         "group/item pointer-events-none absolute flex flex-col rounded-2xl border",
@@ -128,7 +138,7 @@ export function BoardSection({
           {canDelete ? (
             <button
               type="button"
-              aria-label="Delete section"
+              aria-label={`Delete ${sectionName}`}
               className={BOARD_ICON_BUTTON_CLASS}
               onPointerDown={stopPointer}
               onClick={onDelete}

@@ -8153,6 +8153,24 @@ function BoardNote({
   );
   // Notes and tasks are paper in a paint; titled cards, links among them, are windows.
   const paper = note.kind === undefined || note.kind === "task";
+  const cardExcerpt = excerpt === "" ? boardCardExcerpt(linked?.title ?? "") : excerpt;
+  const cardKind =
+    note.kind === "task"
+      ? "Task"
+      : note.kind === "link"
+        ? `Link by ${author}`
+        : artifact
+          ? "Artifact"
+          : code
+            ? "Code window"
+            : pullRequest
+              ? "Pull request"
+              : thread
+                ? `Agent box for ${author}`
+                : note.pinnedTo !== undefined
+                  ? `Comment by ${author}`
+                  : `Note by ${author}`;
+  const cardName = cardExcerpt === "" ? cardKind : `${cardKind}: ${cardExcerpt}`;
   // A task's actions sit in its menu, as on its Plan card: a card full of buttons is easy to
   // press by mistake. Any card drawn small folds its buttons into the menu too.
   const folded = compact || note.kind === "task";
@@ -8185,6 +8203,8 @@ function BoardNote({
   );
   return (
     <div
+      role="group"
+      aria-label={cardName}
       className={cn(
         "group/item absolute flex flex-col",
         size === undefined && live?.w === undefined && "w-48",
@@ -8313,7 +8333,7 @@ function BoardNote({
           <AddedBy name={author} color={boardCursorColor(people.guests, note.guestId)} />
         ) : null}
         <div className={cn("flex items-center gap-1", !selected && BOARD_HOVER_CHROME_CLASS)}>
-          {folded ? <CardActionsMenu {...menuOf(note)} /> : null}
+          {folded ? <CardActionsMenu {...menuOf(note)} cardName={cardName} /> : null}
           {folded || onUse === undefined ? null : (
             <Tooltip>
               <TooltipTrigger
@@ -8366,7 +8386,7 @@ function BoardNote({
           {!folded && canDelete ? (
             <button
               type="button"
-              aria-label={plain ? "Delete note" : "Delete card"}
+              aria-label={`Delete ${cardName}`}
               className={BOARD_ICON_BUTTON_CLASS}
               onPointerDown={stopPointer}
               onClick={() => onDelete(target)}
