@@ -780,7 +780,11 @@ export function useBoardPower(props: BoardPowerProps): {
 
   const menu = (
     <Menu>
-      <MenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Board menu" />}>
+      <MenuTrigger
+        render={
+          <Button size="icon-sm" variant="ghost" aria-label={`Board menu for ${props.title}`} />
+        }
+      >
         <ChevronDownIcon />
       </MenuTrigger>
       <MenuPopup align="start">

@@ -6215,7 +6215,11 @@ export function RoomBoard({
               >
                 <MinusIcon />
               </Button>
-              <span className="w-10 text-center text-xs font-semibold text-foreground tabular-nums">
+              <span
+                role="status"
+                className="w-10 text-center text-xs font-semibold text-foreground tabular-nums"
+              >
+                <span className="sr-only">Zoom </span>
                 {Math.round(view.zoom * 100)}%
               </span>
               <Button
@@ -7851,7 +7855,7 @@ function LinkHandle({
       data-board-link
       // Pointer only: the keyboard draws a line with the Line tool.
       tabIndex={-1}
-      aria-label="Drag to another card to draw a line"
+      aria-hidden="true"
       className={cn(
         "group/link pointer-events-none absolute z-10 grid size-7 cursor-crosshair touch-none place-items-center opacity-0 transition-opacity group-hover/item:pointer-events-auto group-hover/item:opacity-100 group-data-[board-selected]/item:pointer-events-auto group-data-[board-selected]/item:opacity-100",
         // A pin's touches its right side, so the pointer reaches it without leaving the pin.
@@ -7953,6 +7957,12 @@ function TouchNoteControls({ children }: { readonly children: ReactNode }) {
     </div>
   );
 }
+
+/** A card's first words, short enough to be part of a control's accessible name. */
+const boardCardExcerpt = (text: string) => {
+  const words = text.trim().replace(/\s+/g, " ");
+  return words.length > 80 ? `${words.slice(0, 79)}…` : words;
+};
 
 function BoardNote({
   note,
@@ -8159,11 +8169,30 @@ function BoardNote({
   // Once this person types here, their own draft shows until they leave it, whoever else types.
   const [drafting, setDrafting] = useState(false);
   const text = (drafting ? null : boardLiveText(note.text, liveDrag)) ?? note.text;
+  const excerpt = boardCardExcerpt(text);
   const mention = useMentionPicker((pick) =>
     onText(note, pick.text.slice(0, ROOM_BOARD_NOTE_MAX_LENGTH), pick.mention),
   );
   // Notes and tasks are paper in a paint; titled cards, links among them, are windows.
   const paper = note.kind === undefined || note.kind === "task";
+  const cardExcerpt = excerpt === "" ? boardCardExcerpt(linked?.title ?? "") : excerpt;
+  const cardKind =
+    note.kind === "task"
+      ? "Task"
+      : note.kind === "link"
+        ? `Link by ${author}`
+        : artifact
+          ? "Artifact"
+          : code
+            ? "Code window"
+            : pullRequest
+              ? "Pull request"
+              : thread
+                ? `Agent box for ${author}`
+                : note.pinnedTo !== undefined
+                  ? `Comment by ${author}`
+                  : `Note by ${author}`;
+  const cardName = cardExcerpt === "" ? cardKind : `${cardKind}: ${cardExcerpt}`;
   // A task's actions sit in its menu, as on its Plan card: a card full of buttons is easy to
   // press by mistake. Any card drawn small folds its buttons into the menu too.
   const folded = compact || note.kind === "task";
@@ -8196,6 +8225,8 @@ function BoardNote({
   );
   return (
     <div
+      role="group"
+      aria-label={cardName}
       className={cn(
         "group/item absolute flex flex-col",
         size === undefined && live?.w === undefined && "w-48",
@@ -8259,7 +8290,7 @@ function BoardNote({
             onPointerDown={stopPointer}
           >
             <Checkbox
-              aria-label="Done"
+              aria-label={excerpt === "" ? "Done" : `Done: ${excerpt}`}
               checked={note.done === true}
               disabled={!canEdit}
               onCheckedChange={(done) => onTick(note, done)}
@@ -8324,7 +8355,7 @@ function BoardNote({
           <AddedBy name={author} color={boardCursorColor(people.guests, note.guestId)} />
         ) : null}
         <div className={cn("flex items-center gap-1", !selected && BOARD_HOVER_CHROME_CLASS)}>
-          {folded ? <CardActionsMenu {...menuOf(note)} /> : null}
+          {folded ? <CardActionsMenu {...menuOf(note)} cardName={cardName} /> : null}
           {folded || onUse === undefined ? null : (
             <Tooltip>
               <TooltipTrigger
@@ -8371,7 +8402,7 @@ function BoardNote({
           {!folded && canDelete ? (
             <button
               type="button"
-              aria-label={plain ? "Delete note" : "Delete card"}
+              aria-label={`Delete ${cardName}`}
               className={BOARD_ICON_BUTTON_CLASS}
               onPointerDown={stopPointer}
               onClick={() => onDelete(target)}
@@ -8584,6 +8615,7 @@ function BoardNote({
         {artifact ? (
           <RoomArtifactLive
             noteId={(artifactSource ?? note).id}
+            title={text}
             artifact={(artifactSource ?? note).artifact}
             onKeep={onKeepArtifact}
             author={artifactAuthor}
@@ -8595,6 +8627,7 @@ function BoardNote({
             people={people}
             active={embed?.active === true}
             onRelease={embed?.onRelease}
+            onUse={embed?.onUse}
             marks={artifactMarks}
             links={artifactLinks}
           />
@@ -8608,6 +8641,7 @@ function BoardNote({
             active={embed?.active === true}
             zoomedOut={embed?.zoomedOut === true}
             onRelease={() => embed?.onRelease()}
+            onUse={embed?.onUse}
             framed={note.framed === true}
             onFrame={onFramePage === undefined ? undefined : (framed) => onFramePage(note, framed)}
             addedBy={

@@ -303,7 +303,7 @@ describe("RoomBoard sections", () => {
       );
     const remove = (id: string) => {
       const button = screen.container.querySelector<HTMLElement>(
-        `[data-board-item="note:${id}"] button[aria-label="Delete section"]`,
+        `[data-board-item="note:${id}"] button[aria-label^="Delete Section"]`,
       );
       if (button === null) throw new Error(`Section ${id} has no delete button`);
       button.click();
@@ -328,7 +328,7 @@ describe("RoomBoard sections", () => {
     const { onChange } = board;
     await using screen = await board.screen;
     const remove = screen.container.querySelector<HTMLElement>(
-      '[data-board-item="note:frame"] button[aria-label="Delete section"]',
+      '[data-board-item="note:frame"] button[aria-label^="Delete Section"]',
     );
     if (remove === null) throw new Error("Section frame has no delete button");
     remove.click();
@@ -1231,7 +1231,7 @@ describe("RoomBoard keys and pointer", () => {
     await using screen = await board.screen;
     const guide = screen.getByRole("region", { name: "Getting started" });
     await expect.element(guide).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Board menu" }));
+    await userEvent.click(screen.getByRole("button", { name: "Board menu for Launch" }));
     await userEvent.click(page.getByRole("menuitem", { name: "Getting started" }));
     await expect.element(guide).toBeVisible();
     const noteStep = () => screen.container.querySelector('[data-board-guide-step="note"]');
@@ -1699,7 +1699,7 @@ describe("RoomBoard keys and pointer", () => {
       onUseNote: () => {},
     });
     await using screen = await board.screen;
-    await expect.element(screen.getByRole("button", { name: "Card actions" })).toBeVisible();
+    await expect.element(screen.getByRole("button", { name: /^Actions for / })).toBeVisible();
     await expect
       .element(screen.getByRole("button", { name: "Use as message" }))
       .not.toBeInTheDocument();
@@ -1731,7 +1731,7 @@ describe("RoomBoard controls", () => {
       .not.toBeInTheDocument();
     const offered = async (id: string) => {
       const trigger = screen.container.querySelector(
-        `[data-board-item="note:${id}"] [aria-label="Card actions"]`,
+        `[data-board-item="note:${id}"] [aria-label^="Actions for "]`,
       );
       if (!(trigger instanceof HTMLElement)) throw new Error(`No menu on task ${id}`);
       await userEvent.click(trigger);

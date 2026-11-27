@@ -103,7 +103,10 @@ function CardMenuItems({ actions, assign, onReact, color }: CardMenu) {
  * A card's header buttons folded into one, for a card drawn too small for them: the rest of its
  * header is left to grab, and none of them is pressed by a grab that lands a little off.
  */
-export function CardActionsMenu(menu: CardMenu) {
+export function CardActionsMenu({
+  cardName,
+  ...menu
+}: CardMenu & { readonly cardName?: string | undefined }) {
   // Every card on a zoomed-out board has one, and the board renders them all as it pans: closed,
   // the menu holds no items, so it renders again only when it opens.
   const [open, setOpen] = useState(false);
@@ -124,7 +127,7 @@ export function CardActionsMenu(menu: CardMenu) {
         render={
           <button
             type="button"
-            aria-label="Card actions"
+            aria-label={cardName === undefined ? "Card actions" : `Actions for ${cardName}`}
             className={BOARD_ICON_BUTTON_CLASS}
             onPointerDown={stopPointer}
           />
