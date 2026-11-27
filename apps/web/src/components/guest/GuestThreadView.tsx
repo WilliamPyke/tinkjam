@@ -11,10 +11,13 @@ import { deriveThreadStructureRuntime } from "@t3tools/client-runtime/state/thre
 import { shouldShowLoadEarlierControl } from "@t3tools/client-runtime/state/threads";
 import {
   type EnvironmentId,
+  GUEST_BOARD_CHANGES_ROUTE,
+  GUEST_BOARD_CLIENT_PARAM,
   GUEST_BOARD_CODE_ROUTE,
   GUEST_BOARD_CURSOR_ROUTE,
   GUEST_BOARD_PULL_REQUEST_ROUTE,
   GUEST_BOARD_ROUTE,
+  GUEST_BOARD_SEQ_PARAM,
   GUEST_HANDOFF_ROUTE,
   GUEST_MESSAGE_MAX_LENGTH,
   GuestId,
@@ -22,6 +25,8 @@ import {
   GuestShareId,
   type RoomAgentActivity,
   type RoomBoardChange,
+  type RoomBoardChangesRequest,
+  RoomBoardChangesResult,
   RoomCodePatch,
   type RoomCodePatchScope,
   type RoomBoardNote,
@@ -163,15 +168,26 @@ function writeAwaitingRowIds(ids: ReadonlySet<GuestMessageId>) {
   } catch {}
 }
 
+// This page's changes in the order it sent them, so the board host can drop one that arrives
+// after a newer one from here replaced it.
+const BOARD_CLIENT = randomUUID();
+let boardSeq = 0;
+const nextBoardSeq = () => (boardSeq += 1);
+
+const boardChangeTaken = (status: number | null) =>
+  status !== null && status >= 200 && status < 300;
+
 /** The host's answer to one board change, or null when nothing answered. */
 async function sendBoardChange(
   endpoint: GuestShareEndpoint,
   change: RoomBoardChange,
   // `keepalive`: sent as the page closes, which it outlives.
   how: { readonly signal: AbortSignal } | { readonly keepalive: true },
+  seq: number,
 ): Promise<number | null> {
   try {
     const response = await guestShareRequest(endpoint, GUEST_BOARD_ROUTE, {
+      params: { [GUEST_BOARD_CLIENT_PARAM]: BOARD_CLIENT, [GUEST_BOARD_SEQ_PARAM]: String(seq) },
       init: {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -182,6 +198,51 @@ async function sendBoardChange(
     return response.status;
   } catch {
     return null;
+  }
+}
+
+const decodeChangesResult = Schema.decodeUnknownOption(RoomBoardChangesResult);
+
+/**
+ * Sends changes as the page closes, in a way it outlives, and says which were taken. A cloud
+ * board's host takes them in one request and in this order; a machine's room takes each alone.
+ */
+async function sendBoardChangesAsPageCloses(
+  endpoint: GuestShareEndpoint,
+  changes: ReadonlyArray<RoomBoardChange>,
+  cloud: boolean,
+): Promise<ReadonlyArray<boolean>> {
+  if (!cloud) {
+    return Promise.all(
+      changes.map((change) =>
+        sendBoardChange(endpoint, change, { keepalive: true }, nextBoardSeq()).then(
+          boardChangeTaken,
+        ),
+      ),
+    );
+  }
+  const request: RoomBoardChangesRequest = {
+    client: BOARD_CLIENT,
+    changes: changes.map((change) => ({ seq: nextBoardSeq(), change })),
+  };
+  try {
+    const response = await guestShareRequest(endpoint, GUEST_BOARD_CHANGES_ROUTE, {
+      init: {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(request),
+        keepalive: true,
+      },
+    });
+    const answer = response.ok
+      ? decodeChangesResult(await response.json().catch(() => null))
+      : Option.none();
+    return changes.map(
+      (_, index) =>
+        Option.isSome(answer) && boardChangeTaken(answer.value.results[index]?.status ?? null),
+    );
+  } catch {
+    return changes.map(() => false);
   }
 }
 
@@ -218,12 +279,14 @@ export async function postBoardChange(
 ): Promise<boolean> {
   let settle: (() => void) | null = null;
   const controller = boardChangeRetryController(endpoint.shareId);
+  // Its tries are the same change, so the host takes it once and never over a newer one.
+  const seq = nextBoardSeq();
   try {
     for (let tries = 0; ; tries += 1) {
       if (controller.signal.aborted) return false;
-      const status = await sendBoardChange(endpoint, change, { signal: controller.signal });
+      const status = await sendBoardChange(endpoint, change, { signal: controller.signal }, seq);
       if (controller.signal.aborted) return false;
-      if (status !== null && status >= 200 && status < 300) return true;
+      if (boardChangeTaken(status)) return true;
       if (!boardChangeFailureIsTemporary(status)) return false;
       // A toggle sent twice would undo itself, and a failed answer does not say it did not land.
       if (change.type === "note.react" || change.type === "artifact.restore") {
@@ -1086,10 +1149,7 @@ function GuestThreadSession({
               onChangeAsPageCloses={
                 viewOnly
                   ? undefined
-                  : (change) =>
-                      sendBoardChange(endpoint, change, { keepalive: true }).then(
-                        (status) => status !== null && status >= 200 && status < 300,
-                      )
+                  : (changes) => sendBoardChangesAsPageCloses(endpoint, changes, cloud)
               }
               onCursor={viewOnly ? undefined : (presence) => postBoardCursor(endpoint, presence)}
               onPromptBox={agents ? promptBox : undefined}

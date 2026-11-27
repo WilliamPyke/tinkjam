@@ -1172,18 +1172,21 @@ describe("boardChangeQueue", () => {
       enqueue(["note:b", "note:c"], line),
       enqueue("note:d", put("d", "fourth")),
     ];
-    queue.flush((change) => {
-      flushed.push(change);
-      return Promise.resolve(change.type !== "note.remove" || flushed.length > 1);
-    }, 200);
-    // The note being added is already on its way. A reaction is sent once only, so it and what
-    // waits behind it stay queued, as does a change over the limit and the line waiting on it.
+    const requests: Array<number> = [];
+    const flushNow = () =>
+      queue.flush((changes) => {
+        requests.push(changes.length);
+        flushed.push(...changes);
+        return Promise.resolve(changes.map((change) => change.type !== "note.remove"));
+      }, 300);
+    flushNow();
+    // In one request. The note being added is already on its way. A reaction is sent once only,
+    // so it and what waits behind it stay queued, as does a change over the limit and the line
+    // waiting on it.
+    expect(requests).toEqual([3]);
     expect(flushed).toEqual([undo, redo, put("d", "fourth")]);
-    queue.flush((change) => {
-      flushed.push(change);
-      return Promise.resolve(true);
-    }, 200);
-    expect(flushed).toHaveLength(3);
+    flushNow();
+    expect(requests).toEqual([3]);
     roomTakesAdd(true);
     await Promise.all([added, settle, ...results]);
     // A flushed change the room did not take is sent again in its turn, and so is the redo
@@ -1259,9 +1262,9 @@ describe("boardChangeQueue", () => {
       return { send, started, failed };
     };
     const flushNow = () =>
-      queue.flush((change) => {
-        landed.push(change);
-        return Promise.resolve(true);
+      queue.flush((changes) => {
+        landed.push(...changes);
+        return Promise.resolve(changes.map(() => true));
       });
 
     // Typing that replaces the text being retried makes the retry unneeded.

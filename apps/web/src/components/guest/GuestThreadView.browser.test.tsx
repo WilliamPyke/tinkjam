@@ -274,6 +274,9 @@ describe("postBoardChange", () => {
     expect(settledUnload.defaultPrevented).toBe(false);
     expect(host.sends()).toHaveLength(3);
     expect(new Set(host.sends().map(([, init]) => init?.body)).size).toBe(1);
+    // Each try is the same change in its page's order, so the host never takes it twice.
+    const tries = new Set(host.sends().map(([input]) => String(input)));
+    expect([...tries]).toEqual([expect.stringMatching(/[?&]client=[^&]+&seq=\d+/)]);
   });
 
   it("stops a waiting change when its board's retries stop", async () => {
