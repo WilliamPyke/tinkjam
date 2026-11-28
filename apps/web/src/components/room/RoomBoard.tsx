@@ -615,6 +615,9 @@ const keepReplyCards = (cards: Readonly<Record<string, string>>) => {
   return cards;
 };
 
+/** The board's own agent box, named like the boxes people add rather than after its chat. */
+const MAIN_BOX_TITLE = "Main agent box";
+
 const stopPointer = (event: PointerEvent) => event.stopPropagation();
 
 /**
@@ -1868,7 +1871,7 @@ export function RoomBoard({
       ),
   ]);
   const threadBoxes =
-    cards === undefined && holds.agents ? boardThreadBoxes(shown, title, holds.room) : [];
+    cards === undefined && holds.agents ? boardThreadBoxes(shown, MAIN_BOX_TITLE, holds.room) : [];
   // Where an agent is working: the cards its turn just added or changed, in its box's colour.
   const agentWork = useBoardAgentWork(room === null ? null : (shown.agentTurns ?? NO_AGENT_TURNS));
   const agentWorkOf = (noteId: string) => {
@@ -4952,7 +4955,7 @@ export function RoomBoard({
     return [
       ...(box === undefined ? [] : boxMenuActions(box)),
       ...(ref === cardRef(ROOM_BOARD_THREAD_CARD)
-        ? [{ label: "Open chat", run: onOpenThread }]
+        ? [{ label: "Open conversation", run: onOpenThread }]
         : []),
       ...(guest === undefined ? [] : followAction(guest)),
       ...(workingOn === undefined || workedOn === null
@@ -5514,7 +5517,7 @@ export function RoomBoard({
                 {viewer === null ? "Waiting for your approval" : "Waiting for the owner's approval"}
               </p>
               <Button size="xs" onPointerDown={stopPointer} onClick={onOpenThread}>
-                Open chat
+                Open conversation
               </Button>
             </div>
           ) : undefined,
@@ -7077,7 +7080,7 @@ export function RoomBoard({
                 {roomParts !== null ? (
                   <BoardCard
                     at={positions[ROOM_BOARD_THREAD_CARD]!}
-                    title={title}
+                    title={MAIN_BOX_TITLE}
                     kind={
                       hasProgress
                         ? "agent box"
@@ -7111,9 +7114,9 @@ export function RoomBoard({
                     />
                     {!hasProgress && needsApproval ? null : (
                       <div>
-                        <Button size="xs" variant="outline" onClick={onOpenThread}>
+                        <Button size="micro" variant="outline" onClick={onOpenThread}>
                           <MessagesSquareIcon />
-                          Open chat
+                          Open conversation
                         </Button>
                       </div>
                     )}
@@ -9202,7 +9205,7 @@ function ThreadMessages({ messages }: { readonly messages: ReadonlyArray<BoardMe
   ].filter((run) => (run.prompt ?? "") !== "");
   if (messages.length === 0 && queued.length === 0) {
     return running !== undefined ? null : (
-      <p className="text-xs text-muted-foreground">No messages yet.</p>
+      <p className="text-sm text-muted-foreground">No prompts yet.</p>
     );
   }
   return (
