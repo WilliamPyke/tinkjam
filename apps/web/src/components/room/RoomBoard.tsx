@@ -2125,6 +2125,8 @@ export function RoomBoard({
     landedFrames.current = [];
     paintFrames();
   });
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- the live store outlives this board; a drag it closes on would hold the lines on its cards in place there
+  useEffect(() => () => liveStore.setOwnDrags(new Map()), [liveStore]);
   // Text being typed is also saved when typing pauses, so a tab closed mid-note keeps it. Those
   // saves are not history: the blur that ends the writing is its one undo step.
   // `pause` fires once typing pauses, `cap` a few seconds after the first unsaved key.

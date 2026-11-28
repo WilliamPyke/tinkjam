@@ -67,6 +67,8 @@ function renderBoard(
   } = {},
 ) {
   const onChange = vi.fn(takes);
+  // Its own live store, as a room has: what one board leaves there must not reach the next test's.
+  const live = createRoomLiveStore();
   // The first-run guide floats over the bottom right corner, where these tests click the board.
   localStorage.setItem(
     "t3code:board-guide:v2",
@@ -74,30 +76,32 @@ function renderBoard(
   );
   // A fresh element each time, as a rerender needs: the room as someone else changed its lines.
   const withEdges = (lines: ReadonlyArray<RoomBoardEdge>) => (
-    <RoomBoard
-      title="Launch"
-      room={{ messages: [], board: { positions: {}, notes: [...notes], edges: [...lines] } }}
-      viewKey={viewKey}
-      online={[]}
-      messages={messages}
-      viewer={null}
-      ownerName={undefined}
-      cursorLayer={null}
-      onOpenThread={() => {}}
-      onOpenReply={() => {}}
-      onChange={(change) => onChange(change)}
-      onCursor={onCursor}
-      onUseNote={onUseNote}
-      onTakeTask={onTakeTask}
-      onOpenConversation={onOpenConversation}
-      {...(cards === undefined ? {} : { cards })}
-    />
+    <RoomLiveContext value={live}>
+      <RoomBoard
+        title="Launch"
+        room={{ messages: [], board: { positions: {}, notes: [...notes], edges: [...lines] } }}
+        viewKey={viewKey}
+        online={[]}
+        messages={messages}
+        viewer={null}
+        ownerName={undefined}
+        cursorLayer={null}
+        onOpenThread={() => {}}
+        onOpenReply={() => {}}
+        onChange={(change) => onChange(change)}
+        onCursor={onCursor}
+        onUseNote={onUseNote}
+        onTakeTask={onTakeTask}
+        onOpenConversation={onOpenConversation}
+        {...(cards === undefined ? {} : { cards })}
+      />
+    </RoomLiveContext>
   );
   const element = withEdges(edges);
   const screen = render(withCommandMenu ? <CommandPalette>{element}</CommandPalette> : element, {
     container: sizedContainer(containerSize?.width, containerSize?.height),
   });
-  return { screen, onChange, withEdges };
+  return { screen, onChange, withEdges, live };
 }
 
 /** A frame as big as the board, so the mouse reaches every card on it; put back when disposed. */
@@ -1246,6 +1250,18 @@ describe("RoomBoard keys and pointer", () => {
     expect(puts(onChange)[0]).toMatchObject({ noteId: "a", x: 8, y: 0 });
   });
 
+  it("forgets where a nudge held a card once the board closes before it settles", async () => {
+    const board = renderBoard([{ id: "a", text: "First", x: 0, y: 0 }]);
+    {
+      await using screen = await board.screen;
+      await userEvent.click(headerIn(screen.container, "a"));
+      await userEvent.keyboard("{ArrowRight}{ArrowRight}");
+      await vi.waitFor(() => expect(board.live.lineEnd("note:a")).toMatchObject({ x: 8 }));
+    }
+    // Left there, it would hold the lines on that card where the nudge left them.
+    expect(board.live.lineEnd("note:a")).toBeUndefined();
+  });
+
   it("says nothing of resolved comments until one is resolved, and then counts it once", async () => {
     const comment = { id: "c", text: "Hm", x: 300, y: 300, kind: "comment" as const };
     {
@@ -1949,31 +1965,34 @@ describe("RoomBoard notes and agents", () => {
 describe("RoomBoard lines", () => {
   it("selects a line between two cards that sit close together", async () => {
     const board = render(
-      <RoomBoard
-        title="Launch"
-        room={{
-          messages: [],
-          board: {
-            positions: {},
-            // Clear of the room thread's card, whose spot the notes' height reaches from y 0.
-            notes: [
-              { id: "a", text: "First", x: 0, y: -200 },
-              { id: "b", text: "Second", x: 212, y: -200 },
-            ],
-            edges: [{ id: "line", from: "note:a", to: "note:b" }],
-          },
-        }}
-        online={[]}
-        messages={[]}
-        viewer={null}
-        ownerName={undefined}
-        cursorLayer={null}
-        onOpenThread={() => {}}
-        onOpenReply={() => {}}
-        onChange={async () => true}
-        onCursor={undefined}
-        onUseNote={undefined}
-      />,
+      // Its own live store, as a room has.
+      <RoomLiveContext value={createRoomLiveStore()}>
+        <RoomBoard
+          title="Launch"
+          room={{
+            messages: [],
+            board: {
+              positions: {},
+              // Clear of the room thread's card, whose spot the notes' height reaches from y 0.
+              notes: [
+                { id: "a", text: "First", x: 0, y: -200 },
+                { id: "b", text: "Second", x: 212, y: -200 },
+              ],
+              edges: [{ id: "line", from: "note:a", to: "note:b" }],
+            },
+          }}
+          online={[]}
+          messages={[]}
+          viewer={null}
+          ownerName={undefined}
+          cursorLayer={null}
+          onOpenThread={() => {}}
+          onOpenReply={() => {}}
+          onChange={async () => true}
+          onCursor={undefined}
+          onUseNote={undefined}
+        />
+      </RoomLiveContext>,
       { container: sizedContainer() },
     );
     await using screen = await board;
@@ -2142,30 +2161,33 @@ describe("RoomBoard lines", () => {
     await using _viewport = await boardSizedViewport();
     using _motion = stillMotion();
     const board = render(
-      <RoomBoard
-        title="Launch"
-        room={{
-          messages: [],
-          board: {
-            positions: {},
-            notes: [
-              { id: "a", text: "First", x: 0, y: 0, size: { w: 192, h: 144 } },
-              { id: "b", text: "Second", x: 300, y: 0, size: { w: 192, h: 144 } },
-            ],
-            edges: [{ id: "line", from: "note:a", to: "note:b" }],
-          },
-        }}
-        online={[]}
-        messages={[]}
-        viewer={null}
-        ownerName={undefined}
-        cursorLayer={null}
-        onOpenThread={() => {}}
-        onOpenReply={() => {}}
-        onChange={async () => true}
-        onCursor={undefined}
-        onUseNote={undefined}
-      />,
+      // Its own live store, as a room has.
+      <RoomLiveContext value={createRoomLiveStore()}>
+        <RoomBoard
+          title="Launch"
+          room={{
+            messages: [],
+            board: {
+              positions: {},
+              notes: [
+                { id: "a", text: "First", x: 0, y: 0, size: { w: 192, h: 144 } },
+                { id: "b", text: "Second", x: 300, y: 0, size: { w: 192, h: 144 } },
+              ],
+              edges: [{ id: "line", from: "note:a", to: "note:b" }],
+            },
+          }}
+          online={[]}
+          messages={[]}
+          viewer={null}
+          ownerName={undefined}
+          cursorLayer={null}
+          onOpenThread={() => {}}
+          onOpenReply={() => {}}
+          onChange={async () => true}
+          onCursor={undefined}
+          onUseNote={undefined}
+        />
+      </RoomLiveContext>,
       { container: sizedContainer() },
     );
     await using screen = await board;
@@ -2653,38 +2675,41 @@ describe("RoomBoard live drags", () => {
 
 describe("RoomBoard live lines", () => {
   it("bends a line to follow a card someone else is dragging", async () => {
+    const live = createRoomLiveStore();
     const board = (drag: RoomCursor["drag"]) => (
-      <RoomBoard
-        title="Launch"
-        room={{
-          messages: [],
-          board: {
-            positions: {},
-            notes: [
-              { id: "a", text: "First", x: 0, y: 0 },
-              { id: "b", text: "Second", x: 400, y: 0 },
-            ],
-            edges: [{ id: "line", from: "note:a", to: "note:b" }],
-          },
-        }}
-        online={[]}
-        messages={[]}
-        viewer={null}
-        ownerName={undefined}
-        cursorLayer={
-          <RoomCursors
-            cursors={drag === undefined ? [] : [{ x: 1, y: 1, drag }]}
-            views={undefined}
-            guests={[]}
-            ownerName="Ann"
-          />
-        }
-        onOpenThread={() => {}}
-        onOpenReply={() => {}}
-        onChange={async () => true}
-        onCursor={undefined}
-        onUseNote={undefined}
-      />
+      <RoomLiveContext value={live}>
+        <RoomBoard
+          title="Launch"
+          room={{
+            messages: [],
+            board: {
+              positions: {},
+              notes: [
+                { id: "a", text: "First", x: 0, y: 0 },
+                { id: "b", text: "Second", x: 400, y: 0 },
+              ],
+              edges: [{ id: "line", from: "note:a", to: "note:b" }],
+            },
+          }}
+          online={[]}
+          messages={[]}
+          viewer={null}
+          ownerName={undefined}
+          cursorLayer={
+            <RoomCursors
+              cursors={drag === undefined ? [] : [{ x: 1, y: 1, drag }]}
+              views={undefined}
+              guests={[]}
+              ownerName="Ann"
+            />
+          }
+          onOpenThread={() => {}}
+          onOpenReply={() => {}}
+          onChange={async () => true}
+          onCursor={undefined}
+          onUseNote={undefined}
+        />
+      </RoomLiveContext>
     );
     await using screen = await render(board(undefined), { container: sizedContainer() });
     const line = () =>
@@ -2696,31 +2721,34 @@ describe("RoomBoard live lines", () => {
   });
 
   it("keeps a line still when its cards grow without moving", async () => {
+    const live = createRoomLiveStore();
     const board = (h: number) => (
-      <RoomBoard
-        title="Launch"
-        room={{
-          messages: [],
-          board: {
-            positions: {},
-            notes: [
-              { id: "a", text: "First", x: 0, y: -400, size: { w: 192, h } },
-              { id: "b", text: "Second", x: 400, y: -400, size: { w: 192, h } },
-            ],
-            edges: [{ id: "line", from: "note:a", to: "note:b" }],
-          },
-        }}
-        online={[]}
-        messages={[]}
-        viewer={null}
-        ownerName={undefined}
-        cursorLayer={null}
-        onOpenThread={() => {}}
-        onOpenReply={() => {}}
-        onChange={async () => true}
-        onCursor={undefined}
-        onUseNote={undefined}
-      />
+      <RoomLiveContext value={live}>
+        <RoomBoard
+          title="Launch"
+          room={{
+            messages: [],
+            board: {
+              positions: {},
+              notes: [
+                { id: "a", text: "First", x: 0, y: -400, size: { w: 192, h } },
+                { id: "b", text: "Second", x: 400, y: -400, size: { w: 192, h } },
+              ],
+              edges: [{ id: "line", from: "note:a", to: "note:b" }],
+            },
+          }}
+          online={[]}
+          messages={[]}
+          viewer={null}
+          ownerName={undefined}
+          cursorLayer={null}
+          onOpenThread={() => {}}
+          onOpenReply={() => {}}
+          onChange={async () => true}
+          onCursor={undefined}
+          onUseNote={undefined}
+        />
+      </RoomLiveContext>
     );
     await using screen = await render(board(144), { container: sizedContainer() });
     // A level line between level cards, unless it is swinging: then its bend points leave the level.
