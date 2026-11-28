@@ -2158,9 +2158,14 @@ describe("RoomBoard lines", () => {
     const b = card("b").getBoundingClientRect();
     const surface = screen.getByRole("application", { name: "Room board" });
     const under = surface.element().getBoundingClientRect();
-    await userEvent.click(surface, {
-      position: { x: (a.right + b.left) / 2 - under.left, y: (a.top + a.bottom) / 2 - under.top },
-    });
+    const onLine = {
+      x: (a.right + b.left) / 2 - under.left,
+      y: (a.top + a.bottom) / 2 - under.top,
+    };
+    await userEvent.click(surface, { position: onLine });
+    await expect.element(screen.getByRole("button", { name: "Delete line" })).toBeVisible();
+    // As in FigJam, a click on the selected line keeps it selected.
+    await userEvent.click(surface, { position: onLine });
     await expect.element(screen.getByRole("button", { name: "Delete line" })).toBeVisible();
     const handle = document.querySelector('[data-board-line-end="to"]');
     if (handle === null) throw new Error("The selected line shows no handle on its end");

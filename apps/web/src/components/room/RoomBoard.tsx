@@ -1486,9 +1486,6 @@ export function RoomBoard({
     markLinkTarget(null);
     setLinking(null);
   };
-  const selectEdge = useStableCallback((id: string) =>
-    setSelectedEdge((current) => (current === id ? null : id)),
-  );
   // Where this person's last choice of line shape is kept, for the next line they draw here.
   const lineBoard = viewKey ?? shareId ?? title;
   const [linkDraft, setLinkDraft] = useState<string | null>(null);
@@ -6572,7 +6569,7 @@ export function RoomBoard({
             if (edge === null) return;
             event.preventDefault();
             event.stopPropagation();
-            selectEdge(edge);
+            setSelectedEdge(edge);
           }}
           onMouseDownCapture={(event) => {
             // A press that moves, pans, selects or draws would also select the page's text, or start
@@ -7033,7 +7030,7 @@ export function RoomBoard({
                               : `url(#${markerId}-${state})`
                           }
                           selectable={canEdit}
-                          onSelect={selectEdge}
+                          onSelect={setSelectedEdge}
                           onGrabEnd={selected && canEdit ? grabEdgeEnd : undefined}
                           over={edgesOver}
                         />
