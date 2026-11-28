@@ -276,11 +276,11 @@ export function BoxProgress({
   const progress = useBoxProgress(boxId);
   if (progress === undefined) {
     if (fallback != null) return fallback;
-    if (ended !== "stopped" && ended !== "failed") return null;
+    if (ended === undefined || ended === "ended") return null;
     return (
       <div role="status" className="flex items-center">
-        <BoardChip tone={ended === "failed" ? "error" : "neutral"}>
-          {ended === "failed" ? "Failed" : "Stopped"}
+        <BoardChip tone={ended === "failed" ? "error" : ended === "done" ? "success" : "neutral"}>
+          {ended === "failed" ? "Failed" : ended === "done" ? "Done" : "Stopped"}
         </BoardChip>
       </div>
     );

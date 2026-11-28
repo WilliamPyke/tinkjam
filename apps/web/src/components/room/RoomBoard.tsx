@@ -5367,6 +5367,12 @@ export function RoomBoard({
       ...(conversation === undefined ? [] : [{ label: "Open conversation", run: conversation }]),
     ];
   };
+  /** The box has replied or changed the board at least once. */
+  const boxAnswered = (boxId: string) =>
+    (boxId === ROOM_BOARD_ROOM_BOX
+      ? messages.some((message) => message.author === null)
+      : (shown.notes.find((note) => note.id === boxId)?.thread?.turns.length ?? 0) > 0) ||
+    (shown.agentTurns ?? []).some((turn) => turn.boxId === boxId);
   /** What a thread box shows below its title, and its prompt box for the person it belongs to. */
   const boxParts = (box: BoardThreadBox, tail: ReactNode, fallback?: ReactNode) => {
     const context = contexts.get(box.id);
@@ -5410,7 +5416,7 @@ export function RoomBoard({
           fallback={fallback}
           approval={renderBoxApproval?.(box.id)}
           onStop={stopBox?.(box.id)}
-          ended={boxRunEnd?.(box.id)?.outcome}
+          ended={boxRunEnd?.(box.id)?.outcome ?? (boxAnswered(box.id) ? "done" : undefined)}
         />
         {work === undefined ? null : (
           <BoxBoardWork
