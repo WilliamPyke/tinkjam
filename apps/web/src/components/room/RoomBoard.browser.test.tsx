@@ -621,6 +621,35 @@ describe("RoomBoard selection", () => {
     await expect.element(screen.getByRole("status")).toHaveTextContent("2 selected");
   });
 
+  it("votes for every selected note from the selection bar", async () => {
+    const board = renderBoard([
+      { id: "a", text: "First", x: 0, y: 400 },
+      { id: "b", text: "Second", x: 300, y: 400 },
+    ]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    await userEvent.keyboard("{Shift>}");
+    for (const id of ["a", "b"]) {
+      const header = screen.container.querySelector(`[data-board-item="note:${id}"] > div`);
+      if (header === null) throw new Error(`The board did not draw note ${id}`);
+      await userEvent.click(header);
+    }
+    await userEvent.keyboard("{/Shift}");
+    await expect.element(screen.getByRole("status")).toHaveTextContent("2 selected");
+    const bar = screen.container.querySelector<HTMLElement>("[data-selection-bar]");
+    const vote = [...(bar?.querySelectorAll("button") ?? [])].find(
+      (button) => button.textContent?.trim() === "Vote",
+    );
+    if (vote === undefined) throw new Error("The selection bar has no Vote action");
+    await userEvent.click(vote);
+    await vi.waitFor(() => {
+      const votes = onChange.mock.calls.flatMap(([change]) =>
+        change.type === "note.react" && change.emoji === "👍" ? [change.noteId] : [],
+      );
+      expect(votes.toSorted()).toEqual(["a", "b"]);
+    });
+  });
+
   it("colours every selected note at once from the selection bar", async () => {
     const board = renderBoard([
       { id: "a", text: "First", x: 0, y: 0 },

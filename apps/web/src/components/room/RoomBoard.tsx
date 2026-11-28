@@ -65,6 +65,7 @@ import {
   ScanIcon,
   SplineIcon,
   SquareDashedIcon,
+  ThumbsUpIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
@@ -7545,6 +7546,19 @@ export function RoomBoard({
                   : []),
                 ...(canEdit && selected.size > 1
                   ? [{ label: "Tidy", icon: <LayoutGridIcon />, run: tidySelection }]
+                  : []),
+                ...(reactTo !== undefined && boardVoteToggles(selectedNotes, viewer).length > 0
+                  ? [
+                      {
+                        label: boardVoteToggles(selectedNotes, viewer).every((one) =>
+                          boardVotedBy(one, viewer),
+                        )
+                          ? "Remove my votes"
+                          : "Vote",
+                        icon: <ThumbsUpIcon />,
+                        run: () => voteOn(selectedNotes),
+                      },
+                    ]
                   : []),
                 ...(selected.size > 1 && reactTo !== undefined
                   ? [
