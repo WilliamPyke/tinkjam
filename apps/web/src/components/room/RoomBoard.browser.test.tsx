@@ -2230,9 +2230,13 @@ describe("RoomBoard lines", () => {
         y: (a.top + a.bottom) / 2 - under.top,
       },
     });
-    const handle = screen.getByRole("button", { name: "Move the line's end" });
-    await expect.element(handle).toBeVisible();
-    (handle.element() as SVGElement).focus();
+    await expect.element(screen.getByRole("toolbar", { name: "Line" })).toHaveFocus();
+    await userEvent.keyboard("{Tab}{Tab}{Tab}{Tab}");
+    await expect
+      .element(screen.getByRole("button", { name: "Move the line's start" }))
+      .toHaveFocus();
+    await userEvent.keyboard("{Tab}");
+    await expect.element(screen.getByRole("button", { name: "Move the line's end" })).toHaveFocus();
     await userEvent.keyboard("{Enter}");
     await expect.element(screen.getByText(/the card it points to/)).toBeVisible();
     card("c").querySelector<HTMLElement>("button:not([data-board-link])")?.focus();

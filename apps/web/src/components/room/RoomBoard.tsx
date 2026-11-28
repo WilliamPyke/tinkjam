@@ -7543,7 +7543,11 @@ export function RoomBoard({
                   width={edgeArea.width}
                   height={edgeArea.height}
                 >
-                  <g ref={setEdgesOver} transform={`translate(${-edgeArea.x} ${-edgeArea.y})`} />
+                  <g
+                    ref={setEdgesOver}
+                    tabIndex={-1}
+                    transform={`translate(${-edgeArea.x} ${-edgeArea.y})`}
+                  />
                 </svg>
                 <BoardFollowContext value={follow}>{cursorLayer}</BoardFollowContext>
               </div>
