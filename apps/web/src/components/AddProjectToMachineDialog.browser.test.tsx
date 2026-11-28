@@ -55,7 +55,7 @@ vi.mock(import("../hooks/useLogicalProjectEnvironments"), async (original) => ({
 import {
   AddProjectToMachineDialogHost,
   openAddProjectToMachine,
-} from "./AddProjectToMachineDialog";
+} from "./AddProjectToMachineDialogHost";
 
 const environmentId = EnvironmentId.make("environment-1");
 const projectRef = scopeProjectRef(environmentId, ProjectId.make("project-1"));

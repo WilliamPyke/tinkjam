@@ -27,11 +27,11 @@ import { composerFloatingLayerProps, focusCheckedPermission } from "./composerEv
 import { EffortGlyph, FastBolt, resolveEffortGlyph } from "./EffortGlyph";
 import { DockedPickerContext } from "./ProviderModelPicker";
 import {
-  getTraitsSectionVisibility,
   type TraitsSelectionInput,
   ULTRATHINK_IN_BODY_NOTE,
   useTraitsSelection,
 } from "./TraitsPicker";
+import { getTraitsSectionVisibility } from "./TraitsPicker.logic";
 
 type SelectDescriptor = Extract<ProviderOptionDescriptor, { type: "select" }>;
 type BooleanDescriptor = Extract<ProviderOptionDescriptor, { type: "boolean" }>;

@@ -78,6 +78,7 @@ import {
   managedRuntimeModeCeilingMessage,
 } from "@t3tools/contracts";
 import { modelSelectionsEqual } from "@t3tools/shared/model";
+import { plainLine } from "@t3tools/shared/promptLinks";
 import { modelSwitchSince } from "./modelSwitch.ts";
 import { recordThreadOpen } from "@t3tools/shared/paletteSearch";
 import {
@@ -139,11 +140,13 @@ import {
   withoutGuestAttribution,
   decideGuestShareCommand,
   type GuestShareCommand,
+  threadWithoutGuestShare,
 } from "./GuestShareDecider.ts";
 import * as EffectOutbox from "./EffectOutbox.ts";
 import { withCommandMetrics } from "../observability/Metrics.ts";
 import type { OrchestrationEffectRequestV2, PendingOrchestrationEffectV2 } from "./EffectOutbox.ts";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
+import { importedMessage } from "./importedHistory.ts";
 import * as ThreadCommandExecutor from "./ThreadCommandExecutor.ts";
 import {
   DispatchModeLimit,
@@ -479,6 +482,10 @@ export interface OrchestratorV2Shape {
   readonly findGuestShareThreadId: (
     shareId: GuestShareId,
   ) => Effect.Effect<ThreadId | null, OrchestratorV2Error>;
+  readonly listRoomBoxThreads: () => Effect.Effect<
+    ReadonlyArray<{ readonly roomThreadId: ThreadId; readonly boxThreadId: ThreadId }>,
+    OrchestratorV2Error
+  >;
   /** Titles of the given threads that exist, archived ones included. */
   readonly getThreadLinkMetadata: (
     threadIds: ReadonlyArray<ThreadId>,
@@ -559,10 +566,27 @@ function commandThreadId(command: OrchestrationV2ServerCommand): ThreadId {
     case "thread.unarchive":
     case "thread.delete":
     case "thread.guest-share.open":
+    case "thread.guest-share.extend":
     case "thread.guest-share.redeem":
     case "thread.guest-share.close":
+    case "thread.room-board.clear":
     case "thread.guest-message.submit":
     case "thread.guest-message.dismiss":
+    case "thread.guest.trust":
+    case "thread.guest.identify":
+    case "thread.guest.remove":
+    case "thread.guest-turn.post":
+    case "thread.guest-board.change":
+    case "thread.room-task.answer":
+    case "thread.room-artifact.fill":
+    case "thread.room-comment.answer":
+    case "thread.room-box.link":
+    case "thread.room-box.turn":
+    case "thread.room-box.changes":
+    case "thread.room-pull-request.read":
+    case "thread.room-cards.sent":
+    case "thread.guest-message.route":
+    case "thread.room-link.set":
     case "thread.settle":
     case "thread.auto-settle":
     case "thread.unsettle":
@@ -675,6 +699,7 @@ function delegatedTasksStopEffect(command: {
 }
 
 const WORKSPACE_PREPARATION_INPUT = "Preparing workspace";
+const IMPORTED_HISTORY_PREFIX = "imported-history:v1";
 const RUNTIME_REQUEST_DELIVERY_FAILED_MESSAGE =
   "T3 Code could not confirm that your answer reached the agent. If the run stays stuck, stop it and try again.";
 
@@ -3050,7 +3075,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       creationSource: command.creationSource,
       id: command.threadId,
       projectId: command.projectId,
-      title: command.title,
+      title: plainLine(command.title) || "New thread",
       providerInstanceId: command.modelSelection.instanceId,
       modelSelection: command.modelSelection,
       runtimeMode: command.runtimeMode,
@@ -3064,6 +3089,8 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       ...(command.linkOrigin === undefined || command.delegatedFrom === undefined
         ? {}
         : { delegatedFrom: command.delegatedFrom }),
+      // Run-less history reaches the agent on the first turn, as an imported session's does.
+      ...(command.importedHistory === undefined ? {} : { historyOrigin: "v1_import" as const }),
       lineage: {
         parentThreadId: null,
         relationshipToParent: null,
@@ -3088,6 +3115,52 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       occurredAt: now,
       payload: thread,
     });
+    if (command.importedHistory !== undefined) {
+      const noticeId = TurnItemId.make(`${IMPORTED_HISTORY_PREFIX}:notice:${command.threadId}`);
+      yield* emitEvent({
+        type: "turn-item.updated",
+        threadId: command.threadId,
+        occurredAt: now,
+        payload: {
+          id: noticeId,
+          threadId: command.threadId,
+          runId: null,
+          nodeId: null,
+          providerThreadId: null,
+          providerTurnId: null,
+          nativeItemRef: null,
+          parentItemId: null,
+          ordinal: 0,
+          status: "completed",
+          title: null,
+          startedAt: now,
+          completedAt: now,
+          updatedAt: now,
+          type: "system_notice",
+          message: command.importedHistory.notice,
+        },
+      });
+      for (const [index, imported] of command.importedHistory.messages.entries()) {
+        const { at, message, turnItem } = importedMessage({
+          threadId: command.threadId,
+          index,
+          idPrefix: IMPORTED_HISTORY_PREFIX,
+          message: imported,
+        });
+        yield* emitEvent({
+          type: "message.updated",
+          threadId: command.threadId,
+          occurredAt: at,
+          payload: message,
+        });
+        yield* emitEvent({
+          type: "turn-item.updated",
+          threadId: command.threadId,
+          occurredAt: at,
+          payload: turnItem,
+        });
+      }
+    }
     if (command.importedNativeThread !== undefined) {
       yield* emitEvent({
         type: "provider-thread.updated",
@@ -3789,9 +3862,9 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         case "thread.archive":
           return {
             ...thread,
+            ...threadWithoutGuestShare(thread),
             archivedAt: now,
             titleRegeneration: null,
-            guestShare: null,
             pullRequests: thread.pullRequests?.map((link) => withPullRequestWatch(link, undefined)),
             updatedAt: now,
           };
@@ -3924,6 +3997,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           };
         }
         case "thread.metadata.update": {
+          const title = command.title === undefined ? undefined : plainLine(command.title);
           const previousRecovery =
             thread.limitRecovery?.runId === command.limitRecovery?.runId &&
             thread.limitRecovery?.resetAt === command.limitRecovery?.resetAt
@@ -3943,7 +4017,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
                   };
           return {
             ...thread,
-            ...(command.title === undefined ? {} : { title: command.title }),
+            ...(title === undefined || title === "" ? {} : { title }),
             ...(command.limitRecovery === undefined ? {} : { limitRecovery }),
             ...(command.limitRecovery !== undefined &&
             limitRecovery?.snooze === true &&
@@ -4213,15 +4287,17 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
                 }),
             updatedAt: thread.updatedAt,
           };
-        case "thread.title.regeneration.complete":
+        case "thread.title.regeneration.complete": {
+          const title = command.title === undefined ? undefined : plainLine(command.title);
           return thread.titleRegeneration?.requestId === command.requestId
             ? {
                 ...thread,
-                ...(command.title === undefined ? {} : { title: command.title }),
+                ...(title === undefined || title === "" ? {} : { title }),
                 titleRegeneration: null,
                 updatedAt: now,
               }
             : thread;
+        }
         case "thread.runtime-mode.set":
           return { ...thread, runtimeMode: command.runtimeMode, updatedAt: now };
         case "thread.interaction-mode.set":
@@ -13565,10 +13641,27 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         yield* dispatchPullRequestWatchSync(command, events, effects);
         break;
       case "thread.guest-share.open":
+      case "thread.guest-share.extend":
       case "thread.guest-share.redeem":
       case "thread.guest-share.close":
+      case "thread.room-board.clear":
       case "thread.guest-message.submit":
       case "thread.guest-message.dismiss":
+      case "thread.guest.trust":
+      case "thread.guest.identify":
+      case "thread.guest.remove":
+      case "thread.guest-turn.post":
+      case "thread.guest-board.change":
+      case "thread.room-task.answer":
+      case "thread.room-artifact.fill":
+      case "thread.room-comment.answer":
+      case "thread.room-box.link":
+      case "thread.room-box.turn":
+      case "thread.room-box.changes":
+      case "thread.room-pull-request.read":
+      case "thread.room-cards.sent":
+      case "thread.guest-message.route":
+      case "thread.room-link.set":
         yield* dispatchGuestShare(command, events, effects);
         break;
       case "provider-session.detach":
@@ -13602,7 +13695,12 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
             : {
                 ...command,
                 text: guestSend.text,
-                context: { version: 1 as const, records: [], guest: guestSend.guest },
+                // Only what the server attached: never a record the client sent.
+                context: {
+                  version: 1 as const,
+                  records: [...guestSend.records],
+                  guest: guestSend.guest,
+                },
               };
         cancelUnsettledEffects = yield* dispatchMessage(dispatched, events, effects);
         yield* recordSubagentFollowup(dispatched, events).pipe(mapDispatchError(command));
@@ -13922,6 +14020,22 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           command.type === "subagent.stop" ||
           // Closing a share again, or after it ended, is not an error.
           command.type === "thread.guest-share.close" ||
+          // Or clearing a board that has nothing on it.
+          command.type === "thread.room-board.clear" ||
+          // So is a guest's turn posted twice, or leaving a room already left.
+          command.type === "thread.guest-turn.post" ||
+          // And a board change that leaves the board as it was.
+          command.type === "thread.guest-board.change" ||
+          command.type === "thread.room-task.answer" ||
+          command.type === "thread.room-artifact.fill" ||
+          command.type === "thread.room-comment.answer" ||
+          command.type === "thread.room-box.link" ||
+          command.type === "thread.room-box.turn" ||
+          command.type === "thread.room-box.changes" ||
+          command.type === "thread.room-pull-request.read" ||
+          command.type === "thread.room-cards.sent" ||
+          command.type === "thread.guest-message.route" ||
+          command.type === "thread.room-link.set" ||
           (command.type === "thread.delete" && command.onlyIfUnused === true),
         (_planned) =>
           new OrchestratorDispatchError({
@@ -14602,6 +14716,9 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       return projectionStore
         .findGuestShareThreadId(shareId)
         .pipe(Effect.mapError(shellProjectionError));
+    }),
+    listRoomBoxThreads: Effect.fn("OrchestratorV2.listRoomBoxThreads")(function () {
+      return projectionStore.listRoomBoxThreads().pipe(Effect.mapError(shellProjectionError));
     }),
     getThreadLinkMetadata: Effect.fn("OrchestratorV2.getThreadLinkMetadata")(function (threadIds) {
       return projectionStore

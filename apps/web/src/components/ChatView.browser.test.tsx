@@ -36,25 +36,43 @@ vi.mock(import("~/rpc/requestLatencyState"), async (original) => ({
   trackRpcRequestSent: () => {},
 }));
 
-it("a new draft does not load its reserved thread before the server lists it", async () => {
-  using _environment = installFakeEnvironment([]);
-  using fetchSpy = vi.spyOn(globalThis, "fetch");
+const hostedStatic = vi.hoisted(() => ({ value: false }));
+vi.mock(import("~/hostedPairing"), async (original) => {
+  const actual = await original();
+  return {
+    ...actual,
+    isHostedStaticApp: (url?: URL) => hostedStatic.value || actual.isHostedStaticApp(url),
+  };
+});
+
+function setup() {
+  hostedStatic.value = false;
   __setClientSettingsForTests({
     ...DEFAULT_CLIENT_SETTINGS,
     onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
   });
+  return installFakeEnvironment([]);
+}
+
+async function mountApp(path: string) {
+  const router = getRouter(createMemoryHistory({ initialEntries: [path] }));
+  await router.load();
+  return render(<AppRoot router={router} />, {
+    // AppRoot brings its own router.
+    router: false,
+  });
+}
+
+it("a new draft does not load its reserved thread before the server lists it", async () => {
+  using _setup = setup();
+  using fetchSpy = vi.spyOn(globalThis, "fetch");
   const draftId = DraftId.make("draft-27443");
   const threadId = ThreadId.make("thread-27443");
   useComposerDraftStore
     .getState()
     .setProjectDraftThreadId(scopeProjectRef(ENVIRONMENT_ID, PROJECT_ID), draftId, { threadId });
 
-  const router = getRouter(createMemoryHistory({ initialEntries: [`/draft/${draftId}`] }));
-  await router.load();
-  await using _app = await render(<AppRoot router={router} />, {
-    // AppRoot brings its own router.
-    router: false,
-  });
+  await using _app = await mountApp(`/draft/${draftId}`);
   await expect.element(page.getByTestId("composer-editor")).toBeVisible();
   // The shell snapshot has arrived once the sidebar lists the project, so the connection is up.
   await expect.element(page.getByText("render", { exact: true }).first()).toBeVisible();
@@ -64,4 +82,27 @@ it("a new draft does not load its reserved thread before the server lists it", a
     .filter((url) => url.includes(`/api/orchestration/threads/${threadId}/`));
   // A 404 here marks the thread deleted, and the view never loads it once the send creates it.
   expect(threadRequests).toEqual([]);
+});
+
+it("unknown shell addresses say they do not exist", async () => {
+  using _setup = setup();
+  await page.viewport(1400, 900);
+
+  for (const hosted of [false, true]) {
+    hostedStatic.value = hosted;
+    for (const path of ["/nowhere", "/some/unknown/path"]) {
+      await using _app = await mountApp(path);
+      await expect.element(page.getByText("This page does not exist.")).toBeVisible();
+    }
+  }
+});
+
+it("a board address says who it works for", async () => {
+  using _setup = setup();
+  await page.viewport(1400, 900);
+  await using _app = await mountApp("/b/share-1");
+
+  await expect
+    .element(page.getByText("This link only works for people already on this board"))
+    .toBeVisible();
 });

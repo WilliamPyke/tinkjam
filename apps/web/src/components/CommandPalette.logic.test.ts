@@ -2,12 +2,15 @@ import { describe, expect, it, vi } from "vite-plus/test";
 import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import type { Thread } from "../types";
 import { makeThreadFixture } from "../test-fixtures";
+import { listHomeBoards } from "./boards/boardsHome.logic";
 import {
+  commandPaletteEnterItem,
   newThreadNoProjectIndex,
   buildNestedSearchItems,
   resolveCommandPaletteProject,
   buildThreadActionItems,
   buildLinkedThreadActionItems,
+  buildBoardActionItems,
   filterPinnedBrowseEntries,
   filterCommandPaletteGroups,
   reduceCommandPaletteUiState,
@@ -470,6 +473,68 @@ describe("buildThreadActionItems", () => {
     expect(labels("lake")).toEqual(["Threads", "Projects"]);
   });
 
+  it("finds every kind of board the home lists by its name, and opens the one picked", async () => {
+    const boards = listHomeBoards({
+      threads: [
+        {
+          environmentId: "env-1",
+          id: "thread-own",
+          projectId: "project-1",
+          title: "Onboarding journey",
+          updatedAt: "2026-11-19T00:00:00.000Z",
+          latestUserMessageAt: null,
+          archivedAt: null,
+          deletedAt: null,
+          hasRoomBoard: true,
+        },
+      ],
+      joined: [
+        {
+          shareId: "share-cloud",
+          threadId: "thread-cloud",
+          title: "Q3 launch plan",
+          joinedAt: "2026-11-20T00:00:00.000Z",
+          cloud: true,
+          maker: true,
+        },
+        {
+          shareId: "share-workspace",
+          threadId: "thread-workspace",
+          title: "Pricing page",
+          joinedAt: "2026-11-21T00:00:00.000Z",
+          workspaceName: "Design team",
+        },
+      ],
+      teams: [{ id: "team-1", name: "Launch crew" }],
+      isOwnEnvironment: () => true,
+    });
+    const openBoard = vi.fn(async () => undefined);
+    const search = (query: string) =>
+      filterCommandPaletteGroups({
+        activeGroups: [],
+        query,
+        isInSubmenu: false,
+        projectSearchItems: [],
+        threadSearchItems: [],
+        boardListItems: buildBoardActionItems({ boards, icon: null, openBoard }),
+      });
+    const found = search("Q3 launch plan");
+    expect(found.map((group) => group.label)).toEqual(["Boards"]);
+    expect(found[0]?.items.map((item) => item.title)).toEqual(["Q3 launch plan"]);
+    expect(search("pricing")[0]?.items.map((item) => item.title)).toEqual(["Pricing page"]);
+    expect(search("onboarding")[0]?.items.map((item) => item.title)).toEqual([
+      "Onboarding journey",
+    ]);
+    expect(search("launch")[0]?.items.map((item) => item.title)).toEqual([
+      "Q3 launch plan",
+      "Launch crew",
+    ]);
+    const picked = found[0]?.items[0];
+    if (picked?.kind !== "action") throw new Error("expected an action");
+    await picked.run();
+    expect(openBoard).toHaveBeenCalledWith(expect.objectContaining({ key: "joined:share-cloud" }));
+  });
+
   it("keeps a command first over a thread in daily use that matches as well", () => {
     const now = Date.parse("2026-10-23T00:00:00.000Z");
     const threadSearchItems = buildThreadActionItems({
@@ -646,7 +711,7 @@ describe("buildThreadActionItems", () => {
     });
     const items = buildThreadActionItems({
       threads: [idThread, titleThread],
-      projectByKey: new Map([[`${LOCAL_ENVIRONMENT_ID}:${PROJECT_ID}`, { title: "T3 Code" }]]),
+      projectByKey: new Map([[`${LOCAL_ENVIRONMENT_ID}:${PROJECT_ID}`, { title: "Tinkjam" }]]),
       icon: null,
       runThread: async (_thread) => undefined,
     });
@@ -959,5 +1024,31 @@ describe("newThreadNoProjectIndex", () => {
   it("keeps a pinned or current scratch project in its own place", () => {
     expect(newThreadNoProjectIndex([entry(false, true, true), entry()])).toBe(0);
     expect(newThreadNoProjectIndex([entry(true), entry(true, false, true), entry()])).toBe(1);
+  });
+});
+
+describe("commandPaletteEnterItem", () => {
+  const action = (value: string) => ({
+    kind: "action" as const,
+    value,
+    searchTerms: [value],
+    title: value,
+    icon: null,
+    run: async () => undefined,
+  });
+  const groups = [
+    { value: "board", label: "This board", items: [action("add-task"), action("fit")] },
+  ];
+  const rows = ["add-task", "fit"];
+
+  it("runs the row highlighted on screen, and the first one once the highlight is not listed", () => {
+    expect(commandPaletteEnterItem(groups, rows, "fit", true)?.value).toBe("fit");
+    // Typing narrowed the list away from what was highlighted: Enter runs the first row, at once.
+    expect(commandPaletteEnterItem(groups, rows, "add-note", true)?.value).toBe("add-task");
+    expect(commandPaletteEnterItem(groups, rows, null, true)?.value).toBe("add-task");
+    // A row still in the groups but no longer shown is never run.
+    expect(commandPaletteEnterItem(groups, ["fit"], "add-task", true)?.value).toBe("fit");
+    expect(commandPaletteEnterItem(groups, rows, null, false)).toBeNull();
+    expect(commandPaletteEnterItem(groups, [], null, true)).toBeNull();
   });
 });

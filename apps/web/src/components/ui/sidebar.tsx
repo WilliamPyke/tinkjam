@@ -37,6 +37,10 @@ type SidebarContextProps = {
   state: ResponsiveSidebarState;
   open: boolean;
   setOpen: (open: boolean) => void;
+  /** Opens or folds the desktop sidebar for now, leaving the saved choice alone. */
+  setOpenUnsaved: (open: boolean) => void;
+  /** Puts the desktop sidebar back to the saved choice. */
+  restoreSavedOpen: () => void;
   openMobile: boolean;
   mobileSheetMounted: boolean;
   setMobileSheetElement: (element: HTMLDivElement | null) => void;
@@ -94,6 +98,11 @@ function useSidebar() {
   return context;
 }
 
+/** The sidebar's state, or null where nothing provides one. */
+function useOptionalSidebar() {
+  return React.use(SidebarContext);
+}
+
 function useSidebarVisibility() {
   const { isMobile, open, openMobile } = useSidebar();
   return isMobile ? openMobile : open;
@@ -136,17 +145,15 @@ interface SidebarOpenState {
 
 /** Per-provider open state, kept outside React so shortcuts can toggle it at event time. */
 function createSidebarOpenStore(defaultOpen: boolean, storageKey: string | undefined) {
-  let state: SidebarOpenState = {
-    open: readStoredSidebarOpen(storageKey) ?? defaultOpen,
-    openMobile: false,
-  };
+  let savedOpen = readStoredSidebarOpen(storageKey) ?? defaultOpen;
+  let state: SidebarOpenState = { open: savedOpen, openMobile: false };
   const listeners = new Set<() => void>();
   const collapseListeners = new Set<() => void>();
   const publish = (next: SidebarOpenState) => {
     state = next;
     for (const listener of listeners) listener();
   };
-  const setOpen = (open: boolean) => {
+  const setOpenUnsaved = (open: boolean) => {
     if (!open && state.open) {
       for (const listener of collapseListeners) listener();
       moveFocusOutOfCollapsingSidebar();
@@ -155,6 +162,10 @@ function createSidebarOpenStore(defaultOpen: boolean, storageKey: string | undef
       if (!isMobileViewport()) announceSidebarVisibility(open);
       publish({ ...state, open });
     }
+  };
+  const setOpen = (open: boolean) => {
+    setOpenUnsaved(open);
+    savedOpen = open;
     if (storageKey) writeLocalStorageValue(storageKey, open, defaultOpen, Schema.Boolean);
   };
   const setOpenMobile = (openMobile: boolean) => {
@@ -169,6 +180,8 @@ function createSidebarOpenStore(defaultOpen: boolean, storageKey: string | undef
     },
     getSnapshot: () => state,
     setOpen,
+    setOpenUnsaved,
+    restoreSavedOpen: () => setOpenUnsaved(savedOpen),
     setOpenMobile,
     toggle: () => (isMobileViewport() ? setOpenMobile(!state.openMobile) : setOpen(!state.open)),
     onCollapse: (listener: () => void) => {
@@ -212,6 +225,8 @@ function SidebarProvider({
     mobileSheetMounted,
     setMobileSheetElement,
     setOpen: store.setOpen,
+    setOpenUnsaved: store.setOpenUnsaved,
+    restoreSavedOpen: store.restoreSavedOpen,
     setOpenMobile: store.setOpenMobile,
     state,
     toggleSidebar: store.toggle,
@@ -327,12 +342,16 @@ function Sidebar({
             }
           >
             <SheetHeader className="sr-only">
-              <SheetTitle>{props["aria-label"] ?? "Sidebar"}</SheetTitle>
-              <SheetDescription>Displays the mobile sidebar.</SheetDescription>
+              {/* The app's drawer is its menu, whatever its sidebar is called on a wide screen. */}
+              <SheetTitle>
+                {side === "left" ? "Menu" : (props["aria-label"] ?? "Sidebar")}
+              </SheetTitle>
+              <SheetDescription>Boards, settings and your account.</SheetDescription>
             </SheetHeader>
             <div
               className={cn(
-                "flex h-full w-full flex-col pb-safe pt-safe",
+                // Rows a finger can hit: at least 40px tall.
+                "flex h-full w-full flex-col pb-safe pt-safe [&_[data-sidebar=menu-button]]:min-h-10 [&_[data-sidebar=menu-sub-button]]:min-h-10",
                 SIDEBAR_TITLEBAR_CONTROL_SIZE,
                 side === "left" ? "pl-safe" : "pr-safe",
               )}
@@ -728,15 +747,23 @@ const sidebarMenuButtonVariants = cva(
     },
     variants: {
       size: {
+        // Finger-sized on a touch screen; as before with a mouse.
         default:
-          "h-8 rounded-[var(--control-radius)] px-[var(--sidebar-row-content-inset)] py-1.5 text-sm",
-        icon: "size-8 justify-center rounded-[var(--control-radius)] p-0",
+          "h-8 rounded-[var(--control-radius)] px-[var(--sidebar-row-content-inset)] py-1.5 text-sm pointer-coarse:h-10",
+        icon: "size-8 justify-center rounded-[var(--control-radius)] p-0 pointer-coarse:size-10",
         lg: "h-12 rounded-[var(--control-radius)] px-[var(--sidebar-row-content-inset)] py-2 text-sm group-data-[collapsible=icon]:p-0!",
-        sm: "h-7 rounded-[var(--control-radius)] px-[var(--sidebar-row-content-inset)] py-2 text-xs",
+        sm: "h-7 rounded-[var(--control-radius)] px-[var(--sidebar-row-content-inset)] py-2 text-xs pointer-coarse:h-10",
+        // The boards navigation's rows: 34px, 18px icons, as the design system draws them.
+        nav: "h-[34px] gap-2.5 rounded-[9px] px-2.5 text-sm pointer-coarse:h-10 [&>svg:not([class*='size-'])]:size-4.5",
       },
       variant: {
         default: "font-medium text-sidebar-muted-foreground/80",
         outline: "bg-sidebar-control-surface ring-1 ring-sidebar-border",
+        // A place to go: ink label; the current one raised on a hairline with an accent icon.
+        nav: "font-medium text-sidebar-foreground data-[active=true]:bg-card data-[active=true]:shadow-[0_0_0_1px_var(--color-sidebar-border)] data-[active=true]:[&>svg]:text-accent-text",
+        // One of several to pick between, such as a workspace: the chosen one on the accent tint.
+        selectable:
+          "font-medium text-sidebar-foreground data-[active=true]:bg-accent-tint data-[active=true]:font-semibold data-[active=true]:text-accent-text",
       },
     },
   },
@@ -870,6 +897,7 @@ export {
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
+  useOptionalSidebar,
   useSidebar,
   useSidebarVisibility,
 };

@@ -13,6 +13,7 @@ import * as Schema from "effect/Schema";
 import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
 import { writeLocalStorageValue } from "../../hooks/useLocalStorage";
 import { commandLabel } from "./KeybindingsSettings.logic";
+import { isSplitSettingsPath, RENAMED_SETTINGS_PATHS } from "./movedSettingsPaths";
 import type { ResolvedSettingsScope } from "./settingsScope";
 
 export type SettingsPath =
@@ -376,6 +377,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     targetId: "appearance-interface",
   },
   {
+    id: "text-size",
+    title: "Text size",
+    to: "/settings/appearance",
+    searchTerms: ["typography font small medium large bigger smaller zoom"],
+  },
+  {
     id: "interface-font",
     title: "Interface font",
     to: "/settings/appearance",
@@ -488,7 +495,11 @@ export const SETTINGS_SEARCH_ITEMS = [
     title: "Guest links",
     to: "/settings/labs",
     scope: "environment",
-    searchTerms: ["beta share guest invite link teammate watch t3 connect tunnel"],
+    searchTerms: [
+      "beta share guest invite link teammate watch t3 connect tunnel",
+      "approved contributors github auto approve send without asking",
+      "name shown to guests owner display name",
+    ],
   },
   {
     id: "linked-environments-beta",
@@ -853,12 +864,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     desktopOnly: true,
   },
   {
-    id: "mobile-app",
-    title: "Mobile app",
-    to: "/settings/about",
-    searchTerms: ["phone tablet iPhone iPad iOS Android App Store Google Play QR"],
-  },
-  {
     id: "welcome-page",
     title: "Welcome page",
     to: "/settings/about",
@@ -1067,7 +1072,7 @@ export const SETTINGS_SEARCH_ITEMS = [
   },
   {
     id: "pull-request-links-open-in-app",
-    title: "Open pull requests in T3 Code",
+    title: "Open pull requests in Tinkjam",
     to: "/settings/diffs",
     searchTerms: [
       `pr commit links ${SOURCE_CONTROL_HOST_LABELS} browser external click default pull request view panel`,
@@ -1235,7 +1240,7 @@ export const SETTINGS_SEARCH_ITEMS = [
   {
     id: "t3-connect",
     localEnvironmentOnly: true,
-    title: "T3 Connect",
+    title: "Tinkjam Connect",
     to: "/settings/access",
     targetId: "connections-environment",
     searchTerms: ["managed tunnel cloud other devices remote tunnels limit t3 chat"],
@@ -1352,18 +1357,6 @@ const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScop
   "/settings/archived": "project-defaults",
 };
 
-const RENAMED_SETTINGS_PATHS: Readonly<Record<string, SettingsPath>> = {
-  "/settings/integrations": "/settings/browser",
-  "/settings/storage": "/settings/maintenance",
-  "/settings/beta": "/settings/labs",
-};
-const SPLIT_SETTINGS_PATHS: ReadonlySet<string> = new Set([
-  "/settings/general",
-  "/settings/appearance",
-  "/settings/source-control",
-  "/settings/connections",
-  ...Object.keys(RENAMED_SETTINGS_PATHS),
-]);
 // Section anchors that moved but are not search results themselves.
 const MOVED_SECTION_ANCHORS: Readonly<Record<string, SettingsPath>> = {
   "authorized-clients": "/settings/access",
@@ -1373,7 +1366,7 @@ const MOVED_SECTION_ANCHORS: Readonly<Record<string, SettingsPath>> = {
 
 /** Where an old settings link now lives. Its anchor finds the page its row moved to. */
 export function movedSettingsPath(pathname: string, hash: string): SettingsPath | null {
-  if (!SPLIT_SETTINGS_PATHS.has(pathname)) return null;
+  if (!isSplitSettingsPath(pathname)) return null;
   const items: readonly SettingsSearchItem[] = SETTINGS_SEARCH_ITEMS;
   const anchored = hash
     ? (items.find((item) => item.id === hash) ?? items.find((item) => item.targetId === hash))

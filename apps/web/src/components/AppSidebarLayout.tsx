@@ -1,6 +1,8 @@
 import { useAtomValue } from "@effect/atom-react";
 import * as Schema from "effect/Schema";
 import {
+  lazy,
+  Suspense,
   useEffect,
   useState,
   useSyncExternalStore,
@@ -39,7 +41,6 @@ import {
 } from "../panelAnimations";
 import { BackgroundThreadAnnouncer } from "./BackgroundThreadAnnouncer";
 import { HistorySwipeNavigation } from "./HistorySwipeNavigation";
-import ThreadSidebar from "./Sidebar";
 import { SidebarBrandWidthProbe } from "./sidebar/SidebarChrome";
 import { isAppModalPage } from "./sidebar/mainAppLocation";
 import type { SidebarRouteReveal } from "./sidebar/routeReveal";
@@ -112,6 +113,9 @@ function readWindowFullscreen(): boolean {
   }
   return windowFullscreenSnapshot;
 }
+
+// Not loaded where the sidebar is hidden: a new account's first screen and the Welcome page.
+const ThreadSidebar = lazy(() => import("./Sidebar"));
 
 function readInitialThreadSidebarWidth(): number {
   try {
@@ -258,9 +262,12 @@ function registerThreadUndoCommands(
               terminalFocus: isTerminalFocused(),
               previewFocus: isPreviewFocused(),
               ...readRoutePanelsOpen(router),
-              // A collapsed sidebar hides the notice, so text fields keep their own undo.
+              // A collapsed sidebar hides the notice, so text fields keep their own undo, as
+              // does a widget that takes its own keys, such as a board.
               editableFocus:
-                isEditableFocused(event.target) &&
+                (isEditableFocused(event.target) ||
+                  (event.target instanceof Element &&
+                    event.target.closest('[role="application"]') !== null)) &&
                 !(readSidebarVisible() && threadUndoClaimsShortcut()),
               modelPickerOpen: isModelPickerOpen(),
             },
@@ -481,7 +488,9 @@ export function AppSidebarLayout({
               }}
               style={windowControlsInsetStyle}
             >
-              <ThreadSidebar routeReveal={sidebarRouteReveal} />
+              <Suspense fallback={null}>
+                <ThreadSidebar routeReveal={sidebarRouteReveal} />
+              </Suspense>
               <SidebarRail onDoubleClick={resetSidebarWidth} />
             </Sidebar>
           </>

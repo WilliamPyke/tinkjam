@@ -2,6 +2,26 @@ import { ScrollArea as ScrollAreaPrimitive } from "@base-ui/react/scroll-area";
 
 import { cn } from "~/lib/utils";
 
+// Base UI registers these on the first viewport's mount, after the page's first layout, and a
+// registration restyles and lays out the whole page again. Registering them on load makes its
+// later attempt a no-op. Same definitions and WebKit skip as Base UI's.
+if (
+  typeof CSS !== "undefined" &&
+  "registerProperty" in CSS &&
+  !CSS.supports("-webkit-backdrop-filter:none")
+) {
+  for (const name of [
+    "--scroll-area-overflow-x-start",
+    "--scroll-area-overflow-x-end",
+    "--scroll-area-overflow-y-start",
+    "--scroll-area-overflow-y-end",
+  ]) {
+    try {
+      CSS.registerProperty({ name, syntax: "<length>", inherits: false, initialValue: "0px" });
+    } catch {}
+  }
+}
+
 function getVirtualizedScrollFadeClassName({ top, bottom }: { top: boolean; bottom: boolean }) {
   if (!top && !bottom) return undefined;
 

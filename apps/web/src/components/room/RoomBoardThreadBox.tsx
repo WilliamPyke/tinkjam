@@ -1,0 +1,537 @@
+import { useAtomValue } from "@effect/atom-react";
+import {
+  type AtomCommandResult,
+  isAtomCommandInterrupted,
+} from "@t3tools/client-runtime/state/runtime";
+import {
+  AuthOrchestrationOperateScope,
+  ROOM_BOX_PROGRESS_PREVIEW_MAX_LENGTH,
+  type RoomBoard,
+  type RoomBoardAgentTurn,
+  type RoomBoxTurn,
+  type ScopedThreadRef,
+  type ThreadGuestMessage,
+} from "@t3tools/contracts";
+import { shouldPreserveAssistantLineBreaks } from "@t3tools/shared/assistantLineBreaks";
+import { roomBoxExcerpt } from "@t3tools/shared/roomBoard";
+import { AppWindowIcon, MessagesSquareIcon, SquareIcon } from "lucide-react";
+import { type PointerEvent, type ReactNode, use, useState, useSyncExternalStore } from "react";
+
+import { cn } from "~/lib/utils";
+import { useEnvironmentScope } from "~/state/session";
+import { environmentThreadDetails, threadEnvironment } from "~/state/threads";
+import { useAtomCommand } from "~/state/use-atom-command";
+
+import { LazyChatMarkdown } from "../LazyChatMarkdown";
+import { Button } from "../ui/button";
+import { Spinner } from "../ui/spinner";
+import { toastManager } from "../ui/toast";
+import { ComposerPendingApprovalActions } from "../chat/ComposerPendingApprovalActions";
+import { guestMessageArtifactTitle } from "../chat/roomBoardPrompt";
+import { BoardProgressLine } from "./RoomBoardArtifact";
+import { BOARD_CARD_TOUCH_CLASS, BoardChip } from "./BoardChrome";
+import type { BoardAgentOutcome } from "./boardAgents.logic";
+import {
+  type BoardPeople,
+  boardAgentTurnLine,
+  boardCardsLine,
+  boardHtmlTitle,
+  boardPersonName,
+  isBoardHtmlArtifact,
+} from "./roomBoard.logic";
+import { RoomLiveContext, useBoxProgress, useBoxQueued } from "./roomBoardLive";
+
+const stopPointer = (event: PointerEvent) => event.stopPropagation();
+
+type StopBoxAgent = () => Promise<AtomCommandResult<unknown, unknown>> | void;
+
+const APPROVAL_FALLBACK = {
+  command: "Command approval",
+  "file-change": "File change approval",
+  "file-read": "File read approval",
+  permission: "App permission approval",
+  "mcp-elicitation": "App access approval",
+} as const;
+
+/** An agent's reply on a box, as markdown from someone's machine, so without raw HTML. */
+export function BoxMarkdown({ text }: { readonly text: string }) {
+  return (
+    <LazyChatMarkdown
+      text={text}
+      cwd={undefined}
+      lineBreaks={shouldPreserveAssistantLineBreaks(text)}
+      parseRawHtml={false}
+    />
+  );
+}
+
+/**
+ * A box's reply: as written, or, when it is a whole HTML page, what the page is called, with its
+ * source a press away and, for the last reply, a way to put the page in an artifact window.
+ */
+function BoxReply({
+  reply,
+  onToArtifact,
+}: {
+  readonly reply: string;
+  readonly onToArtifact: ((title: string | null) => void) | undefined;
+}) {
+  const [source, setSource] = useState(false);
+  if (!isBoardHtmlArtifact(reply)) {
+    return <BoxMarkdown text={reply} />;
+  }
+  const title = boardHtmlTitle(reply);
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="truncate">Wrote an HTML page{title === null ? "" : ` · ${title}`}</p>
+      <div className="flex flex-wrap gap-1">
+        {onToArtifact === undefined ? null : (
+          <Button
+            size="micro"
+            variant="outline"
+            onPointerDown={stopPointer}
+            onClick={() => onToArtifact(title)}
+          >
+            <AppWindowIcon />
+            Put in an artifact
+          </Button>
+        )}
+        <Button
+          size="micro"
+          variant="ghost-muted"
+          aria-expanded={source}
+          onPointerDown={stopPointer}
+          onClick={() => setSource((shown) => !shown)}
+        >
+          {source ? "Hide source" : "Show source"}
+        </Button>
+      </div>
+      {source ? (
+        <pre
+          data-board-scroll
+          className="max-h-40 overflow-auto rounded-md bg-foreground/4 px-2 py-1 font-mono text-2xs whitespace-pre-wrap [overflow-wrap:anywhere]"
+        >
+          {reply}
+        </pre>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The last few turns of a thread box: who asked what, with which cards, and the reply. While a
+ * run is in flight, its prompt and who asked come last, before any reply has.
+ */
+export function BoxTurns({
+  boxId,
+  turns,
+  people,
+  onPageToArtifact,
+}: {
+  readonly boxId: string;
+  readonly turns: ReadonlyArray<RoomBoxTurn>;
+  readonly people: BoardPeople;
+  /** Puts the page the last reply wrote in a new artifact; absent when this person cannot. */
+  readonly onPageToArtifact?: ((title: string | null) => void) | undefined;
+}) {
+  const running = useBoxProgress(boxId);
+  const queued = useBoxQueued(boxId);
+  if (turns.length === 0 && running === undefined) {
+    return <p className="text-sm text-muted-foreground">No prompts yet.</p>;
+  }
+  const asked = [...(running === undefined ? [] : [running]), ...queued].filter(
+    (run) => run.prompt !== undefined && run.prompt !== "",
+  );
+  return (
+    <ol className="flex flex-col gap-2.5">
+      {turns.map((turn, index) => (
+        <li key={turn.id} className="flex flex-col gap-1 text-sm">
+          <span className="text-2xs font-medium text-muted-foreground">
+            {boardPersonName(people, turn.askedBy ?? turn.guestId)}
+            {turn.model === undefined ? "" : ` · ${turn.model}`}
+          </span>
+          <p className="line-clamp-2 border-s-2 border-primary/40 ps-2 [overflow-wrap:anywhere]">
+            {turn.prompt}
+          </p>
+          {turn.cards === undefined || turn.cards.length === 0 ? null : (
+            <p className="truncate text-2xs text-muted-foreground">
+              With {boardCardsLine(turn.cards, people)}
+            </p>
+          )}
+          {turn.reply === "" ? null : (
+            <BoxReply
+              reply={turn.reply}
+              onToArtifact={index === turns.length - 1 ? onPageToArtifact : undefined}
+            />
+          )}
+        </li>
+      ))}
+      {asked.map((run) => (
+        <li key={run.startedAt} className="flex flex-col gap-1 text-sm">
+          <span className="text-2xs font-medium text-muted-foreground">
+            {boardPersonName(people, run.askedBy ?? run.guestId)}
+            {run.phase === "queued" ? " · Queued" : ""}
+          </span>
+          <p
+            className={cn(
+              "line-clamp-2 border-s-2 ps-2 [overflow-wrap:anywhere]",
+              run.phase === "queued"
+                ? "border-foreground/20 text-muted-foreground"
+                : "border-primary/40",
+            )}
+          >
+            {run.prompt}
+          </p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * What a box's agent last did to the board, for everyone to see, with a way to find those cards
+ * and, for the owner and whoever asked for it, to take it all back or do it again.
+ */
+export function BoxBoardWork({
+  turn,
+  onShow,
+  onUndo,
+}: {
+  readonly turn: RoomBoardAgentTurn;
+  readonly onShow: () => void;
+  /** Absent for whoever may not undo it. */
+  readonly onUndo: ((undone: boolean) => void) | undefined;
+}) {
+  const line = boardAgentTurnLine(turn);
+  if (line === "") return null;
+  const undone = turn.undone === true;
+  return (
+    <div
+      role="group"
+      aria-label="What the agent did on the board"
+      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs text-muted-foreground"
+    >
+      <p className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+        {undone ? `Undone: ${line.charAt(0).toLowerCase()}${line.slice(1)}` : line}
+      </p>
+      <div className={cn("flex gap-1", BOARD_CARD_TOUCH_CLASS)}>
+        {undone ? null : (
+          <Button
+            size="micro-touch"
+            variant="ghost-muted"
+            onPointerDown={stopPointer}
+            onClick={onShow}
+          >
+            Show on board
+          </Button>
+        )}
+        {onUndo === undefined ? null : (
+          <Button
+            size="micro-touch"
+            variant="ghost-muted"
+            onPointerDown={stopPointer}
+            onClick={() => onUndo(!undone)}
+          >
+            {undone ? "Redo" : "Undo"}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A box's edge while its agent runs: the accent while it works, the warning tone while it waits on
+ * someone's approval. Only what the run reports; a box at rest keeps its plain edge. Reads one word
+ * from the live store, so a run's tick renders nothing here until its state changes.
+ */
+export function BoxStateEdge({ boxId }: { readonly boxId: string }) {
+  const store = use(RoomLiveContext);
+  const state = useSyncExternalStore(store.subscribe, () => {
+    const progress = store.box(boxId);
+    return progress === undefined ? null : progress.phase === "approval" ? "needs-you" : "working";
+  });
+  if (state === null) return null;
+  return (
+    <span
+      aria-hidden
+      data-box-state={state}
+      className={cn(
+        "pointer-events-none absolute -inset-px z-0 rounded-[inherit] border",
+        state === "working"
+          ? "border-primary ring-3 ring-primary/15"
+          : "border-warning ring-3 ring-warning/20",
+      )}
+    />
+  );
+}
+
+/**
+ * What a box's agent is doing now: its phase, model and how long it has run, and the start of
+ * what it is writing. Reads only its own box's run, so another box's tick does not render it.
+ */
+export function BoxProgress({
+  boxId,
+  fallback,
+  approval,
+  onStop,
+  ended,
+}: {
+  readonly boxId: string;
+  /** What shows when the server reports no runs for boxes, or none for this one. */
+  readonly fallback?: ReactNode;
+  /** Mounted only while the run waits on approval, so it reads the box's requests only then. */
+  readonly approval?: ReactNode;
+  /** Absent where this person may not stop the box's agent. */
+  readonly onStop?: StopBoxAgent | undefined;
+  /** How its last run ended, shown where the working status was until the next run. */
+  readonly ended?: BoardAgentOutcome | undefined;
+}) {
+  const progress = useBoxProgress(boxId);
+  if (progress === undefined) {
+    if (fallback != null) return fallback;
+    if (ended === undefined || ended === "ended") return null;
+    return (
+      <div role="status" className="flex items-center">
+        <BoardChip tone={ended === "failed" ? "error" : ended === "done" ? "success" : "neutral"}>
+          {ended === "failed" ? "Failed" : ended === "done" ? "Done" : "Stopped"}
+        </BoardChip>
+      </div>
+    );
+  }
+  const preview =
+    progress.phase === "writing" && progress.preview !== undefined
+      ? roomBoxExcerpt(progress.preview, ROOM_BOX_PROGRESS_PREVIEW_MAX_LENGTH)
+      : "";
+  return (
+    <div role="status" className="flex flex-col gap-1">
+      <div className="flex items-center gap-1">
+        <BoardChip tone={progress.phase === "approval" ? "warning" : "primary"}>
+          <BoardProgressLine progress={progress} />
+        </BoardChip>
+        {onStop === undefined ? null : <BoxStopButton onStop={onStop} />}
+      </div>
+      {progress.phase === "approval" ? (
+        approval
+      ) : (
+        // Four lines from the start of the run, so the box keeps its size as the reply streams.
+        <p
+          aria-hidden={preview === "" ? true : undefined}
+          className="line-clamp-4 h-[calc(4lh+0.5rem)] rounded-md bg-foreground/4 px-2 py-1 text-xs whitespace-pre-wrap [overflow-wrap:anywhere]"
+        >
+          {preview}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Stops a box's agent: quiet beside its working status, or on its row in the Agents panel. */
+export function BoxStopButton({ onStop }: { readonly onStop: StopBoxAgent }) {
+  const [stopping, setStopping] = useState(false);
+  return (
+    <Button
+      size="micro"
+      variant="ghost-muted"
+      aria-label="Stop the agent"
+      aria-busy={stopping}
+      disabled={stopping}
+      onPointerDown={stopPointer}
+      onClick={async (event) => {
+        event.stopPropagation();
+        if (stopping) return;
+        setStopping(true);
+        const result = await onStop();
+        setStopping(false);
+        if (result !== undefined && result._tag === "Failure") {
+          toastManager.add({
+            type: "error",
+            title: "Could not stop the agent",
+            description: "Try again.",
+          });
+        }
+      }}
+    >
+      {stopping ? <Spinner aria-hidden /> : <SquareIcon aria-hidden className="fill-current" />}
+      Stop
+    </Button>
+  );
+}
+
+/**
+ * The guests' requests for a box that wait for the owner: who asked, what, and the artifact the
+ * reply would rewrite. The owner sends or dismisses each; everyone else sees it waiting.
+ */
+export function BoxRequests({
+  requests,
+  board,
+  people,
+  onResolve,
+  resolving,
+  model,
+}: {
+  readonly requests: ReadonlyArray<ThreadGuestMessage>;
+  readonly board: RoomBoard;
+  readonly people: BoardPeople;
+  /** The owner's way to send or dismiss one. Absent for guests. */
+  readonly onResolve:
+    | ((message: ThreadGuestMessage, decision: "send" | "dismiss") => void)
+    | undefined;
+  readonly resolving: ReadonlySet<string>;
+  /** Which model the owner's Send runs it on, and the way to change it. */
+  readonly model?: ReactNode;
+}) {
+  if (requests.length === 0) return null;
+  return (
+    <ol className="flex flex-col gap-1.5" aria-label="Waiting for the owner">
+      {requests.map((message) => {
+        const who = boardPersonName(people, message.guestId);
+        const artifact = guestMessageArtifactTitle(board, message);
+        const busy = resolving.has(message.id);
+        return (
+          <li
+            key={message.id}
+            className="flex flex-col gap-1 rounded-md border border-dashed border-foreground/20 px-2 py-1.5 text-xs"
+          >
+            <span className="text-2xs font-medium text-muted-foreground">
+              {who === "You" ? "You asked" : `${who} asked`}
+              {artifact === null ? "" : ` · rewrites "${artifact}"`}
+            </span>
+            <p className="line-clamp-4 whitespace-pre-wrap [overflow-wrap:anywhere]">
+              {message.text || "Sent files"}
+            </p>
+            {onResolve === undefined ? (
+              <p className="text-2xs text-muted-foreground">
+                Waiting for {people.ownerName ?? "the owner"} to press Send
+              </p>
+            ) : (
+              <div className="flex items-center justify-end gap-1">
+                <div className="flex min-w-0 flex-1 items-center" onPointerDown={stopPointer}>
+                  {model}
+                </div>
+                <Button
+                  size="micro"
+                  variant="ghost-muted"
+                  disabled={busy}
+                  aria-label={`Dismiss message from ${who}`}
+                  onPointerDown={stopPointer}
+                  onClick={() => onResolve(message, "dismiss")}
+                >
+                  Dismiss
+                </Button>
+                <Button
+                  size="micro"
+                  disabled={busy}
+                  aria-label={`Send message from ${who}`}
+                  onPointerDown={stopPointer}
+                  onClick={() => onResolve(message, "send")}
+                >
+                  Send
+                </Button>
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/**
+ * The first approval a box's run waits on, for the person whose agent it is: what it asks, cut to
+ * a couple of lines, and the thread page's own answers. A question shows here and is answered in
+ * the conversation.
+ */
+export function BoxApproval({
+  threadRef,
+  onOpen,
+  onAnswer,
+}: {
+  readonly threadRef: ScopedThreadRef;
+  /** Opens the box's conversation, when the box has no button of its own for it. */
+  readonly onOpen?: (() => void) | undefined;
+  /** Opens the box's conversation to answer its agent's question. */
+  readonly onAnswer: () => void;
+}) {
+  const requests = useAtomValue(environmentThreadDetails.pendingRequestsAtom(threadRef));
+  const approval = requests?.approvals[0];
+  const question = requests?.userInputs[0]?.questions[0];
+  const canRespond = useEnvironmentScope(threadRef.environmentId, AuthOrchestrationOperateScope);
+  const respond = useAtomCommand(threadEnvironment.respondToApproval, { reportFailure: false });
+  const [responding, setResponding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const open =
+    onOpen === undefined ? null : (
+      <Button size="micro" variant="outline" onPointerDown={stopPointer} onClick={onOpen}>
+        Open conversation
+      </Button>
+    );
+  if (approval === undefined) {
+    if (question === undefined) return open;
+    return (
+      <div
+        role="group"
+        aria-label="Question"
+        className="flex flex-col gap-1 rounded-md border border-warning/30 bg-warning/8 px-2 py-1.5 text-xs"
+        onPointerDown={stopPointer}
+      >
+        <p className="text-2xs font-medium text-warning-foreground">Your agent asks</p>
+        <p className="line-clamp-3 whitespace-pre-wrap [overflow-wrap:anywhere]">
+          {question.question}
+        </p>
+        <div>
+          <Button size="micro" variant="outline" onClick={onAnswer}>
+            <MessagesSquareIcon />
+            Answer in the conversation
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div
+      role="group"
+      aria-label="Approval"
+      className="flex flex-col gap-1.5 rounded-md border border-warning/30 bg-warning/8 px-2 py-1.5 text-xs"
+      onPointerDown={stopPointer}
+    >
+      <p className="line-clamp-2 font-mono text-2xs whitespace-pre-wrap [overflow-wrap:anywhere]">
+        {approval.detail || APPROVAL_FALLBACK[approval.requestKind]}
+      </p>
+      {approval.responseCapability === "live" ? null : (
+        <p className="text-2xs text-warning-foreground">
+          The agent stopped. Open the conversation to go on.
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-1">
+        <ComposerPendingApprovalActions
+          requestId={approval.requestId}
+          isResponding={responding}
+          canRespond={approval.responseCapability === "live"}
+          disabled={!canRespond}
+          options={approval.options}
+          onRespondToApproval={async (requestId, decision) => {
+            if (!canRespond || responding) return;
+            setResponding(true);
+            setError(null);
+            const result = await respond({
+              environmentId: threadRef.environmentId,
+              input: { threadId: threadRef.threadId, requestId, decision },
+            });
+            if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
+              setError("Could not send your answer. Try again.");
+            }
+            setResponding(false);
+            return result;
+          }}
+        />
+        {open}
+      </div>
+      {error === null ? null : (
+        <p role="alert" className="text-2xs text-error-foreground">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}

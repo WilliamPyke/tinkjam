@@ -3,6 +3,7 @@ import {
   EnvironmentId,
   type ServerConfig,
   type ServerConfigStreamEvent,
+  ThreadId,
 } from "@t3tools/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
@@ -30,6 +31,7 @@ import {
   BearerConnectionTarget,
   ConnectionBlockedError,
   ConnectionTransientError,
+  GuestConnectionTarget,
   PrimaryConnectionTarget,
   RelayConnectionTarget,
   type ConnectionAttemptError,
@@ -64,6 +66,18 @@ const TARGET_ENTRY: ConnectionCatalogEntry = {
 
 const RELAY_ENTRY: ConnectionCatalogEntry = {
   target: RELAY_TARGET,
+  profile: Option.none(),
+  enabled: true,
+};
+
+const GUEST_ENTRY: ConnectionCatalogEntry = {
+  target: new GuestConnectionTarget({
+    environmentId: EnvironmentId.make("guest-share-1"),
+    label: "Board",
+    httpBaseUrl: "https://boards.example.test",
+    shareId: "share-1",
+    threadId: ThreadId.make("thread-1"),
+  }),
   profile: Option.none(),
   enabled: true,
 };
@@ -428,6 +442,33 @@ describe("EnvironmentSupervisor", () => {
     }).pipe(Effect.provide(TestClock.layer())),
   );
 
+  it.effect("retries a shared board at least every 5 seconds", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeHarness({
+        prepare: (attempt) =>
+          attempt < 4 ? Effect.fail(transient()) : Effect.succeed(PREPARED_CONNECTION),
+      });
+      const supervisor = yield* EnvironmentSupervisor.make(GUEST_ENTRY, {
+        initiallyDesired: true,
+      }).pipe(Effect.provide(harness.dependencies));
+
+      yield* awaitState(supervisor.state, (state) => state.phase === "backoff");
+      yield* TestClock.adjust("2 seconds");
+      yield* awaitState(
+        supervisor.state,
+        (state) => state.phase === "backoff" && state.attempt === 2,
+      );
+      yield* TestClock.adjust("4 seconds");
+      yield* awaitState(
+        supervisor.state,
+        (state) => state.phase === "backoff" && state.attempt === 3,
+      );
+      yield* TestClock.adjust("5 seconds");
+      yield* awaitState(supervisor.state, (state) => state.phase === "connected");
+      expect(yield* Ref.get(harness.prepareCount)).toBe(4);
+    }).pipe(Effect.provide(TestClock.layer())),
+  );
+
   it.effect("converts unexpected driver defects into retryable failures", () =>
     Effect.gen(function* () {
       const harness = yield* makeHarness({
@@ -476,23 +517,27 @@ describe("EnvironmentSupervisor", () => {
     }),
   );
 
-  it.effect("keeps blocked failures idle until an external signal requests another attempt", () =>
+  it.effect("tries a refused sign-in once more by itself, then waits for an external signal", () =>
     Effect.gen(function* () {
       const harness = yield* makeHarness({
         prepare: (attempt) =>
-          attempt === 1 ? Effect.fail(blocked()) : Effect.succeed(PREPARED_CONNECTION),
+          attempt <= 2 ? Effect.fail(blocked()) : Effect.succeed(PREPARED_CONNECTION),
       });
       const supervisor = yield* EnvironmentSupervisor.make(TARGET_ENTRY, {
         initiallyDesired: true,
       }).pipe(Effect.provide(harness.dependencies));
 
       yield* awaitState(supervisor.state, (state) => state.phase === "blocked");
-      yield* TestClock.adjust("1 hour");
       expect(yield* Ref.get(harness.prepareCount)).toBe(1);
+      yield* TestClock.adjust("5 seconds");
+      yield* awaitState(supervisor.state, (state) => state.phase === "blocked");
+      expect(yield* Ref.get(harness.prepareCount)).toBe(2);
+      yield* TestClock.adjust("1 hour");
+      expect(yield* Ref.get(harness.prepareCount)).toBe(2);
 
       yield* supervisor.retryNow;
       yield* awaitState(supervisor.state, (state) => state.phase === "connected");
-      expect(yield* Ref.get(harness.prepareCount)).toBe(2);
+      expect(yield* Ref.get(harness.prepareCount)).toBe(3);
     }).pipe(Effect.provide(TestClock.layer())),
   );
 
@@ -1625,7 +1670,7 @@ describe("EnvironmentSupervisor routes", () => {
         prepare: (_attempt, target) => {
           attempted.push(target._tag);
           return target._tag === "RelayConnectionTarget"
-            ? Effect.fail(blocked("Sign in to T3 Connect."))
+            ? Effect.fail(blocked("Sign in to Tinkjam."))
             : Effect.succeed(preparedFor(target));
         },
       });
@@ -1640,7 +1685,7 @@ describe("EnvironmentSupervisor routes", () => {
     }).pipe(Effect.provide(TestClock.layer())),
   );
 
-  it.effect("skips a silent LAN route and connects over T3 Connect", () =>
+  it.effect("skips a silent LAN route and connects over Tinkjam Connect", () =>
     Effect.gen(function* () {
       const harness = yield* makeHarness({
         checkRoute: (route) =>
@@ -1699,7 +1744,7 @@ describe("EnvironmentSupervisor routes", () => {
         checkRoute: () => Effect.succeed("answered"),
         prepare: (_attempt, target) =>
           target._tag === "RelayConnectionTarget"
-            ? Effect.fail(blocked("Sign in to T3 Connect."))
+            ? Effect.fail(blocked("Sign in to Tinkjam."))
             : Effect.fail(transient("LAN socket refused.")),
       });
       const supervisor = yield* EnvironmentSupervisor.make(LAN_THEN_RELAY_ENTRY, {
@@ -1920,7 +1965,7 @@ describe("EnvironmentSupervisor routes", () => {
   );
 
   it.effect.each(["initial", "late", "withdrawn", "withdrawn-upgrade", "omitted"] as const)(
-    "learns the %s direct endpoint over T3 Connect",
+    "learns the %s direct endpoint over Tinkjam",
     (discovery) =>
       Effect.gen(function* () {
         const relayEntry: ConnectionCatalogEntry =

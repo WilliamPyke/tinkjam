@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/react";
+import { useAuth } from "../clerk/clerkHooks";
 import { useAtomValue } from "@effect/atom-react";
 import {
   AuthRelayReadScope,
@@ -15,7 +15,6 @@ import {
   EMPTY_CONNECT_ONBOARDING_OPT_OUT_STATE,
 } from "~/cloud/connectOnboarding";
 import { useManagedTunnelUsage } from "~/cloud/managedRelayState";
-import { hasCloudPublicConfig } from "~/cloud/publicConfig";
 import { useCloudLinkController } from "~/cloud/useCloudLinkController";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { isHostedStaticApp } from "~/hostedPairing";
@@ -39,17 +38,11 @@ import { Switch } from "../ui/switch";
 import { toastManager } from "../ui/toast";
 import { WizardSteps, WizardPopup, WizardHeader, WizardPanel, WizardFooter } from "../ui/wizard";
 
-export function ConnectOnboardingDialog() {
-  if (!hasCloudPublicConfig()) return null;
-
-  return <ConfiguredConnectOnboardingDialog />;
-}
-
 type OnboardingStep = "publish" | "devices";
 
 const EMPTY_SESSION_STATE_ATOM = Atom.make(AsyncResult.initial<AuthSessionState>());
 
-function ConfiguredConnectOnboardingDialog() {
+export function ConfiguredConnectOnboardingDialog() {
   // Pending Clerk sessions must not look signed out or activation would look like a new sign-in.
   const { isLoaded, isSignedIn, userId } = useAuth({ treatPendingAsSignedOut: false });
   const [optOutState, setOptOutState] = useLocalStorage(
@@ -188,9 +181,9 @@ function ConfiguredConnectOnboardingDialog() {
     if (!ok) return;
     toastManager.add({
       type: "success",
-      title: "T3 Connect enabled",
+      title: "Tinkjam Connect enabled",
       description: exposeEnvironment
-        ? "This environment is available to your other devices through T3 Connect."
+        ? "This environment is available to your other devices through Tinkjam Connect."
         : "This environment publishes agent activity to your mobile clients.",
     });
     setStep("devices");
@@ -214,7 +207,7 @@ function ConfiguredConnectOnboardingDialog() {
     >
       <WizardPopup>
         <WizardHeader
-          title="Set up T3 Connect"
+          title="Set up Tinkjam Connect"
           description={
             <>
               Mesh your devices together. Publish this environment and connect the rest, all in one
@@ -336,7 +329,7 @@ function PublishStep({
       <div className="rounded-lg border">
         <OnboardingToggleRow
           title="Publish this environment"
-          description="Make this environment available to your other devices through T3 Connect."
+          description="Make this environment available to your other devices through Tinkjam Connect."
           checked={exposeEnvironment}
           disabled={disabled}
           onCheckedChange={onExposeEnvironmentChange}
@@ -366,7 +359,7 @@ function OnboardingTunnelLimitAlert({
   return (
     <TunnelLimitAlert
       upgrade={upgrade}
-      onLinkT3Chat={onOpenAccountPage ? () => onOpenAccountPage("t3-chat") : null}
+      onLinkT3Chat={onOpenAccountPage ? () => onOpenAccountPage("t3-connect") : null}
       onManageTunnels={onOpenAccountPage ? () => onOpenAccountPage("t3-connect") : null}
     />
   );

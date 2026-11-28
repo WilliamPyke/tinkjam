@@ -1,6 +1,16 @@
-import { describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { resolveClerkSignInProps } from "./authRedirect";
+import {
+  parseSignInPageRequest,
+  resolveClerkSignInProps,
+  signInFromBoard,
+  staysInApp,
+} from "./authRedirect";
+import {
+  clearSignInPageRequestOnLeave,
+  keepSignInPageRequest,
+  readSignInPageRequest,
+} from "./signInPageRequest";
 
 describe("resolveClerkSignInProps", () => {
   it("removes a Clerk virtual pathname and callback params while preserving the desktop route", () => {
@@ -13,5 +23,145 @@ describe("resolveClerkSignInProps", () => {
       forceRedirectUrl: "t3code://app/#/settings/connections",
       signUpForceRedirectUrl: "t3code://app/#/settings/connections",
     });
+  });
+
+  it("comes back to a page with a fragment as a new page load, so the new session shows", () => {
+    expect(resolveClerkSignInProps("https://app.example.org/join-workspace#code", false)).toEqual({
+      forceRedirectUrl: "https://app.example.org/join-workspace?signed-in=1#code",
+      signUpForceRedirectUrl: "https://app.example.org/join-workspace?signed-in=1#code",
+    });
+    expect(resolveClerkSignInProps("https://app.example.org/", false).forceRedirectUrl).toBe(
+      "https://app.example.org/",
+    );
+  });
+});
+
+describe("parseSignInPageRequest", () => {
+  const origin = "https://app.example.org";
+  it("keeps a request for this site", () => {
+    expect(
+      parseSignInPageRequest(
+        JSON.stringify({
+          from: "https://app.example.org/guest?share=abc",
+          forceRedirectUrl: "https://app.example.org/guest?share=abc",
+          withSignUp: false,
+        }),
+        origin,
+      ),
+    ).toEqual({
+      from: "/guest?share=abc",
+      forceRedirectUrl: "https://app.example.org/guest?share=abc",
+      withSignUp: false,
+    });
+  });
+
+  it.each([
+    [
+      "another site",
+      JSON.stringify({
+        from: "https://evil.example.com/",
+        forceRedirectUrl: "https://evil.example.com/",
+      }),
+    ],
+    [
+      "a script address",
+      JSON.stringify({ from: "javascript:alert(1)", forceRedirectUrl: "javascript:alert(1)" }),
+    ],
+    ["nothing kept", null],
+    ["something that is not JSON", "{"],
+  ] as const)("goes home, never elsewhere, from %s", (_case, raw) => {
+    expect(parseSignInPageRequest(raw, origin)).toEqual({ from: "/", withSignUp: true });
+  });
+});
+
+describe("clearSignInPageRequestOnLeave", () => {
+  const origin = "https://app.example.org";
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const stubStorage = () => {
+    const stored = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => void stored.set(key, value),
+      removeItem: vi.fn((key: string) => void stored.delete(key)),
+    };
+    vi.stubGlobal("window", { sessionStorage: storage, location: { origin } });
+    return storage;
+  };
+
+  it("forgets the page it came from once sign-in leaves for that page", () => {
+    const storage = stubStorage();
+    keepSignInPageRequest({
+      from: `${origin}/guest?share=abc`,
+      forceRedirectUrl: `${origin}/guest?share=abc`,
+      withSignUp: true,
+    });
+    expect(readSignInPageRequest().from).toBe("/guest?share=abc");
+
+    expect(clearSignInPageRequestOnLeave("/sign-in", "/guest?share=abc", origin)).toBe(true);
+
+    expect(storage.removeItem).toHaveBeenCalledOnce();
+    expect(readSignInPageRequest().from).toBe("/");
+  });
+
+  it.each([
+    ["another sign-in step", "/sign-in", "/sign-in/create"],
+    ["a sign-in step made from outside sign-in", "/", "/"],
+    ["a page on another site", "/sign-in", "https://accounts.example.org/"],
+  ] as const)("keeps the request through %s", (_case, fromPathname, to) => {
+    const storage = stubStorage();
+    keepSignInPageRequest({ from: `${origin}/guest?share=abc`, withSignUp: true });
+
+    expect(clearSignInPageRequestOnLeave(fromPathname, to, origin)).toBe(false);
+
+    expect(storage.removeItem).not.toHaveBeenCalled();
+    expect(readSignInPageRequest().from).toBe("/guest?share=abc");
+  });
+});
+
+describe("signInFromBoard", () => {
+  it.each([
+    ["a cloud board", "/b/abc", true],
+    ["a cloud board at its long address", "/guest-share-abc/board-abc", true],
+    ["a board's invite page", "/guest?host=boards.example.org&share=abc", true],
+    ["a thread shared from someone's computer", "/guest-share-abc/thread-1", false],
+    ["the boards home", "/", false],
+    ["a workspace's invite page", "/join-workspace", false],
+    ["settings", "/settings", false],
+  ] as const)("%s", (_case, from, onBoard) => {
+    expect(signInFromBoard(from)).toBe(onBoard);
+  });
+});
+
+describe("staysInApp", () => {
+  const origin = "https://app.example.org";
+  it.each([
+    ["the home, where signing in from the welcome and signing out both land", "/", true],
+    ["the home with a query", "/?from=invite", true],
+    // The invite pages hold their invite in memory, so signing in there needs no new document.
+    ["a board's invite page", "/guest?host=boards.example.org&share=abc", true],
+    ["a workspace's invite page, its code already out of the address", "/join-workspace", true],
+    [
+      "a workspace's invite page with its code, which a plain move would only scroll to",
+      "/join-workspace?signed-in=1#code",
+      false,
+    ],
+    // Clerk holds the email typed on the first step in memory for the next one.
+    ["a later sign-in step, such as making an account", "/sign-in/create?__clerk_ticket=abc", true],
+    // These read a session or a pairing as they load, so they keep their new document.
+    ["a board", "/b/abc", false],
+    ["a pairing page", "/pair?token=abc", false],
+    [
+      "the home with a fragment, which a plain move would only scroll to",
+      "/?signed-in=1#code",
+      false,
+    ],
+    ["another site", "https://accounts.example.org/", false],
+    ["an address that does not parse", "http://[", false],
+  ] as const)("%s", (_case, to, stays) => {
+    expect(staysInApp(to, origin)).toBe(stays);
   });
 });

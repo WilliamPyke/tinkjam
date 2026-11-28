@@ -1,5 +1,5 @@
 import type { ChatComposerProps } from "./ChatComposer";
-import type { PromptUltrathink } from "./TraitsPicker";
+import type { PromptUltrathink } from "./TraitsPicker.logic";
 import type { ProviderInstanceEntry } from "../../providerInstances";
 import { type AppModelOption } from "../../modelSelection";
 import { CircleAlertIcon } from "lucide-react";

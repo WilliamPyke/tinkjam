@@ -1,0 +1,301 @@
+import { describe, expect, it } from "vite-plus/test";
+
+import appPage from "../index.html?raw";
+import movePage from "../public/move.html?raw";
+import { mergeMovedShares, moveStep, packMove, unpackMove } from "./domainMove.logic";
+
+const NEW = "https://app.tinkjam.com";
+const OLD = "https://app.trellium.org";
+const SHARES = "t3code:guest-shares:v1";
+
+const share = (shareId: string, extra: Record<string, unknown> = {}) => ({
+  host: "boards.trellium.org",
+  shareId,
+  threadId: `thread-${shareId}`,
+  token: `token-${shareId}`,
+  title: "Plän ✏️",
+  joinedAt: "2026-11-01T00:00:00.000Z",
+  ...extra,
+});
+
+// Runs public/move.html's script at `href`, and returns where it sends the browser, if anywhere.
+function runMovePage(href: string, stored: Record<string, string>, cookie = "", framed = false) {
+  const script = movePage.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+  if (script === undefined) throw new Error("move.html has no script");
+  const url = new URL(href);
+  let went: string | null = null;
+  const location = {
+    origin: url.origin,
+    protocol: url.protocol,
+    hostname: url.hostname,
+    port: url.port,
+    search: url.search,
+    hash: url.hash,
+    replace: (to: string) => void (went = to),
+  };
+  const fakeWindow: Record<string, unknown> = {
+    location,
+    localStorage: { getItem: (key: string) => stored[key] ?? null },
+  };
+  fakeWindow.top = framed ? {} : fakeWindow;
+  new Function("window", "document", script)(fakeWindow, { cookie });
+  return went;
+}
+
+// Runs index.html's domain-move script at `href` as the hosted build fills it (`origins`), and
+// returns where it sends the browser, if anywhere.
+function runAppPage(
+  href: string,
+  options: {
+    readonly stored?: Record<string, string>;
+    readonly session?: Record<string, string>;
+    readonly origins?: ReadonlyArray<string>;
+    readonly framed?: boolean;
+    readonly blocked?: boolean;
+    readonly now?: number;
+  } = {},
+) {
+  const tag = appPage.match(/<script id="domain-move">([\s\S]*?)<\/script>/)?.[1];
+  if (tag === undefined) throw new Error("index.html has no domain-move script");
+  const origins = options.origins ?? [NEW, OLD];
+  const script = tag.replace("const ORIGINS = [];", `const ORIGINS = ${JSON.stringify(origins)};`);
+  const url = new URL(href);
+  let went: string | null = null;
+  const storage = (values: Record<string, string>) => ({
+    getItem: (key: string) => {
+      if (options.blocked) throw new Error("blocked");
+      return values[key] ?? null;
+    },
+    setItem: (key: string, value: string) => {
+      if (options.blocked) throw new Error("blocked");
+      values[key] = value;
+    },
+    removeItem: (key: string) => void delete values[key],
+  });
+  const fakeWindow: Record<string, unknown> = {
+    location: {
+      origin: url.origin,
+      pathname: url.pathname,
+      search: url.search,
+      hash: url.hash,
+      replace: (to: string) => void (went = to),
+    },
+    localStorage: storage({ ...options.stored }),
+    sessionStorage: storage(options.session ?? {}),
+  };
+  fakeWindow.top = options.framed ? {} : fakeWindow;
+  const now = options.now ?? Date.UTC(2026, 10, 20);
+  new Function("window", "Date", script)(fakeWindow, { UTC: Date.UTC, now: () => now });
+  return went;
+}
+
+const step = (over: Partial<Parameters<typeof moveStep>[0]>) =>
+  moveStep({
+    origin: NEW,
+    current: NEW,
+    origins: [NEW, OLD],
+    path: "/join",
+    search: "?host=boards.tinkjam.com",
+    hash: "#invite",
+    referrer: "",
+    moved: false,
+    asked: false,
+    canStore: true,
+    framed: false,
+    now: Date.UTC(2026, 10, 20),
+    read: () => null,
+    cookie: "",
+    ...over,
+  });
+
+describe("moving between our domains", () => {
+  it("hands over signed-out boards and small choices, and the link's own fragment", () => {
+    const stored: Record<string, string> = {
+      [SHARES]: JSON.stringify([share("a"), share("mine", { accountId: "user_1" })]),
+      "t3code:theme": "dark",
+      "t3code:composer-drafts:v1": "private",
+    };
+    const sent = step({
+      origin: OLD,
+      read: (key) => stored[key] ?? null,
+      cookie: "x=1; __clerk_db_jwt_ab12=dev.jwt=",
+    });
+    if (sent.kind !== "go") throw new Error("expected the older address to leave");
+    const url = new URL(sent.href);
+    expect(url.origin).toBe(NEW);
+    expect(url.pathname).toBe("/join");
+    expect(url.searchParams.get("host")).toBe("boards.tinkjam.com");
+    expect(url.searchParams.get("__clerk_db_jwt")).toBe("dev.jwt=");
+    const payload = unpackMove(url.hash);
+    expect(payload?.hash).toBe("#invite");
+    expect(payload?.kept).toEqual({ "t3code:theme": "dark" });
+    expect(JSON.parse(payload?.shares ?? "[]")).toEqual([share("a")]);
+
+    // The current address takes it only from our older one, once.
+    const arrive = (over: Partial<Parameters<typeof moveStep>[0]>) =>
+      step({ search: url.search, hash: url.hash, ...over });
+    expect(arrive({ referrer: `${OLD}/` })).toEqual({
+      kind: "arrived",
+      href: `/join${url.search}#invite`,
+      payload,
+      done: true,
+    });
+    const plain = "/join?host=boards.tinkjam.com#invite";
+    for (const [over, done] of [
+      [{ referrer: `${OLD}/`, moved: true }, true],
+      [{ referrer: "" }, true],
+      [{ referrer: "https://evil.test/" }, false],
+      [{ referrer: `${OLD}.evil.test/` }, false],
+    ] as const) {
+      expect(arrive(over), JSON.stringify(over)).toEqual({
+        kind: "arrived",
+        href: plain,
+        payload: null,
+        done,
+      });
+    }
+  });
+
+  it("asks the older address once per browser, and only from the app's own pages", () => {
+    expect(step({})).toEqual({
+      kind: "go",
+      href: `${OLD}/move?to=%2Fjoin%3Fhost%3Dboards.tinkjam.com#invite`,
+      asking: true,
+    });
+    for (const over of [
+      { moved: true },
+      { asked: true },
+      { canStore: false },
+      { framed: true },
+      { now: Date.UTC(2027, 5, 1) },
+      { origin: "http://localhost:5733" },
+      { origins: [NEW] },
+    ]) {
+      expect(step(over), JSON.stringify(over)).toEqual({ kind: "stay" });
+    }
+    expect(unpackMove("#moved=not-json")).toBeNull();
+    expect(unpackMove(packMove({ read: () => "{", hash: "" }))?.shares).toBe("[]");
+  });
+
+  it("asks through a static page on the older address that hands over as the app there would", () => {
+    const stored: Record<string, string> = {
+      [SHARES]: JSON.stringify([share("a", { openedAt: "2026-11-02T00:00:00.000Z" }), share("b")]),
+      "t3code:board-name:v1": "Ada",
+    };
+    const cookie = "__clerk_db_jwt_ab12=dev.jwt=";
+    const asked = step({});
+    if (asked.kind !== "go") throw new Error("expected the current address to ask");
+    const went = runMovePage(asked.href, stored, cookie);
+    const fromApp = step({ origin: OLD, read: (key) => stored[key] ?? null, cookie });
+    if (fromApp.kind !== "go") throw new Error("expected the older address to leave");
+    expect(went).toBe(fromApp.href);
+
+    const arrived = new URL(went ?? "");
+    expect(step({ search: arrived.search, hash: arrived.hash, referrer: `${OLD}/` })).toMatchObject(
+      {
+        kind: "arrived",
+        href: `/join${arrived.search}#invite`,
+        payload: { kept: { "t3code:board-name:v1": "Ada" } },
+        done: true,
+      },
+    );
+    expect(runMovePage(`${OLD}/move?to=%2F`, {})).toMatch(new RegExp(`^${NEW}/#moved=`));
+  });
+
+  it("leaves from index.html before the app loads, exactly when the app would", () => {
+    const stored: Record<string, string> = {
+      [SHARES]: JSON.stringify([share("a")]),
+      "t3code:theme": "dark",
+    };
+    const cookie = "__clerk_db_jwt_ab12=dev.jwt=";
+    const href = `${NEW}/join?host=boards.tinkjam.com#invite`;
+    const session: Record<string, string> = {};
+    const asked = step({});
+    if (asked.kind !== "go") throw new Error("expected the current address to ask");
+    expect(runAppPage(href, { session })).toBe(asked.href);
+    expect(session["tinkjam:move-asked:v1"]).toBe("1");
+
+    // The older address hands over through its static page, as the app there would.
+    const fromApp = step({ origin: OLD, read: (key) => stored[key] ?? null, cookie });
+    if (fromApp.kind !== "go") throw new Error("expected the older address to leave");
+    const toMovePage = runAppPage(`${OLD}/join?host=boards.tinkjam.com#invite`, { stored });
+    expect(toMovePage).toBe("/move?to=%2Fjoin%3Fhost%3Dboards.tinkjam.com#invite");
+    expect(runMovePage(new URL(toMovePage ?? "", OLD).href, stored, cookie)).toBe(fromApp.href);
+
+    const desktop = "t3code://app";
+    for (const [name, page, over] of [
+      ["moved", { stored: { "tinkjam:moved:v1": "2026-11-20" } }, { moved: true }],
+      ["asked this tab", { session: { "tinkjam:move-asked:v1": "1" } }, { asked: true }],
+      ["blocked storage", { blocked: true }, { canStore: false }],
+      ["framed", { framed: true }, { framed: true }],
+      ["asking over", { now: Date.UTC(2027, 5, 1) }, { now: Date.UTC(2027, 5, 1) }],
+      ["not the hosted build", { origins: [] }, { origins: [] }],
+      ["an address of ours alone", { origins: [NEW] }, { origins: [NEW] }],
+    ] as const) {
+      expect(runAppPage(href, page), name).toBeNull();
+      expect(step(over), name).toEqual({ kind: "stay" });
+    }
+    for (const origin of ["http://localhost:5733", desktop]) {
+      expect(runAppPage(`${origin}/join#invite`), origin).toBeNull();
+      expect(step({ origin }), origin).toEqual({ kind: "stay" });
+    }
+    // An arrival is the app's to take in.
+    const arrival = `${NEW}/join${packMove({ read: () => null, hash: "#invite" })}`;
+    expect(runAppPage(arrival)).toBeNull();
+
+    // A board link asks first unless this browser holds that board: the older address may hold
+    // the guest who joined it there. A short link leaves that to the board link it opens.
+    const board = { path: "/guest", search: "?host=boards.tinkjam.com", hash: "#a.sig" };
+    const boardHref = `${NEW}/guest?host=boards.tinkjam.com#a.sig`;
+    const asksForBoard = step(board);
+    expect(asksForBoard).toMatchObject({ kind: "go", asking: true });
+    expect(runAppPage(boardHref)).toBe(asksForBoard.kind === "go" ? asksForBoard.href : null);
+    const held: Record<string, string> = { [SHARES]: JSON.stringify([share("a")]) };
+    for (const [name, page, over] of [
+      ["holds the board", { stored: held }, { read: (key: string) => held[key] ?? null }],
+      ["moved", { stored: { "tinkjam:moved:v1": "2026-11-20" } }, { moved: true }],
+    ] as const) {
+      expect(runAppPage(boardHref, page), name).toBeNull();
+      expect(step({ ...board, ...over }), name).toEqual({ kind: "stay" });
+    }
+    const reloaded = `${NEW}/guest?host=boards.tinkjam.com&share=a`;
+    expect(runAppPage(reloaded, { stored: held })).toBeNull();
+    expect(
+      step({
+        ...board,
+        search: new URL(reloaded).search,
+        hash: "",
+        read: (key) => held[key] ?? null,
+      }),
+    ).toEqual({ kind: "stay" });
+    const other: Record<string, string> = { [SHARES]: JSON.stringify([share("b")]) };
+    expect(runAppPage(boardHref, { stored: other })).not.toBeNull();
+    expect(step({ ...board, read: (key) => other[key] ?? null })).toMatchObject({ kind: "go" });
+    expect(runAppPage(`${NEW}/r/blue-fox`)).toBeNull();
+    expect(step({ path: "/r/blue-fox", search: "", hash: "" })).toEqual({ kind: "stay" });
+    expect(runAppPage(`${OLD}/guest?host=boards.tinkjam.com#invite`, { stored })).toBe(
+      "/move?to=%2Fguest%3Fhost%3Dboards.tinkjam.com#invite",
+    );
+    expect(step({ ...board, origin: OLD })).toMatchObject({ kind: "go", asking: false });
+  });
+
+  it("sends the static page's hand-over only to the app's current address", () => {
+    for (const to of ["//evil.test/x", "https://evil.test/", "/\t/evil.test", "\\evil.test"]) {
+      const went = runMovePage(`${OLD}/move?to=${encodeURIComponent(to)}`, {});
+      expect(new URL(went ?? "").origin, to).toBe(NEW);
+    }
+    expect(runMovePage(`${NEW}/move?to=%2Fguest#invite`, { [SHARES]: "[]" })).toBe(
+      `${NEW}/guest#invite`,
+    );
+    expect(runMovePage(`${OLD}/move?to=%2F`, {}, "", true)).toBeNull();
+  });
+
+  it("takes in handed-over boards without replacing its own or following a strange host", () => {
+    const own = [{ ...share("a"), host: "boards.tinkjam.com", token: "kept" }];
+    const hostOf = (host: string) => (host === "boards.trellium.org" ? "boards.tinkjam.com" : null);
+    expect(
+      mergeMovedShares(own, [share("a"), share("b"), share("c", { host: "evil.test" })], hostOf),
+    ).toEqual([own[0], { ...share("b"), host: "boards.tinkjam.com" }]);
+    expect(mergeMovedShares(own, [share("a")], hostOf)).toBe(own);
+  });
+});

@@ -18,6 +18,7 @@ import {
   resolveThreadStatusPill,
   resolveWorkingStartedAt,
   searchSidebarThreads,
+  sidebarUtilityRows,
   shouldRecedeSidebarThread,
   sortInboxThreadsByReturn,
   resolveSidebarDropTarget,
@@ -34,6 +35,7 @@ import {
   groupSidebarThreadsByProject,
   resolveSidebarFolderDot,
   sidebarFolderExpansionKeys,
+  boardBoxThreadKeys,
 } from "./Sidebar.logic";
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
 import {
@@ -174,6 +176,36 @@ describe("sidebar thread lineage helpers", () => {
     const loopA = subagentOf("thread-loop-a", ThreadId.make("thread-loop-b"));
     const loopB = subagentOf("thread-loop-b", loopA.id);
     expect(resolveSidebarRowThreadId(loopA.id, environmentId, [loopA, loopB])).toBe(loopA.id);
+  });
+
+  it("leaves thread boxes to their board unless the board is archived or the box is a board", () => {
+    const environmentId = EnvironmentId.make("environment-board");
+    const shell = (
+      id: string,
+      fields: { archivedAt?: string; hasRoomBoard?: boolean; boxes?: string[] } = {},
+    ) => ({
+      environmentId,
+      id: ThreadId.make(id),
+      archivedAt: fields.archivedAt ?? null,
+      ...(fields.hasRoomBoard === undefined ? {} : { hasRoomBoard: fields.hasRoomBoard }),
+      ...(fields.boxes === undefined
+        ? {}
+        : { boardBoxThreadIds: fields.boxes.map((box) => ThreadId.make(box)) }),
+    });
+    const keys = boardBoxThreadKeys([
+      shell("board", { hasRoomBoard: true, boxes: ["box", "nested-board"] }),
+      shell("box"),
+      shell("nested-board", { hasRoomBoard: true }),
+      shell("old-board", {
+        hasRoomBoard: true,
+        archivedAt: "2026-01-01T00:00:00.000Z",
+        boxes: ["kept"],
+      }),
+      shell("kept"),
+    ]);
+    expect([...keys]).toEqual([
+      scopedThreadKey(scopeThreadRef(environmentId, ThreadId.make("box"))),
+    ]);
   });
 });
 
@@ -1648,5 +1680,22 @@ describe("shouldCreateNewThreadInCurrentProject", () => {
     expect(shouldCreateNewThreadInCurrentProject(false, 1, 3)).toBe(true);
     expect(shouldCreateNewThreadInCurrentProject(false, 0, 0)).toBe(true);
     expect(shouldCreateNewThreadInCurrentProject(true, 2, 2)).toBe(true);
+  });
+});
+
+describe("sidebarUtilityRows", () => {
+  it("keeps workbench rows away from someone with boards only, except pull requests with a computer", () => {
+    expect(sidebarUtilityRows({ advanced: true, boardsOnly: true, hasComputer: false })).toEqual({
+      pullRequests: false,
+      usage: false,
+    });
+    expect(sidebarUtilityRows({ advanced: false, boardsOnly: true, hasComputer: true })).toEqual({
+      pullRequests: true,
+      usage: false,
+    });
+    expect(sidebarUtilityRows({ advanced: true, boardsOnly: false, hasComputer: false })).toEqual({
+      pullRequests: true,
+      usage: true,
+    });
   });
 });

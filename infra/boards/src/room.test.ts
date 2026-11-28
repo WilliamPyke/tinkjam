@@ -1,0 +1,1225 @@
+import {
+  CLOUD_BOARD_OUTLINE_ROUTE,
+  CLOUD_BOARD_VIEW_ROUTE,
+  CLOUD_BOARD_COPIES_ROUTE,
+  CLOUD_BOARD_LINK_ROUTE,
+  CLOUD_BOARD_PEOPLE_REMOVE_ROUTE,
+  CLOUD_BOARD_PEOPLE_ROLE_ROUTE,
+  CLOUD_BOARD_SHARING_ROUTE,
+  CLOUD_BOARD_TITLE_ROUTE,
+  GUEST_BOARD_ROUTE,
+  GUEST_HANDOFF_ROUTE,
+  GuestId,
+  GuestShareId,
+  GuestStreamEvent,
+  ThreadId,
+  isCloudBoardViewCredential,
+  type RoomBoardChange,
+} from "@t3tools/contracts";
+import * as Result from "effect/Result";
+import * as Schema from "effect/Schema";
+import { describe, expect, it, vi } from "vite-plus/test";
+
+import {
+  INVITE_ROUTE,
+  SESSION_ROUTE,
+  SESSION_ROUTES,
+  STREAM_ROUTE,
+  checkAccess,
+} from "./access.ts";
+import { askAccess } from "./accessRequests.ts";
+import { lockedOutRefusal, withAccountSession } from "./account.ts";
+import { EMPTY_AGENTS, machineGuestOf } from "./machines.ts";
+import {
+  CLOUD_BOARD_MAX_GUESTS,
+  CLOUD_BOARD_MAX_VIEWERS,
+  EMPTY_LIVE,
+  IDLE_BOARD_MS,
+  UNTOUCHED_BOARD_MS,
+  boardAlarmAt,
+  canChange,
+  changeBoard,
+  changeBoardInOrder,
+  checkDelete,
+  checkInvite,
+  checkViewLink,
+  invitePreviewOf,
+  checkViewerRoom,
+  STREAMS_PER_SEAT,
+  streamsPastCap,
+  VIEWER_STREAMS_PER_ADDRESS,
+  createRoom,
+  cursorsEventFor,
+  guestBySession,
+  isViewLink,
+  joinRoom,
+  linkSharingOf,
+  managesBoard,
+  moveCursor,
+  openingEvents,
+  removePerson,
+  renameRoom,
+  roomFailure,
+  sseFrame,
+  staleBoardChange,
+  viewFor,
+  withLink,
+  withRole,
+  withSharing,
+  withoutPerson,
+  type BoardChangeMarks,
+  type CloudRoom,
+} from "./room.ts";
+import { hashSecret, makeSecret, makeViewSecret, shareOfSecret } from "./secrets.ts";
+import worker, { BoardRoom } from "./worker.ts";
+
+vi.mock("cloudflare:workers", () => ({
+  DurableObject: class {
+    readonly ctx: unknown;
+    readonly env: unknown;
+    constructor(ctx: unknown, env: unknown) {
+      this.ctx = ctx;
+      this.env = env;
+    }
+  },
+}));
+
+const NOW = "2026-11-16T10:00:00.000Z";
+const maker = GuestId.make("guest-maker");
+
+const newRoom = (): CloudRoom =>
+  createRoom({
+    shareId: GuestShareId.make("share-one-0000"),
+    threadId: ThreadId.make("board-share-one-0000"),
+    title: undefined,
+    inviteHash: "invite-hash",
+    maker: { id: maker, name: "Ada", sessionHash: "maker-session" },
+    now: NOW,
+  });
+
+const join = (room: CloudRoom, id: string, name = "Grace") =>
+  joinRoom(room, {
+    id: GuestId.make(id),
+    name,
+    sessionHash: `${id}-session`,
+    inviteHash: "invite-hash",
+    now: NOW,
+  });
+
+const notePut = (noteId: string, extra: Partial<RoomBoardChange> = {}) =>
+  ({ type: "note.put", noteId, text: "Hello", x: 10, y: 20, ...extra }) as RoomBoardChange;
+
+const decodeEvent = Schema.decodeUnknownSync(
+  Schema.fromJsonString(Schema.toCodecJson(GuestStreamEvent)),
+);
+const frameData = (frame: string) => frame.replace(/^data: /, "").trimEnd();
+
+describe("cloud board worker", () => {
+  it("does not read a board to copy once the copier is over their limit", async () => {
+    const copyFor = vi.fn(async () => ({
+      title: "Source",
+      board: { positions: {}, notes: [] },
+    }));
+    const objectNamespace = (object: object) => ({
+      idFromName: (name: string) => name,
+      get: () => object,
+    });
+    const response = await worker.fetch(
+      new Request("https://boards/api/boards/copy", {
+        method: "POST",
+        body: JSON.stringify({ name: "Sam", source: "source-share-0000.secret" }),
+      }) as never,
+      {
+        ALLOWED_ORIGINS: "",
+        BOARDS: objectNamespace({ copyFor }),
+        CREATE_LIMITS: objectNamespace({ take: async () => false }),
+        ACCOUNTS: objectNamespace({}),
+        WORKSPACES: objectNamespace({}),
+      } as never,
+    );
+    expect(response.status).toBe(429);
+    expect(copyFor).not.toHaveBeenCalled();
+  });
+
+  it("accepts localhost web app ports only when the local-origins variable is on", async () => {
+    const preflight = (origin: string, localOrigins?: string) =>
+      worker.fetch(
+        new Request("https://boards/api/boards", {
+          method: "OPTIONS",
+          headers: { origin },
+        }) as never,
+        {
+          ALLOWED_ORIGINS: "https://app.tinkjam.com,https://app.trellium.org,http://localhost:5733",
+          ...(localOrigins === undefined ? {} : { ALLOW_LOCALHOST_ORIGINS: localOrigins }),
+        } as never,
+      );
+
+    for (const origin of ["http://localhost:6001", "http://127.0.0.1:6002"]) {
+      const response = await preflight(origin, "true");
+      expect(response.headers.get("access-control-allow-origin")).toBe(origin);
+    }
+    for (const origin of ["https://localhost:6001", "http://localhost.example:6001"]) {
+      const response = await preflight(origin, "true");
+      expect(response.headers.get("access-control-allow-origin")).toBeNull();
+    }
+    const disabled = await preflight("http://localhost:6001");
+    expect(disabled.headers.get("access-control-allow-origin")).toBeNull();
+    const deployed = await preflight("https://app.tinkjam.com");
+    expect(deployed.headers.get("access-control-allow-origin")).toBe("https://app.tinkjam.com");
+  });
+});
+
+describe("cloud room", () => {
+  it("joins a second guest whose change shows in everyone's view", () => {
+    const joined = Result.getOrThrow(join(newRoom(), "guest-two"));
+    const second = guestBySession(joined, "guest-two-session");
+    expect(second?.name).toBe("Grace");
+    const changed = Result.getOrThrow(changeBoard(joined, second!.id, notePut("note-1"), NOW));
+    const view = viewFor(changed, changed.guests[0]!);
+    expect(view.board?.notes).toEqual([
+      expect.objectContaining({ id: "note-1", text: "Hello", guestId: "guest-two" }),
+    ]);
+    expect(view.guests.map((guest) => guest.name)).toEqual(["Ada", "Grace"]);
+    expect(view).not.toHaveProperty("guests.0.sessionHash");
+    expect(view.cloud).toBe(true);
+  });
+
+  it("applies one page's changes in order, each answered alone, and drops older ones arriving late", () => {
+    const marks: BoardChangeMarks = new Map();
+    const at = { now: NOW, nowMs: 1_000 };
+    const applied = changeBoardInOrder(
+      newRoom(),
+      maker,
+      {
+        client: "page-1",
+        changes: [
+          { seq: 3, change: notePut("note-1", { text: "" } as Partial<RoomBoardChange>) },
+          { seq: 4, change: notePut("note-1", { text: "Typed" } as Partial<RoomBoardChange>) },
+          {
+            seq: 5,
+            change: { type: "edge.put", edgeId: "line-1", from: "note:gone", to: "note:note-1" },
+          },
+          { seq: 6, change: notePut("note-2") },
+        ],
+      },
+      at,
+      marks,
+      () => true,
+    );
+    // The line to a note that is not there is refused; the note after it still goes on.
+    expect(applied.answer.results.map((result) => result.status)).toEqual([204, 204, 409, 204]);
+    expect(applied.room.board?.notes.map((note) => [note.id, note.text])).toEqual([
+      ["note-1", "Typed"],
+      ["note-2", "Hello"],
+    ]);
+    // The empty note and a removal sent before the batch, still on their way, change nothing now.
+    const late = (seq: number, change: RoomBoardChange, client = "page-1", by = maker) =>
+      staleBoardChange(marks, by, { client, seq }, change);
+    expect(late(2, notePut("note-1", { text: "" } as Partial<RoomBoardChange>))).toBe(true);
+    expect(late(1, { type: "note.remove", noteId: "note-1" })).toBe(true);
+    expect(late(4, notePut("note-1"))).toBe(true);
+    // A newer change, another page's, another card's or another kind of change still goes.
+    expect(late(7, notePut("note-1"))).toBe(false);
+    expect(late(2, notePut("note-1"), "page-2")).toBe(false);
+    expect(late(2, notePut("note-1"), "page-1", GuestId.make("guest-two"))).toBe(false);
+    expect(late(2, notePut("note-3"))).toBe(false);
+    expect(late(2, { type: "card.move", cardId: "note:note-1", x: 0, y: 0 })).toBe(false);
+  });
+
+  it("answers each change past the rate limit as too fast", () => {
+    let left = 1;
+    const applied = changeBoardInOrder(
+      newRoom(),
+      maker,
+      {
+        client: "page-1",
+        changes: [
+          { seq: 1, change: notePut("note-1") },
+          { seq: 2, change: notePut("note-2") },
+        ],
+      },
+      { now: NOW, nowMs: 1_000 },
+      new Map(),
+      () => left-- > 0,
+    );
+    expect(applied.answer.results).toEqual([{ status: 204 }, { status: 429 }]);
+    expect(applied.room.board?.notes.map((note) => note.id)).toEqual(["note-1"]);
+  });
+
+  it("names a rejoining person apart, as a new guest", () => {
+    const once = Result.getOrThrow(join(newRoom(), "guest-two", "Ada"));
+    expect(once.guests.map((guest) => guest.name)).toEqual(["Ada", "Ada 2"]);
+  });
+
+  it.each([
+    ["a code window", notePut("code", { kind: "code" } as Partial<RoomBoardChange>)],
+    [
+      "a pull request window",
+      notePut("pr", { kind: "pull-request", url: "https://github.com/a/b/pull/1" } as never),
+    ],
+    ["a task for the owner", notePut("task", { kind: "task", assignee: {} } as never)],
+  ])("refuses %s, which needs an owner", (_label, change) => {
+    const refused = changeBoard(newRoom(), maker, change, NOW);
+    expect(Result.isFailure(refused) && refused.failure).toMatchObject({
+      status: 409,
+      reason: "rejected",
+    });
+  });
+
+  it("refuses what the board rules refuse, with their reason", () => {
+    const room = Result.getOrThrow(changeBoard(newRoom(), maker, notePut("note-1"), NOW));
+    const other = Result.getOrThrow(join(room, "guest-two"));
+    const refused = changeBoard(
+      other,
+      GuestId.make("guest-two"),
+      { type: "note.remove", noteId: "note-1" },
+      NOW,
+    );
+    expect(Result.isFailure(refused) && refused.failure).toMatchObject({
+      reason: "rejected",
+      message: "Only the owner and whoever added this card can remove it.",
+    });
+  });
+
+  it("refuses a wrong invite and an unknown or other board's token", () => {
+    const room = newRoom();
+    const wrong = joinRoom(room, {
+      id: GuestId.make("x"),
+      name: "Eve",
+      sessionHash: "s",
+      inviteHash: "not-the-invite",
+      now: NOW,
+    });
+    expect(Result.isFailure(wrong) && wrong.failure).toMatchObject({
+      status: 403,
+      reason: "invalid",
+    });
+    expect(guestBySession(room, "someone-else")).toBeUndefined();
+    expect(shareOfSecret(makeSecret("share-two-0000"))).toBe("share-two-0000");
+    expect(shareOfSecret("no-dot-here")).toBeNull();
+    expect(shareOfSecret(".secret")).toBeNull();
+    expect(shareOfSecret("bad/share.secret")).toBeNull();
+  });
+
+  it("renames the board for everyone", () => {
+    const renamed = renameRoom(newRoom(), "Launch plan", NOW);
+    expect(viewFor(renamed, renamed.guests[0]!).title).toBe("Launch plan");
+    expect(renameRoom(renamed, "Launch plan", NOW)).toBe(renamed);
+  });
+
+  it("keeps characters nobody can see out of the names and titles agents read", () => {
+    const made = createRoom({
+      shareId: GuestShareId.make("share-one-0000"),
+      threadId: ThreadId.make("board-share-one-0000"),
+      title: "Launch\u{E0041}\u{E0042} plan​",
+      inviteHash: "invite-hash",
+      maker: { id: maker, name: "Ada⁠\u{E0049}", sessionHash: "maker-session" },
+      now: NOW,
+    });
+    expect([made.title, made.guests[0]?.name]).toEqual(["Launch plan", "Ada"]);
+    const joined = Result.getOrThrow(join(made, "guest-two", "Grace\u{E0058}﻿"));
+    expect(joined.guests[1]?.name).toBe("Grace");
+    expect(renameRoom(joined, "Q3\n\u{E0041}roadmap", NOW).title).toBe("Q3 roadmap");
+    expect(renameRoom(joined, "​\u{E0041}", NOW)).toBe(joined);
+  });
+
+  it.each([
+    { route: CLOUD_BOARD_TITLE_ROUTE, limit: 30 },
+    { route: GUEST_HANDOFF_ROUTE, limit: 20 },
+  ])("refuses $route past its rate instead of rewriting the board", async ({ route, limit }) => {
+    const token = makeSecret("share-one-0000");
+    const sessionHash = await hashSecret(token);
+    const made = newRoom();
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      recent: Map<string, ReadonlyArray<number>>;
+      streams: Set<never>;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      handle(request: Request): Promise<Response>;
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+    };
+    object.room = { ...made, guests: made.guests.map((guest) => ({ ...guest, sessionHash })) };
+    object.deleted = false;
+    object.recent = new Map();
+    object.streams = new Set();
+    object.previewTimer = null;
+    let writes = 0;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => {
+          writes += 1;
+        },
+        delete: async () => undefined,
+      },
+    };
+    object.keepTaskIndex = async () => undefined;
+    const statuses: Array<number> = [];
+    for (let at = 0; at <= limit; at++) {
+      const response = await object.handle(
+        new Request(`https://boards${route}`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${token}` },
+          body: JSON.stringify({ title: `Plan ${at}` }),
+        }),
+      );
+      statuses.push(response.status);
+    }
+    expect(statuses.at(-1)).toBe(429);
+    expect(writes).toBe(limit);
+  });
+
+  it("lets in as many people as a cloud board holds", () => {
+    let room = newRoom();
+    for (let index = 1; index < CLOUD_BOARD_MAX_GUESTS; index++) {
+      room = Result.getOrThrow(join(room, `guest-${index}`, `Guest ${index}`));
+    }
+    const over = join(room, "one-too-many");
+    expect(Result.isFailure(over) && over.failure).toMatchObject({ status: 409, reason: "full" });
+  });
+
+  it("opens a stream with events a guest's client decodes", () => {
+    const room = Result.getOrThrow(changeBoard(newRoom(), maker, notePut("note-1"), NOW));
+    const events = openingEvents(room, room.guests[0]!, { online: [maker], viewing: 3 }).map(
+      (event) => decodeEvent(frameData(sseFrame(event))),
+    );
+    expect(events.map((event) => event.type)).toEqual(["view", "thread", "presence"]);
+    const [view, thread, presence] = events;
+    expect(view?.type === "view" && view.view.board?.notes[0]?.id).toBe("note-1");
+    expect(thread?.type === "thread" && thread.item.kind).toBe("snapshot");
+    expect(presence).toEqual({ type: "presence", online: [maker], viewing: 3 });
+    // Someone looking on from the view link gets a view that names nobody and can change nothing.
+    const [looking] = openingEvents(room, null, { online: [maker], viewing: 1 }).map((event) =>
+      decodeEvent(frameData(sseFrame(event))),
+    );
+    expect(looking?.type === "view" && looking.view).toMatchObject({ viewOnly: true });
+    expect(looking?.type === "view" && looking.view).not.toHaveProperty("guestId");
+    expect(looking?.type === "view" && looking.view).not.toHaveProperty("machines");
+  });
+
+  it("lets only the maker delete the board or remove others, and anyone leave", () => {
+    const grace = GuestId.make("guest-two");
+    const room = Result.getOrThrow(join(newRoom(), "guest-two"));
+    const withCards = Result.getOrThrow(changeBoard(room, grace, notePut("by-grace"), NOW));
+    const everyone = {
+      ...withCards,
+      machines: [{ guestId: grace, hash: "h", kind: "room" as const }],
+    };
+    expect(viewFor(everyone, everyone.guests[1]!).maker).toBe(maker);
+    expect(checkDelete(everyone, maker)).toBeNull();
+    expect(checkDelete(everyone, grace)).toMatchObject({ status: 403, reason: "not_maker" });
+    const { maker: _before, ...madeBefore } = everyone;
+    expect(checkDelete(madeBefore, maker)).not.toBeNull();
+    // Nobody but the maker removes anyone, and nobody removes the maker.
+    for (const [by, whom] of [
+      [grace, maker],
+      [GuestId.make("stranger"), grace],
+    ] as const) {
+      const refused = removePerson(everyone, by, whom, NOW);
+      expect(Result.isFailure(refused) && refused.failure.reason).toBe("not_maker");
+    }
+    // The maker removes Grace: her cards, her machine's token and her session go.
+    const removed = Result.getOrThrow(removePerson(everyone, maker, grace, NOW));
+    expect(removed.guests.map((guest) => guest.id)).toEqual([maker]);
+    expect(removed.board?.notes).toEqual([]);
+    expect(removed.machines).toEqual([]);
+    expect(guestBySession(removed, "guest-two-session")).toBeUndefined();
+    expect(machineGuestOf(removed, "h", "room", 0)).toBeUndefined();
+    expect(removePerson(removed, maker, grace, NOW)).toStrictEqual(Result.succeed(removed));
+    // Grace leaves on her own; the maker leaving leaves the board, with no maker.
+    expect(Result.getOrThrow(removePerson(everyone, grace, grace, NOW)).guests).toHaveLength(1);
+    const left = Result.getOrThrow(removePerson(everyone, maker, maker, NOW));
+    expect([left.maker, left.guests.map((guest) => guest.id)]).toEqual([undefined, [grace]]);
+    expect(viewFor(left, left.guests[0]!)).not.toHaveProperty("maker");
+  });
+
+  it("keeps the board it last stored when storing a change fails", async () => {
+    const before = newRoom();
+    const after = renameRoom(before, "Launch plan", NOW);
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      save(room: CloudRoom): Promise<void>;
+    };
+    object.room = before;
+    object.deleted = false;
+    object.streams = new Set();
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => undefined,
+        put: async () => {
+          throw new Error("storage failed");
+        },
+        delete: async () => undefined,
+      },
+    };
+    await expect(object.save(after)).rejects.toThrow("storage failed");
+    expect(object.room).toBe(before);
+  });
+
+  it("keeps a newer board change made while inbox items go out", async () => {
+    const samId = GuestId.make("guest-sam");
+    const joined = Result.getOrThrow(join(newRoom(), "guest-sam", "Sam"));
+    const before = {
+      ...joined,
+      guests: joined.guests.map((guest) => ({
+        ...guest,
+        accountId: guest.id === maker ? "user_ada" : "user_sam",
+      })),
+    };
+    const after = Result.getOrThrow(
+      changeBoard(
+        before,
+        samId,
+        notePut("task", {
+          text: "Ship it @Ada",
+          kind: "task",
+          assignee: { guestId: maker },
+          mentions: [{ guestId: maker, name: "Ada" }],
+        } as Partial<RoomBoardChange>),
+        NOW,
+      ),
+    );
+    const newer = renameRoom(after, "Newer title", NOW);
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      saveChange(before: CloudRoom, next: CloudRoom): Promise<void>;
+      deliver(room: CloudRoom, deliveries: ReadonlyArray<unknown>): Promise<ReadonlyArray<GuestId>>;
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+      previewLater(): void;
+    };
+    object.room = before;
+    object.deleted = false;
+    object.streams = new Set();
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => undefined,
+        delete: async () => undefined,
+      },
+    };
+    object.deliver = async (_room, deliveries) => {
+      expect(deliveries).not.toEqual([]);
+      object.room = newer;
+      return [];
+    };
+    object.keepTaskIndex = async () => undefined;
+    object.previewLater = () => undefined;
+    await object.saveChange(before, after);
+    expect(object.room?.title).toBe("Newer title");
+  });
+
+  it("keeps a newer board change made while an access answer goes out", async () => {
+    const made = newRoom();
+    const owned = {
+      ...made,
+      guests: made.guests.map((guest) => ({ ...guest, accountId: "user_ada" })),
+    };
+    const asked = Result.getOrThrow(
+      askAccess(owned, {
+        id: "request-one",
+        account: "user_sam",
+        name: "Sam",
+        viewing: true,
+        now: NOW,
+      }),
+    );
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      preview: string;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      answerAccess(account: string, requestId: string, approve: boolean): Promise<unknown>;
+      indexOf(account: string): {
+        deliver(items: ReadonlyArray<unknown>): Promise<void>;
+        add(items: ReadonlyArray<unknown>): Promise<void>;
+      };
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+    };
+    object.room = asked.room;
+    object.deleted = false;
+    object.streams = new Set();
+    object.preview = "";
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => undefined,
+        delete: async () => undefined,
+      },
+    };
+    object.indexOf = () => ({
+      deliver: async () => {
+        if (object.room !== null) object.room = renameRoom(object.room, "Newer title", NOW);
+      },
+      add: async () => undefined,
+    });
+    object.keepTaskIndex = async () => undefined;
+    await object.answerAccess("user_ada", "request-one", true);
+    expect(object.room?.title).toBe("Newer title");
+  });
+
+  it("keeps a newer board change made while an access request goes out", async () => {
+    const made = newRoom();
+    const joined = Result.getOrThrow(join(made, "guest-sam", "Sam"));
+    const before = {
+      ...joined,
+      guests: joined.guests.map((guest) =>
+        guest.id === maker
+          ? { ...guest, accountId: "user_ada" }
+          : { ...guest, accountId: "user_sam", role: "viewer" as const },
+      ),
+    };
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      askAccess(account: string, ask: { readonly name: string }): Promise<unknown>;
+      indexOf(account: string): { deliver(items: ReadonlyArray<unknown>): Promise<void> };
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+    };
+    object.room = before;
+    object.deleted = false;
+    object.streams = new Set();
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => undefined,
+        delete: async () => undefined,
+      },
+    };
+    object.indexOf = () => ({
+      deliver: async () => {
+        if (object.room !== null) object.room = renameRoom(object.room, "Newer title", NOW);
+      },
+    });
+    object.keepTaskIndex = async () => undefined;
+    await object.askAccess("user_sam", { name: "Sam" });
+    expect(object.room?.title).toBe("Newer title");
+  });
+
+  it("keeps a newer board change made while a role change goes out", async () => {
+    const token = makeSecret("share-one-0000");
+    const sessionHash = await hashSecret(token);
+    const made = newRoom();
+    const owned = {
+      ...made,
+      guests: made.guests.map((guest) => ({ ...guest, sessionHash, accountId: "user_ada" })),
+    };
+    const joined = Result.getOrThrow(join(owned, "guest-sam", "Sam"));
+    const before = {
+      ...joined,
+      guests: joined.guests.map((guest) =>
+        guest.id === maker ? guest : { ...guest, accountId: "user_sam" },
+      ),
+    };
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      live: typeof EMPTY_LIVE;
+      agents: typeof EMPTY_AGENTS;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      handle(request: Request): Promise<Response>;
+      indexOf(account: string): { deliver(items: ReadonlyArray<unknown>): Promise<void> };
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+      setAgents(agents: never, now: number): void;
+    };
+    object.room = before;
+    object.deleted = false;
+    object.streams = new Set();
+    object.live = EMPTY_LIVE;
+    object.agents = EMPTY_AGENTS;
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => undefined,
+        delete: async () => undefined,
+      },
+    };
+    object.indexOf = () => ({
+      deliver: async () => {
+        if (object.room !== null) object.room = renameRoom(object.room, "Newer title", NOW);
+      },
+    });
+    object.keepTaskIndex = async () => undefined;
+    object.setAgents = () => undefined;
+    const response = await object.handle(
+      new Request(`https://boards${CLOUD_BOARD_PEOPLE_ROLE_ROUTE}`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+        body: JSON.stringify({ guestId: "guest-sam", role: "view" }),
+      }),
+    );
+    expect(response.status).toBe(204);
+    expect(object.room?.title).toBe("Newer title");
+  });
+
+  it.each([
+    { route: CLOUD_BOARD_LINK_ROUTE, body: { kind: "edit", on: true } },
+    { route: CLOUD_BOARD_SHARING_ROUTE, body: { sharing: "edit", renew: true } },
+  ])("keeps a newer board change made while a link is made", async ({ route, body }) => {
+    const token = makeSecret("share-one-0000");
+    const sessionHash = await hashSecret(token);
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+    const made = newRoom();
+    const before = {
+      ...made,
+      guests: made.guests.map((guest) => ({ ...guest, sessionHash })),
+    };
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      live: typeof EMPTY_LIVE;
+      agents: typeof EMPTY_AGENTS;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      handle(request: Request): Promise<Response>;
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+    };
+    object.room = before;
+    object.deleted = false;
+    object.streams = new Set();
+    object.live = EMPTY_LIVE;
+    object.agents = EMPTY_AGENTS;
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => undefined,
+        delete: async () => undefined,
+      },
+    };
+    object.keepTaskIndex = async () => undefined;
+    const gates: Array<(value: ArrayBuffer) => void> = [];
+    let entered!: () => void;
+    const making = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let reads = 0;
+    const read = vi.spyOn(crypto.subtle, "digest").mockImplementation(() => {
+      reads += 1;
+      if (reads === 1) return Promise.resolve(digest);
+      entered();
+      return new Promise<ArrayBuffer>((resolve) => {
+        gates.push(resolve);
+      });
+    });
+    try {
+      const response = object.handle(
+        new Request(`https://boards${route}`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${token}` },
+          body: JSON.stringify(body),
+        }),
+      );
+      await making;
+      if (object.room !== null) object.room = renameRoom(object.room, "Newer title", NOW);
+      for (const release of gates) release(digest);
+      await expect(response).resolves.toMatchObject({
+        status: route === CLOUD_BOARD_LINK_ROUTE ? 200 : 204,
+      });
+      expect(object.room?.title).toBe("Newer title");
+    } finally {
+      read.mockRestore();
+    }
+  });
+
+  it("keeps a newer board change made while a workspace member opens it", async () => {
+    const before = { ...newRoom(), workspaceId: "workspace-one" };
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      deleted: boolean;
+      streams: Set<never>;
+      preview: string;
+      previewTimer: ReturnType<typeof setTimeout> | null;
+      ctx: { readonly storage: object };
+      openAsMember(account: string, workspaceId: string, name: string): Promise<unknown>;
+      keepTaskIndex(previous: CloudRoom | null, room: CloudRoom): Promise<void>;
+    };
+    object.room = before;
+    object.deleted = false;
+    object.streams = new Set();
+    object.preview = "";
+    object.previewTimer = null;
+    object.ctx = {
+      storage: {
+        get: async () => 0,
+        put: async () => undefined,
+        delete: async () => undefined,
+      },
+    };
+    object.keepTaskIndex = async () => undefined;
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("session"));
+    let release!: (value: ArrayBuffer) => void;
+    const gate = new Promise<ArrayBuffer>((resolve) => {
+      release = resolve;
+    });
+    const read = vi.spyOn(crypto.subtle, "digest").mockImplementation(() => gate);
+    try {
+      const opened = object.openAsMember("user_sam", "workspace-one", "Sam");
+      object.room = renameRoom(before, "Newer title", NOW);
+      release(digest);
+      await opened;
+      expect(object.room?.title).toBe("Newer title");
+    } finally {
+      read.mockRestore();
+    }
+  });
+
+  it("checks copies are still allowed after the token is read", async () => {
+    const token = makeSecret("share-one-0000");
+    const sessionHash = await hashSecret(token);
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+    const made = newRoom();
+    const copyingOn = {
+      ...made,
+      allowCopies: true as const,
+      guests: made.guests.map((guest) => ({ ...guest, sessionHash })),
+    };
+    const object = Object.create(BoardRoom.prototype) as {
+      room: CloudRoom | null;
+      copyFor(
+        token: string,
+        copier: GuestId,
+        at: string,
+      ): Promise<{ readonly title: string } | { readonly failure: { readonly reason: string } }>;
+    };
+    object.room = copyingOn;
+    let release!: (value: ArrayBuffer) => void;
+    const gate = new Promise<ArrayBuffer>((resolve) => {
+      release = resolve;
+    });
+    const read = vi.spyOn(crypto.subtle, "digest").mockImplementation(() => gate);
+    try {
+      const copied = object.copyFor(token, GuestId.make("guest-copier"), NOW);
+      const { allowCopies: _copies, ...copyingOff } = copyingOn;
+      object.room = copyingOff;
+      release(digest);
+      await expect(copied).resolves.toMatchObject({ failure: { reason: "copies_off" } });
+    } finally {
+      read.mockRestore();
+    }
+  });
+
+  it.each(["edit", "view"] as const)(
+    "checks a %s link against the board as it is now",
+    async (kind) => {
+      const credential =
+        kind === "edit" ? makeSecret("share-one-0000") : makeViewSecret("share-one-0000");
+      const hash = await hashSecret(credential);
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(credential));
+      const made = newRoom();
+      const before =
+        kind === "edit"
+          ? { ...made, inviteHash: hash, editLink: credential }
+          : { ...made, viewLink: { credential, hash } };
+      const object = Object.create(BoardRoom.prototype) as {
+        room: CloudRoom | null;
+        handle(request: Request): Promise<Response>;
+      };
+      object.room = before;
+      let release!: (value: ArrayBuffer) => void;
+      const gate = new Promise<ArrayBuffer>((resolve) => {
+        release = resolve;
+      });
+      let entered!: () => void;
+      const reading = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      const read = vi.spyOn(crypto.subtle, "digest").mockImplementation(() => {
+        entered();
+        return gate;
+      });
+      try {
+        const opening = object.handle(
+          new Request(`https://boards${kind === "edit" ? INVITE_ROUTE : CLOUD_BOARD_VIEW_ROUTE}`, {
+            method: "POST",
+            body: JSON.stringify({ credential }),
+          }),
+        );
+        await reading;
+        if (kind === "edit") object.room = { ...before, inviteHash: "" };
+        else {
+          const { viewLink: _gone, ...withoutView } = before;
+          object.room = withoutView;
+        }
+        release(digest);
+        const response = await opening;
+        expect(response.status).toBe(403);
+      } finally {
+        read.mockRestore();
+      }
+    },
+  );
+
+  it("deletes a board a day after it was made if nobody changed it, else after 90 idle days", () => {
+    const made = Date.parse(NOW);
+    const day = 24 * 60 * 60_000;
+    const untouched = newRoom();
+    expect(boardAlarmAt(untouched, made + 5, null)).toBe(made + UNTOUCHED_BOARD_MS);
+    expect(boardAlarmAt(untouched, made + 5, made + UNTOUCHED_BOARD_MS)).toBeNull();
+    const used = renameRoom(untouched, "Plan", "2026-11-16T11:00:00.000Z");
+    // Once changed, the untouched deadline moves to 90 idle days, and on at most once a day.
+    const first = boardAlarmAt(used, made, made + UNTOUCHED_BOARD_MS);
+    expect(first).toBe(made + IDLE_BOARD_MS + day);
+    expect(boardAlarmAt(used, made + day - 1, first)).toBeNull();
+    expect(boardAlarmAt(used, made + day, first)).toBe(made + day + IDLE_BOARD_MS + day);
+  });
+
+  it("opens to anyone with the view link, read-only, until the link is made anew or turned off", () => {
+    const room = Result.getOrThrow(join(newRoom(), "guest-two"));
+    expect(withLink(room, false, "view", null, NOW)).toStrictEqual(
+      Result.fail(roomFailure("not_maker")),
+    );
+    const viewOne = { credential: "share-one-0000.v.one", hash: "view-one" };
+    const shown = Result.getOrThrow(withLink(room, true, "view", viewOne, NOW));
+    expect([isViewLink(shown, "view-one"), isViewLink(shown, "invite-hash")]).toEqual([
+      true,
+      false,
+    ]);
+    const looking = viewFor(shown, null);
+    expect(looking).toMatchObject({ viewOnly: true, guestName: "Viewer", cloud: true });
+    expect(looking.guests.map((guest) => guest.name)).toEqual(["Ada", "Grace"]);
+    for (const field of ["guestId", "machines", "manage", "links"]) {
+      expect(looking).not.toHaveProperty(field);
+    }
+    // Everyone on the board may hand the view link on; only the maker manages it.
+    expect(viewFor(shown, shown.guests[1]!).links).toEqual({ view: viewOne.credential });
+    expect(viewFor(shown, shown.guests[0]!, true)).toMatchObject({ manage: true });
+    const remade = Result.getOrThrow(
+      withLink(shown, true, "view", { credential: "share-one-0000.v.two", hash: "view-two" }, NOW),
+    );
+    expect([isViewLink(remade, "view-one"), isViewLink(remade, "view-two")]).toEqual([false, true]);
+    const off = Result.getOrThrow(withLink(remade, true, "view", null, NOW));
+    expect(isViewLink(off, "view-two")).toBe(false);
+    expect(viewFor(off, off.guests[1]!)).not.toHaveProperty("links");
+    expect(isCloudBoardViewCredential(makeViewSecret("share-one-0000"))).toBe(true);
+    expect(isCloudBoardViewCredential(makeSecret("share-one-0000"))).toBe(false);
+    expect(shareOfSecret(makeViewSecret("share-one-0000"))).toBe("share-one-0000");
+  });
+
+  it("turns the edit link off or makes it anew, keeping everyone already on the board", () => {
+    const room = Result.getOrThrow(join(newRoom(), "guest-two"));
+    // A board made before links were kept shows no edit link; the browser keeps its own.
+    expect(viewFor(room, room.guests[1]!)).not.toHaveProperty("links");
+    const off = Result.getOrThrow(withLink(room, true, "edit", null, NOW));
+    expect(Result.isFailure(join(off, "guest-three"))).toBe(true);
+    expect(checkInvite(off, "")).toMatchObject({ reason: "invalid" });
+    expect(off.guests).toHaveLength(2);
+    expect(viewFor(off, off.guests[1]!).links).toEqual({ edit: null });
+    const remade = Result.getOrThrow(
+      withLink(off, true, "edit", { credential: "share-one-0000.new", hash: "new-hash" }, NOW),
+    );
+    expect(checkInvite(remade, "invite-hash")).not.toBeNull();
+    expect(checkInvite(remade, "new-hash")).toBeNull();
+    // The link's holder is told whose board it is, and its name once it has one of its own.
+    expect(invitePreviewOf(remade)).toEqual({ maker: "Ada" });
+    expect(invitePreviewOf(renameRoom(remade, "Onboarding v2", NOW))).toEqual({
+      title: "Onboarding v2",
+      maker: "Ada",
+    });
+    expect(invitePreviewOf(Result.getOrThrow(removePerson(remade, maker, maker, NOW)))).toEqual({});
+    expect(viewFor(remade, remade.guests[1]!).links).toEqual({ edit: "share-one-0000.new" });
+  });
+
+  it("refuses every route but reading the board to whoever can only look", () => {
+    for (const route of Object.keys(SESSION_ROUTES)) {
+      // The outline names what the stream shows, so whoever may read one may read the other.
+      const reading =
+        route === SESSION_ROUTE || route === STREAM_ROUTE || route === CLOUD_BOARD_OUTLINE_ROUTE;
+      const managing = [
+        CLOUD_BOARD_PEOPLE_REMOVE_ROUTE,
+        CLOUD_BOARD_PEOPLE_ROLE_ROUTE,
+        CLOUD_BOARD_LINK_ROUTE,
+        CLOUD_BOARD_SHARING_ROUTE,
+        CLOUD_BOARD_COPIES_ROUTE,
+      ].includes(route);
+      expect([route, checkAccess("edit", route)]).toEqual([route, null]);
+      expect([route, checkAccess("link", route)?.status ?? null]).toEqual([
+        route,
+        reading ? null : 403,
+      ]);
+      // Someone on the board who can only look may still leave, or manage it as a workspace owner.
+      expect([route, checkAccess("view", route)?.reason ?? null]).toEqual([
+        route,
+        reading || managing ? null : "view_only",
+      ]);
+    }
+    expect(checkAccess("link", GUEST_BOARD_ROUTE)).toMatchObject({ reason: "view_only" });
+  });
+
+  it("makes someone a viewer at once, and takes their agent off the board", () => {
+    const grace = GuestId.make("guest-two");
+    const joined = Result.getOrThrow(join(newRoom(), "guest-two"));
+    const room = { ...joined, machines: [{ guestId: grace, hash: "h", kind: "room" as const }] };
+    expect(Result.isFailure(withRole(room, false, grace, "view", NOW))).toBe(true);
+    expect(withRole(room, true, maker, "view", NOW)).toMatchObject({
+      failure: { reason: "rejected" },
+    });
+    const viewing = Result.getOrThrow(withRole(room, true, grace, "view", NOW));
+    const graceNow = viewing.guests[1]!;
+    expect(canChange(graceNow)).toBe(false);
+    expect(machineGuestOf(viewing, "h", "room", 0)).toBeUndefined();
+    // The view her open page gets next says so, and everyone sees who can only look.
+    expect(viewFor(viewing, graceNow)).toMatchObject({ viewOnly: true, viewers: [grace] });
+    expect(viewFor(viewing, graceNow)).not.toHaveProperty("machines");
+    expect(viewFor(viewing, viewing.guests[0]!).viewers).toEqual([grace]);
+    expect(withRole(viewing, true, grace, "view", NOW)).toStrictEqual(Result.succeed(viewing));
+    const editing = Result.getOrThrow(withRole(viewing, true, grace, "edit", NOW));
+    expect(canChange(editing.guests[1]!)).toBe(true);
+    expect(viewFor(editing, editing.guests[1]!)).toMatchObject({ machines: true });
+    expect(viewFor(editing, editing.guests[1]!)).not.toHaveProperty("viewOnly");
+  });
+
+  it("lets the maker and the workspace's owners manage the board, never removing its maker", () => {
+    const grace = GuestId.make("guest-two");
+    const room = Result.getOrThrow(join(newRoom(), "guest-two"));
+    const [ada, graceSeat] = [room.guests[0]!, room.guests[1]!];
+    expect(managesBoard(room, ada, null)).toBe(true);
+    expect(managesBoard(room, graceSeat, "owner")).toBe(false);
+    const inWorkspace = { ...room, workspaceId: "workspace-1" };
+    expect(managesBoard(inWorkspace, graceSeat, "owner")).toBe(true);
+    expect(managesBoard(inWorkspace, graceSeat, "member")).toBe(false);
+    expect(managesBoard(inWorkspace, { ...graceSeat, locked: true }, "owner")).toBe(false);
+    const third = Result.getOrThrow(join(inWorkspace, "guest-three", "Lin"));
+    const removed = removePerson(third, grace, GuestId.make("guest-three"), NOW, true);
+    expect(Result.getOrThrow(removed).guests).toHaveLength(2);
+    expect(Result.isFailure(removePerson(third, grace, maker, NOW, true))).toBe(true);
+  });
+
+  it("holds as many people looking on at once as a board allows", () => {
+    expect(checkViewerRoom(CLOUD_BOARD_MAX_VIEWERS - 1)).toBeNull();
+    expect(checkViewerRoom(CLOUD_BOARD_MAX_VIEWERS)).toMatchObject({
+      status: 409,
+      reason: "viewers_full",
+    });
+  });
+
+  it("closes a seat's or an address's oldest open pages past its cap, and nobody else's", () => {
+    const seat = (n: number) => ({ guestId: "guest-two", viewHash: null, address: null, n });
+    const viewer = (n: number, address: string) => ({
+      guestId: `viewer-${n}`,
+      viewHash: "view-hash",
+      address,
+      n,
+    });
+    const open = [
+      ...Array.from({ length: STREAMS_PER_SEAT }, (_, n) => seat(n)),
+      { guestId: "guest-three", viewHash: null, address: null, n: 99 },
+      ...Array.from({ length: VIEWER_STREAMS_PER_ADDRESS }, (_, n) => viewer(n, "203.0.113.1")),
+      viewer(50, "203.0.113.2"),
+    ];
+    expect(streamsPastCap(open, { guestId: "guest-two" }).map((stream) => stream.n)).toEqual([0]);
+    expect(
+      streamsPastCap(open, { address: "203.0.113.1" }).map((stream) => stream.guestId),
+    ).toEqual(["viewer-0"]);
+    expect(streamsPastCap(open, { address: "203.0.113.2" })).toEqual([]);
+    expect(streamsPastCap(open, { guestId: "guest-three" })).toEqual([]);
+  });
+
+  it("shows each guest everyone else's pointer, until they leave", () => {
+    const other = GuestId.make("guest-two");
+    const now = 1_000;
+    const moved = Result.getOrThrow(
+      moveCursor(EMPTY_LIVE, other, { at: { x: 5, y: 6 }, view: { x: 0, y: 0, zoom: 1 } }, now),
+    );
+    const seen = cursorsEventFor(moved, maker, now);
+    expect(seen.cursors).toEqual([{ guestId: other, x: 5, y: 6 }]);
+    expect(decodeEvent(JSON.stringify(seen))).toMatchObject({ type: "cursors" });
+    expect(cursorsEventFor(moved, other, now).cursors).toEqual([]);
+    expect(cursorsEventFor(withoutPerson(moved, other), maker, now).cursors).toEqual([]);
+  });
+});
+
+describe("link sharing", () => {
+  const grace = GuestId.make("guest-two");
+  const fresh = {
+    edit: { credential: "share-one-0000.fresh", hash: "fresh-edit" },
+    view: { credential: "share-one-0000.v.fresh", hash: "fresh-view" },
+  };
+  // Grace is on the board as her account; Ada kept the edit link she made it with.
+  const board = (): CloudRoom => {
+    const joined = Result.getOrThrow(join(newRoom(), "guest-two"));
+    return {
+      ...joined,
+      editLink: "share-one-0000.invite",
+      guests: joined.guests.map((guest) =>
+        guest.id === grace ? { ...guest, accountId: "account-grace" } : guest,
+      ),
+    };
+  };
+  const shared = (sharing: "edit" | "view" | "off") =>
+    Result.getOrThrow(withSharing(board(), true, { sharing, renew: false, fresh }, NOW));
+
+  it.each([
+    {
+      sharing: "edit" as const,
+      editJoins: true,
+      viewOpens: true,
+      links: { edit: "share-one-0000.invite", view: fresh.view.credential },
+    },
+    {
+      sharing: "view" as const,
+      editJoins: false,
+      viewOpens: true,
+      links: { edit: null, view: fresh.view.credential },
+    },
+    { sharing: "off" as const, editJoins: false, viewOpens: false, links: { edit: null } },
+  ])(
+    "$sharing: the edit link lets someone new in ($editJoins), the view link opens ($viewOpens), seats stay",
+    ({ sharing, editJoins, viewOpens, links }) => {
+      const room = shared(sharing);
+      expect(linkSharingOf(room)).toBe(sharing);
+      // Someone new, with each link.
+      expect(Result.isSuccess(join(room, "guest-new"))).toBe(editJoins);
+      expect(isViewLink(room, "fresh-view")).toBe(viewOpens);
+      // Everyone already on the board keeps their seat and what they can do.
+      expect(guestBySession(room, "guest-two-session")?.id).toBe(grace);
+      expect(Result.isSuccess(withAccountSession(room, "account-grace", "new-device"))).toBe(true);
+      expect(Result.isSuccess(changeBoard(room, grace, notePut("still-editing"), NOW))).toBe(true);
+      // Removed, her account opens nothing; only the link, as it lets anyone, brings her back.
+      const removed = Result.getOrThrow(removePerson(room, maker, grace, NOW));
+      expect(Result.isFailure(withAccountSession(removed, "account-grace", "again"))).toBe(true);
+      expect(lockedOutRefusal(removed, "account-grace")).toBeNull();
+      expect(Result.isSuccess(join(removed, "guest-two-again"))).toBe(editJoins);
+      // Taken out of the workspace instead, her account stays locked out whatever the links do.
+      const locked = {
+        ...room,
+        guests: room.guests.map((guest) =>
+          guest.id === grace ? { ...guest, locked: true as const } : guest,
+        ),
+      };
+      expect(lockedOutRefusal(locked, "account-grace")).not.toBeNull();
+      // Only the links that let people in are handed out, so an older client offers no other.
+      expect(viewFor(room, room.guests[1]!)).toMatchObject({ links, sharing });
+      expect(viewFor(room, null)).not.toHaveProperty("sharing");
+    },
+  );
+
+  it("says why a link no longer lets someone in, in words an older client already shows", () => {
+    expect(checkInvite(shared("off"), "invite-hash")).toMatchObject({
+      status: 403,
+      reason: "invalid",
+      detail: "sharing_off",
+      message:
+        "Link sharing is off for this board. Ask whoever shared it to turn it on or add you.",
+    });
+    expect(checkInvite(shared("view"), "invite-hash")).toMatchObject({
+      reason: "invalid",
+      detail: "view_only",
+      message:
+        "This board's link now only lets people look at it. Ask whoever shared it for the view link.",
+    });
+    // A link that was made anew and one that never opened anything look the same to the board.
+    expect(checkInvite(shared("edit"), "wrong")).toMatchObject({
+      detail: "replaced",
+      message: "This link does not open the board any more. Ask whoever shared it for a new one.",
+    });
+    expect(checkInvite(null, "invite-hash")).toMatchObject({ detail: "ended" });
+  });
+
+  it("says why the view link did not open the board, with the same details", () => {
+    expect(checkViewLink(shared("view"), "fresh-view")).toBeNull();
+    expect(checkViewLink(shared("view"), "wrong")).toMatchObject({ detail: "replaced" });
+    expect(checkViewLink(null, "fresh-view")).toMatchObject({ detail: "ended" });
+    const off = Result.getOrThrow(
+      withSharing(shared("view"), true, { sharing: "off", renew: false, fresh }, NOW),
+    );
+    expect(checkViewLink(off, "fresh-view")).toMatchObject({
+      reason: "invalid",
+      detail: "sharing_off",
+    });
+  });
+
+  it("brings back the very same links when sharing comes back on, and new ones only on renew", () => {
+    const off = Result.getOrThrow(
+      withSharing(shared("edit"), true, { sharing: "off", renew: false, fresh }, NOW),
+    );
+    expect([checkInvite(off, "invite-hash")?.reason, isViewLink(off, "fresh-view")]).toEqual([
+      "invalid",
+      false,
+    ]);
+    const back = Result.getOrThrow(
+      withSharing(
+        off,
+        true,
+        {
+          sharing: "edit",
+          renew: false,
+          fresh: {
+            edit: { credential: "share-one-0000.other", hash: "other-edit" },
+            view: { credential: "share-one-0000.v.other", hash: "other-view" },
+          },
+        },
+        NOW,
+      ),
+    );
+    expect(checkInvite(back, "invite-hash")).toBeNull();
+    expect(isViewLink(back, "fresh-view")).toBe(true);
+    expect(withSharing(back, true, { sharing: "edit", renew: false, fresh }, NOW)).toStrictEqual(
+      Result.succeed(back),
+    );
+    expect(withSharing(back, false, { sharing: "off", renew: false, fresh }, NOW)).toStrictEqual(
+      Result.fail(roomFailure("not_maker")),
+    );
+    const renewed = Result.getOrThrow(
+      withSharing(
+        shared("edit"),
+        true,
+        {
+          sharing: "edit",
+          renew: true,
+          fresh: {
+            edit: { credential: "share-one-0000.renewed", hash: "renewed-edit" },
+            view: { credential: "share-one-0000.v.renewed", hash: "renewed-view" },
+          },
+        },
+        NOW,
+      ),
+    );
+    expect(checkInvite(renewed, "invite-hash")).not.toBeNull();
+    expect(checkInvite(renewed, "renewed-edit")).toBeNull();
+    expect([isViewLink(renewed, "fresh-view"), isViewLink(renewed, "renewed-view")]).toEqual([
+      false,
+      true,
+    ]);
+    expect(renewed.guests).toHaveLength(2);
+  });
+
+  it("shares a board from before the setting as its links say, and an older client's link turns it up", () => {
+    const legacy = board();
+    expect(linkSharingOf(legacy)).toBe("edit");
+    const editOff = Result.getOrThrow(withLink(legacy, true, "edit", null, NOW));
+    expect(linkSharingOf(editOff)).toBe("off");
+    const viewOn = Result.getOrThrow(withLink(editOff, true, "view", fresh.view, NOW));
+    expect(linkSharingOf(viewOn)).toBe("view");
+    // An older client turning a link on means it to work, whatever the setting was.
+    const turnedOn = Result.getOrThrow(withLink(shared("off"), true, "edit", fresh.edit, NOW));
+    expect([linkSharingOf(turnedOn), checkInvite(turnedOn, "fresh-edit")]).toEqual(["edit", null]);
+    const viewOnly = Result.getOrThrow(withLink(shared("off"), true, "view", fresh.view, NOW));
+    expect(linkSharingOf(viewOnly)).toBe("view");
+    // Made anew while it works, a link leaves the setting as it was.
+    const remade = Result.getOrThrow(withLink(shared("view"), true, "view", fresh.view, NOW));
+    expect(linkSharingOf(remade)).toBe("view");
+  });
+});

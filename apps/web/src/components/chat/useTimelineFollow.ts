@@ -28,7 +28,8 @@ import {
   type TimelineNavigation,
   type TimelineViewport,
 } from "./timelineViewport";
-import { resolveTimelineIsAtEnd, type MessagesTimelineRow } from "./MessagesTimeline.logic";
+import type { MessagesTimelineRow } from "./MessagesTimeline.logic";
+import { resolveTimelineIsAtEnd } from "./timelineEnd";
 import { measuredEndOffset, settleListScroll } from "./useTimelinePositionRestore";
 import {
   releaseChatTimelineAnchor,

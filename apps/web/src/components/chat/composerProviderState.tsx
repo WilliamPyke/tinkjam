@@ -17,11 +17,8 @@ import {
 
 import type { DraftId } from "../../composerDraftStore";
 import { getProviderModelCapabilities } from "../../providerModels";
-import {
-  getReasoningTraitStep,
-  type PromptUltrathink,
-  type TraitsSelectionInput,
-} from "./TraitsPicker";
+import type { TraitsSelectionInput } from "./TraitsPicker";
+import { getReasoningTraitStep, type PromptUltrathink } from "./TraitsPicker.logic";
 
 type ComposerProviderStateInput = {
   provider: ProviderDriverKind;

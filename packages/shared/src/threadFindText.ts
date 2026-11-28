@@ -31,8 +31,8 @@ import { proposedPlanTitle, stripDisplayedPlanMarkdown } from "./proposedPlanTex
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
+import { shouldPreserveAssistantLineBreaks } from "./assistantLineBreaks.ts";
 import {
-  shouldPreserveAssistantLineBreaks,
   CHAT_MARKDOWN_REHYPE_PLUGINS,
   CHAT_MARKDOWN_REMARK_PLUGINS,
   CHAT_MARKDOWN_REMARK_PLUGINS_WITH_BREAKS,

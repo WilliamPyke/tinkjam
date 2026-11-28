@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { createSoftwareKeyboardStore } from "./softwareKeyboard";
+import { createSoftwareKeyboardStore, softwareKeyboardFieldOverlap } from "./softwareKeyboard";
 
 function fixture(options: { native?: boolean; overlay?: boolean; desktop?: boolean } = {}) {
   const viewport = Object.assign(new EventTarget(), { width: 390, height: 844, scale: 1 });
@@ -24,6 +24,21 @@ function fixture(options: { native?: boolean; overlay?: boolean; desktop?: boole
   };
   return { store, viewport, keyboard, win, resize, geometry };
 }
+
+describe("software keyboard field overlap", () => {
+  it("measures how far a field reaches below the visible bottom", () => {
+    expect(softwareKeyboardFieldOverlap({ bottom: 390 }, { offsetTop: 0, height: 364 })).toBe(38);
+  });
+
+  it("is zero at or above the visible bottom", () => {
+    expect(softwareKeyboardFieldOverlap({ bottom: 352 }, { offsetTop: 0, height: 364 })).toBe(0);
+    expect(softwareKeyboardFieldOverlap({ bottom: 300 }, { offsetTop: 0, height: 364 })).toBe(0);
+  });
+
+  it("uses the visual viewport's offset in the layout viewport", () => {
+    expect(softwareKeyboardFieldOverlap({ bottom: 390 }, { offsetTop: 24, height: 340 })).toBe(38);
+  });
+});
 
 describe("software keyboard detection", () => {
   it("follows native keyboard geometry even when the viewport does not resize", () => {

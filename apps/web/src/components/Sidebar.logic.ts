@@ -563,6 +563,34 @@ export async function deleteSelectedThreadEntries<
   return { deletedThreadKeys, firstFailure };
 }
 
+/**
+ * Threads in thread boxes on an unarchived board, by thread key: the Threads list leaves them to
+ * their board, and search still finds them. A box thread with a board of its own stays listed.
+ */
+export function boardBoxThreadKeys(
+  threads: readonly Pick<
+    SidebarThreadSummary,
+    "environmentId" | "id" | "archivedAt" | "guestShared" | "hasRoomBoard" | "boardBoxThreadIds"
+  >[],
+): ReadonlySet<string> {
+  const keyOf = (environmentId: EnvironmentId, threadId: ThreadId) =>
+    scopedThreadKey(scopeThreadRef(environmentId, threadId));
+  const boards = new Set(
+    threads
+      .filter((thread) => thread.guestShared === true || thread.hasRoomBoard === true)
+      .map((thread) => keyOf(thread.environmentId, thread.id)),
+  );
+  const boxes = new Set<string>();
+  for (const thread of threads) {
+    if (thread.archivedAt !== null) continue;
+    for (const boxThreadId of thread.boardBoxThreadIds ?? []) {
+      const key = keyOf(thread.environmentId, boxThreadId);
+      if (!boards.has(key)) boxes.add(key);
+    }
+  }
+  return boxes;
+}
+
 export function isSidebarHiddenThread(thread: Pick<SidebarThreadSummary, "lineage">): boolean {
   return !isListedThreadLineage(thread.lineage);
 }
@@ -1354,4 +1382,14 @@ export function sortScopedProjectsForSidebar<
       left.environmentId.localeCompare(right.environmentId) ||
       left.id.localeCompare(right.id),
   );
+}
+
+/** Which workbench rows the sidebar's foot offers. Boards-only keeps them out, apart from pull requests once a computer is here. */
+export function sidebarUtilityRows(input: {
+  readonly advanced: boolean;
+  readonly boardsOnly: boolean;
+  readonly hasComputer: boolean;
+}): { readonly pullRequests: boolean; readonly usage: boolean } {
+  const workbench = input.advanced && !input.boardsOnly;
+  return { pullRequests: workbench || input.hasComputer, usage: workbench };
 }

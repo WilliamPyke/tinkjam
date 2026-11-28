@@ -2,6 +2,7 @@ import { page, userEvent } from "vite-plus/test/browser";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { render } from "../../../test/render";
+import { useFoldSidebarOnNarrowBoard } from "../room/BoardChrome";
 import { Sidebar, SidebarProvider, SidebarRail, SidebarTrigger, useSidebar } from "./sidebar";
 
 function CollapseFromInside() {
@@ -128,5 +129,33 @@ it("keeps the mobile sheet closed and leaves the saved desktop state alone", asy
   await expect
     .element(screen.getByRole("button", { name: "Toggle Sidebar" }))
     .toHaveAttribute("aria-pressed", "false");
+  localStorage.removeItem(storageKey);
+});
+
+it("folds for a narrow board without saving the fold", async () => {
+  await page.viewport(1000, 800);
+  const storageKey = "sidebar_board_fold_test";
+  localStorage.removeItem(storageKey);
+  function Board() {
+    useFoldSidebarOnNarrowBoard();
+    return null;
+  }
+  const layout = (board: boolean) => (
+    <SidebarProvider storageKey={storageKey}>
+      <SidebarTrigger />
+      {board ? <Board /> : null}
+    </SidebarProvider>
+  );
+  {
+    await using screen = await render(layout(true), { router: false /* no routes involved */ });
+    await expect
+      .element(screen.getByRole("button", { name: "Toggle Sidebar" }))
+      .toHaveAttribute("aria-pressed", "false");
+    expect(localStorage.getItem(storageKey)).toBeNull();
+    await screen.rerender(layout(false));
+    await expect
+      .element(screen.getByRole("button", { name: "Toggle Sidebar" }))
+      .toHaveAttribute("aria-pressed", "true");
+  }
   localStorage.removeItem(storageKey);
 });

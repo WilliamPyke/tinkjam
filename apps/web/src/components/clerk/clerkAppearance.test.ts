@@ -9,7 +9,7 @@ import {
   themeColorToHex,
   type ThemeColors,
 } from "../../themePalette";
-import { clerkAppearance } from "./clerkAppearance";
+import { clerkAppearance, clerkLocalization } from "./clerkAppearance";
 
 function contrastRatio(first: string, second: string): number {
   const toRgb = (value: string) => {
@@ -51,6 +51,16 @@ const builtInThemeModes = [
 );
 
 describe("clerkAppearance", () => {
+  it("names Tinkjam on the new-device email check", () => {
+    expect(clerkLocalization).toMatchObject({
+      signIn: {
+        emailCodeMfa: {
+          subtitle: "to continue to Tinkjam",
+        },
+      },
+    });
+  });
+
   it.each(builtInThemeModes)("keeps Clerk text readable across a built-in palette", (colors) => {
     expect(clerkAppearance.variables).toMatchObject({
       colorForeground: "var(--contrast-foreground)",

@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kitebox seed deck</title>
+    <style>
+      :root {
+        --kite: #2f6bff;
+        --kite-tint: #e6edff;
+        --paper: #fbf8f3;
+        --ink: #14161c;
+        --muted: #6a6f7b;
+        --market: #c9ccd3;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #e9e5de;
+        color: var(--ink);
+        font:
+          18px/1.4 Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      .slide {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        align-items: center;
+        gap: 32px;
+        aspect-ratio: 16 / 9;
+        max-width: 720px;
+        margin: 0 auto 22px;
+        padding: 40px 48px;
+        border-radius: 14px;
+        background: var(--paper);
+        box-shadow: 0 10px 24px -16px rgb(20 22 28 / 45%);
+        overflow: hidden;
+      }
+      .slide--one {
+        grid-template-columns: 1fr;
+      }
+      .n {
+        position: absolute;
+        left: 48px;
+        bottom: 18px;
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      h1,
+      h2 {
+        margin: 0;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.02;
+      }
+      h1 {
+        font-size: 56px;
+      }
+      h2 {
+        font-size: 34px;
+      }
+      p {
+        margin: 12px 0 0;
+        color: var(--muted);
+      }
+      ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 10px;
+        font-size: 16px;
+      }
+      li {
+        padding: 10px 14px;
+        border-radius: 10px;
+        background: #fff;
+      }
+      .kite {
+        color: var(--kite);
+      }
+      .pill {
+        display: inline-block;
+        margin-top: 18px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        background: var(--kite);
+        color: #fff;
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .mark {
+        justify-self: end;
+        width: 150px;
+        height: 150px;
+        border-radius: 28px;
+        background: var(--kite);
+        transform: rotate(45deg) scale(0.8);
+      }
+      .big {
+        font-size: 120px;
+        font-weight: 800;
+        letter-spacing: -0.05em;
+        line-height: 0.9;
+        color: var(--kite);
+      }
+      .bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        height: 170px;
+      }
+      .bar {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 4px;
+        height: 100%;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .bar i {
+        display: block;
+        width: 100%;
+        border-radius: 5px 5px 2px 2px;
+        background: var(--market);
+      }
+      .bar b {
+        color: var(--ink);
+        font-size: 12px;
+      }
+      .bar:last-child i {
+        background: var(--kite);
+      }
+      .bar:last-child b {
+        color: var(--kite);
+      }
+      .steps li {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .steps b {
+        display: grid;
+        place-items: center;
+        flex: none;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--kite-tint);
+        color: var(--kite);
+      }
+      blockquote {
+        margin: 0;
+        font-size: 44px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.05;
+      }
+      .team {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .team div {
+        padding: 12px;
+        border-radius: 10px;
+        background: #fff;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .team b {
+        display: block;
+        color: var(--ink);
+        font-size: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="slide">
+      <div>
+        <h1>Kitebox</h1>
+        <p>Never run out of oat milk at 8am.</p>
+        <span class="pill">Raising £1.5M seed</span>
+      </div>
+      <div class="mark" aria-hidden="true"></div>
+      <span class="n">1</span>
+    </section>
+    <section class="slide">
+      <div>
+        <h2>Small cafés count stock on paper, once a week.</h2>
+        <p>From 40 interviews with café owners</p>
+      </div>
+      <ul>
+        <li>Counting takes about <b>90 minutes</b> every Sunday</li>
+        <li>Something runs out <b>three times</b> a week</li>
+        <li>Orders are guesses</li>
+      </ul>
+      <span class="n">2 · Problem</span>
+    </section>
+    <section class="slide">
+      <div>
+        <div class="big">212</div>
+        <h2>cafés use Kitebox every day.</h2>
+        <p>Up 9% a month since September.</p>
+      </div>
+      <div class="bars" aria-label="Cafés each month, September to March">
+        <span class="bar"><b>126</b><i style="height: 59%"></i>Sep</span>
+        <span class="bar"><b>138</b><i style="height: 65%"></i>Oct</span>
+        <span class="bar"><b>150</b><i style="height: 71%"></i>Nov</span>
+        <span class="bar"><b>164</b><i style="height: 77%"></i>Dec</span>
+        <span class="bar"><b>178</b><i style="height: 84%"></i>Jan</span>
+        <span class="bar"><b>195</b><i style="height: 92%"></i>Feb</span>
+        <span class="bar"><b>212</b><i style="height: 100%"></i>Mar</span>
+      </div>
+      <span class="n">3 · Traction</span>
+    </section>
+    <section class="slide">
+      <h2>Photograph the shelf. <span class="kite">Kitebox counts it.</span></h2>
+      <ul class="steps">
+        <li><b>1</b>Take one photo of the shelf or the fridge</li>
+        <li><b>2</b>Kitebox counts every carton and bag in about six seconds</li>
+        <li><b>3</b>The owner gets tomorrow's order, ready to send</li>
+      </ul>
+      <span class="n">4 · Product</span>
+    </section>
+    <section class="slide slide--one">
+      <div>
+        <blockquote>"We stopped running out of <span class="kite">oat milk</span>."</blockquote>
+        <p>Owner, Bean There, Leeds</p>
+      </div>
+      <span class="n">5 · Customers</span>
+    </section>
+    <section class="slide">
+      <h2>Wholesalers take orders online now.</h2>
+      <ul>
+        <li>Most café wholesalers added online ordering in the last two years</li>
+        <li>Every barista has a phone with a good camera</li>
+      </ul>
+      <span class="n">6 · Why now</span>
+    </section>
+    <section class="slide">
+      <div>
+        <div class="big">£39</div>
+        <h2>a month per café.</h2>
+      </div>
+      <ul>
+        <li>Pays for itself if it saves one emergency delivery a month</li>
+        <li>3% of cafés leave each month</li>
+      </ul>
+      <span class="n">7 · Business model</span>
+    </section>
+    <section class="slide">
+      <h2>We've run cafés and built the tools.</h2>
+      <div class="team">
+        <div><b>Ada Mensah</b>CEO. Ran three cafés in Manchester</div>
+        <div><b>Tom Hughes</b>CTO. Built photo counting for warehouses</div>
+        <div><b>Leo Park</b>Design</div>
+        <div><b>Rina Sato</b>Growth</div>
+      </div>
+      <span class="n">8 · Team</span>
+    </section>
+    <section class="slide">
+      <div>
+        <h2><span class="kite">£1.5M</span> to reach 1,000 cafés.</h2>
+      </div>
+      <ul>
+        <li>18 months of runway</li>
+        <li>Four hires: two engineers, one in sales, one in support</li>
+      </ul>
+      <span class="n">9 · The ask</span>
+    </section>
+  </body>
+</html>

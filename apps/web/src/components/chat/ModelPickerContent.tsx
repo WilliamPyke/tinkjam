@@ -40,6 +40,7 @@ import {
   ComboboxListVirtualized,
 } from "../ui/combobox";
 import { ModelEsque } from "./providerIconUtils";
+import { resolveModelPickerSelectedModel } from "./modelPickerSelectedModel";
 import { isCommandPaletteOpen } from "../../commandPaletteBus";
 import { registerModelPickerContent } from "../../modelPickerVisibility";
 import { primaryServerKeybindingsAtom } from "../../state/server";
@@ -82,23 +83,6 @@ type ModelPickerItem = {
   isLegacy?: boolean | undefined;
   isUnavailable?: boolean | undefined;
 };
-
-export function resolveModelPickerSelectedModel(input: {
-  driverKind: ProviderDriverKind | undefined;
-  model: string;
-  options: ReadonlyArray<ModelEsque>;
-}) {
-  if (input.driverKind === "antigravity" && input.model === ANTIGRAVITY_DEFAULT_MODEL) {
-    const availableModels = input.options.filter(
-      (option) => option.slug !== ANTIGRAVITY_DEFAULT_MODEL && !option.isUnavailable,
-    );
-    return (
-      availableModels.find((option) => option.aliases?.includes(ANTIGRAVITY_DEFAULT_MODEL)) ??
-      availableModels.find((option) => option.isDefault)
-    );
-  }
-  return input.options.find((option) => option.slug === input.model);
-}
 
 function shouldIncludeModelPickerOption(input: {
   readonly entry: ProviderInstanceEntry;

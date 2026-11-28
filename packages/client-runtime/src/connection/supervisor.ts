@@ -42,7 +42,11 @@ import {
 
 const RETRY_BASE_DELAY_MS = 1_000;
 const RETRY_MAX_DELAY_MS = 300_000;
+// A shared board is open in front of someone who is missing others' changes while it is down.
+const GUEST_RETRY_MAX_DELAY_MS = 5_000;
 const SESSION_LOSS_RETRY_DELAY_MS = 250;
+// A refused sign-in is often a token that expired mid-request; one later try gets a fresh one.
+const BLOCKED_AUTHENTICATION_RETRY_DELAY_MS = 5_000;
 // A cold server with a large database can take longer than 15 seconds to
 // answer, and that is not a reason to drop a working connection.
 const CONNECTION_ESTABLISHMENT_TIMEOUT = "15 seconds";
@@ -148,8 +152,8 @@ export interface EnvironmentSupervisorOptions {
   }) => Effect.Effect<Option.Option<ConnectionCatalogEntry>>;
 }
 
-function retryDelayMs(failureCount: number, random: number): number {
-  const ceiling = Math.min(RETRY_MAX_DELAY_MS, RETRY_BASE_DELAY_MS * 2 ** (failureCount + 1));
+function retryDelayMs(failureCount: number, random: number, maxDelayMs: number): number {
+  const ceiling = Math.min(maxDelayMs, RETRY_BASE_DELAY_MS * 2 ** (failureCount + 1));
   return Math.round(ceiling / 2 + (ceiling / 2) * random);
 }
 
@@ -282,6 +286,8 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
   | ConnectionWakeups.ConnectionWakeups
 > {
   const target = entry.target;
+  const retryMaxDelayMs =
+    target._tag === "GuestConnectionTarget" ? GUEST_RETRY_MAX_DELAY_MS : RETRY_MAX_DELAY_MS;
   const usesRelay = connectionRoutes(entry).some(
     (route) => route.target._tag === "RelayConnectionTarget",
   );
@@ -631,7 +637,7 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
       yield* Ref.set(preferredRouteId, Option.some(next.routeId));
       return "reset" as const;
     }
-    // Only a session over T3 Connect holds the old account's credential.
+    // Only a session over Tinkjam Connect holds the old account's credential.
     if (next._tag === "Wakeup" && next.reason === "credentials-changed" && isRelayLease(lease)) {
       yield* logManagedRelayAccountChange;
       return "end" as const;
@@ -1093,9 +1099,11 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
     let generation = 0;
     let latestFailure: ConnectionAttemptError | null = null;
     let pendingRetry = Option.none<PendingRetryTrace>();
+    let retriedBlockedAuthentication = false;
     const resetRetryLadder = () => {
       failureCount = 0;
       pendingRetry = Option.none();
+      retriedBlockedAuthentication = false;
     };
     let replacing = false;
 
@@ -1167,7 +1175,11 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
           lastFailure: error,
           retryAt: null,
         });
-        const applicationActivated = yield* waitForSignal;
+        const retryOnce = error.reason === "authentication" && !retriedBlockedAuthentication;
+        retriedBlockedAuthentication = true;
+        const applicationActivated = retryOnce
+          ? yield* waitForRetrySignal(BLOCKED_AUTHENTICATION_RETRY_DELAY_MS)
+          : yield* waitForSignal;
         if (applicationActivated) {
           resetRetryLadder();
         }
@@ -1186,7 +1198,7 @@ export const make = Effect.fn("EnvironmentSupervisor.make")(function* (
       failureCount += 1;
       const delayMs = firstLoss
         ? Math.round(SESSION_LOSS_RETRY_DELAY_MS * (0.5 + (yield* Random.next) / 2))
-        : retryDelayMs(failureCount - 1, yield* Random.next);
+        : retryDelayMs(failureCount - 1, yield* Random.next, retryMaxDelayMs);
       pendingRetry = Option.map(attemptSpan, (previousAttempt) => ({
         previousAttempt,
         failureCount,

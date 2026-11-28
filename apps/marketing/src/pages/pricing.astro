@@ -1,0 +1,138 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { APP_URL } from "../lib/site";
+
+const plans = [
+  {
+    name: "Free",
+    about: "Boards of your own.",
+    monthly: 0,
+    yearly: 0,
+    unit: "for everyone",
+    featured: false,
+    has: ["3 boards", "Anyone you invite can edit", "View-only links", "Your own AI agent"],
+  },
+  {
+    name: "Team",
+    about: "A workspace your whole team shares.",
+    monthly: 15,
+    yearly: 12,
+    unit: "per person each month",
+    featured: true,
+    has: [
+      "Unlimited boards",
+      "A shared workspace",
+      "Owners choose who is in it",
+      "People who only view are free",
+    ],
+  },
+];
+const tick = "M3.5 8.5l3 3 6-7";
+---
+
+<Layout
+  title="Pricing | Tinkjam"
+  description="Tinkjam is free while in beta. After that a team pays per seat, people who only view are free, and everyone brings their own AI agent."
+>
+  <div class="page pricing" data-pricing>
+    <header class="pricing__head">
+      <h1>Pricing</h1>
+      <p>Free while in beta. After that, a team pays for the people who edit.</p>
+      <div class="sync-switch" role="group" aria-label="Billing" data-billing hidden>
+        <button type="button" data-bill="monthly" aria-pressed="false">Monthly</button>
+        <button type="button" data-bill="yearly" aria-pressed="true">Yearly</button>
+      </div>
+    </header>
+
+    <ul class="plans">
+      {
+        plans.map((plan) => (
+          <li class:list={["plan", { "plan--team": plan.featured }]}>
+            <div class="plan__top">
+              <h2>{plan.name}</h2>
+              {plan.featured ? <span class="plan__beta">Free while in beta</span> : null}
+            </div>
+            <p class="plan__about">{plan.about}</p>
+            <p class="plan__price">
+              <span
+                class="plan__amount"
+                data-monthly={`$${plan.monthly}`}
+                data-yearly={`$${plan.yearly}`}
+              >
+                ${plan.yearly}
+              </span>
+              <span class="plan__unit">
+                {plan.unit}
+                {plan.featured ? <span data-billed>, billed yearly</span> : null}
+              </span>
+            </p>
+            <a class:list={["btn btn--lg", { "btn--dark": !plan.featured }]} href={APP_URL}>
+              Start a board
+            </a>
+            <ul class="plan__has">
+              {plan.has.map((line) => (
+                <li>
+                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                    <path
+                      d={tick}
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))
+      }
+    </ul>
+
+    <section class="seats" aria-labelledby="seats-title">
+      <h2 id="seats-title">Who pays</h2>
+      <dl>
+        <div>
+          <dt>People who edit</dt>
+          <dd>Your team pays for each person who can change its boards.</dd>
+        </div>
+        <div>
+          <dt>People who view</dt>
+          <dd>Free, however many there are.</dd>
+        </div>
+        <div>
+          <dt>AI agents</dt>
+          <dd>
+            Each person connects their own Claude, Codex, Grok or Cursor. Tinkjam doesn't charge for
+            it.
+          </dd>
+        </div>
+      </dl>
+    </section>
+  </div>
+
+  <script>
+    const page = document.querySelector<HTMLElement>("[data-pricing]");
+    const billing = page?.querySelector<HTMLElement>("[data-billing]");
+    if (page && billing) {
+      const buttons = [...billing.querySelectorAll<HTMLButtonElement>("[data-bill]")];
+      const show = (bill: string) => {
+        for (const button of buttons) {
+          button.setAttribute("aria-pressed", String(button.dataset.bill === bill));
+        }
+        for (const amount of page.querySelectorAll<HTMLElement>(".plan__amount")) {
+          amount.textContent = amount.dataset[bill] ?? amount.textContent;
+        }
+        for (const billed of page.querySelectorAll<HTMLElement>("[data-billed]")) {
+          billed.hidden = bill !== "yearly";
+        }
+      };
+      for (const button of buttons) {
+        button.addEventListener("click", () => show(button.dataset.bill ?? "yearly"));
+      }
+      billing.hidden = false;
+    }
+  </script>
+</Layout>

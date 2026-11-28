@@ -1,0 +1,519 @@
+{
+  "title": "The next phone: research, 2006",
+  "maker": "elena",
+  "people": {
+    "elena": "Elena Ruiz",
+    "marcus": "Marcus Bell",
+    "hana": "Hana Ito"
+  },
+  "cards": [
+    {
+      "id": "field",
+      "by": "elena",
+      "section": true,
+      "text": "Field notes, March 2006",
+      "x": 0,
+      "y": 0,
+      "size": {
+        "w": 952,
+        "h": 400
+      },
+      "color": "blue"
+    },
+    {
+      "id": "f1",
+      "by": "elena",
+      "text": "Commuters type email with both thumbs on the train. Keyboard phones win there.",
+      "x": 24,
+      "y": 64,
+      "color": "blue"
+    },
+    {
+      "id": "f2",
+      "by": "elena",
+      "text": "6 of the 10 people we met carry a phone and an iPod. Two carry a camera as well.",
+      "x": 256,
+      "y": 64,
+      "color": "blue"
+    },
+    {
+      "id": "f3",
+      "by": "hana",
+      "text": "Camera-phone photos never leave the phone. \"How would I even send them?\"",
+      "x": 488,
+      "y": 64,
+      "color": "pink"
+    },
+    {
+      "id": "f4",
+      "by": "marcus",
+      "text": "People print driving directions before they leave home.",
+      "x": 720,
+      "y": 64,
+      "color": "green"
+    },
+    {
+      "id": "f5",
+      "by": "elena",
+      "text": "The web on a phone is WAP pages. \"It's not the real internet.\"",
+      "x": 24,
+      "y": 232,
+      "color": "blue"
+    },
+    {
+      "id": "f6",
+      "by": "hana",
+      "text": "After calls, texting is what people use most. T9 is put up with, not loved.",
+      "x": 256,
+      "y": 232,
+      "color": "pink"
+    },
+    {
+      "id": "f7",
+      "by": "marcus",
+      "text": "Anyone who browses on their phone is out of battery by 6pm.",
+      "x": 488,
+      "y": 232,
+      "color": "green"
+    },
+    {
+      "id": "f8",
+      "by": "elena",
+      "text": "BlackBerry owners won't switch. Push email is the reason they carry one.",
+      "x": 720,
+      "y": 232,
+      "color": "blue"
+    },
+    {
+      "id": "pockets",
+      "by": "marcus",
+      "section": true,
+      "text": "What's in their pockets",
+      "x": 0,
+      "y": 440,
+      "size": {
+        "w": 952,
+        "h": 288
+      },
+      "color": "grey"
+    },
+    {
+      "id": "razr",
+      "by": "marcus",
+      "text": "Motorola RAZR V3: the phone everyone we met wanted",
+      "x": 24,
+      "y": 504,
+      "kind": "link",
+      "url": "https://en.wikipedia.org/wiki/Motorola_Razr_V3",
+      "size": {
+        "w": 264,
+        "h": 200
+      }
+    },
+    {
+      "id": "nano",
+      "by": "hana",
+      "text": "iPod nano: what music on the go looks like now",
+      "x": 312,
+      "y": 504,
+      "kind": "link",
+      "url": "https://en.wikipedia.org/wiki/IPod_Nano",
+      "size": {
+        "w": 264,
+        "h": 200
+      }
+    },
+    {
+      "id": "bb",
+      "by": "elena",
+      "text": "BlackBerry: why email people won't switch",
+      "x": 600,
+      "y": 504,
+      "kind": "link",
+      "url": "https://en.wikipedia.org/wiki/BlackBerry",
+      "size": {
+        "w": 264,
+        "h": 200
+      }
+    },
+    {
+      "id": "ideas",
+      "by": "hana",
+      "section": true,
+      "text": "Ideas",
+      "x": 0,
+      "y": 768,
+      "size": {
+        "w": 952,
+        "h": 400
+      },
+      "color": "yellow"
+    },
+    {
+      "id": "i1",
+      "by": "hana",
+      "text": "A real web browser: whole pages, zoomed to fit the screen",
+      "x": 24,
+      "y": 832,
+      "color": "pink"
+    },
+    {
+      "id": "i2",
+      "by": "marcus",
+      "text": "A music player built in, as easy to use as an iPod",
+      "x": 256,
+      "y": 832,
+      "color": "green"
+    },
+    {
+      "id": "i3",
+      "by": "marcus",
+      "text": "GPS and maps on the phone. No more printed directions.",
+      "x": 488,
+      "y": 832,
+      "color": "green"
+    },
+    {
+      "id": "i4",
+      "by": "hana",
+      "text": "Send a photo to the web in two clicks",
+      "x": 720,
+      "y": 832,
+      "color": "pink"
+    },
+    {
+      "id": "i5",
+      "by": "elena",
+      "text": "Push email for everyone, not only BlackBerry owners",
+      "x": 24,
+      "y": 1000
+    },
+    {
+      "id": "i6",
+      "by": "marcus",
+      "text": "A keyboard on the screen that goes away when you don't need it",
+      "x": 256,
+      "y": 1000,
+      "color": "green"
+    },
+    {
+      "id": "i7",
+      "by": "hana",
+      "text": "Let other companies write programs for the phone",
+      "x": 488,
+      "y": 1000,
+      "color": "pink"
+    },
+    {
+      "id": "i8",
+      "by": "marcus",
+      "text": "A battery that lasts two days of browsing",
+      "x": 720,
+      "y": 1000,
+      "color": "green"
+    },
+    {
+      "id": "tasks",
+      "by": "elena",
+      "section": true,
+      "text": "Tasks",
+      "x": 0,
+      "y": 1200,
+      "size": {
+        "w": 952,
+        "h": 272
+      },
+      "color": "green"
+    },
+    {
+      "id": "t1",
+      "by": "elena",
+      "text": "Interview 12 more commuters",
+      "x": 24,
+      "y": 1264,
+      "kind": "task",
+      "status": "done",
+      "priority": "medium",
+      "assignee": "elena",
+      "order": 1
+    },
+    {
+      "id": "t2",
+      "by": "marcus",
+      "text": "Price a 3.5-inch screen at a million units",
+      "x": 256,
+      "y": 1264,
+      "kind": "task",
+      "status": "doing",
+      "priority": "high",
+      "dueInDays": 6,
+      "assignee": "marcus",
+      "order": 1
+    },
+    {
+      "id": "t3",
+      "by": "hana",
+      "text": "Mock up a whole web page on a 3.5-inch screen",
+      "x": 488,
+      "y": 1264,
+      "kind": "task",
+      "status": "doing",
+      "priority": "urgent",
+      "dueInDays": 3,
+      "assignee": "hana",
+      "order": 2
+    },
+    {
+      "id": "t4",
+      "by": "elena",
+      "text": "Test the on-screen keyboard with thumb typists",
+      "x": 720,
+      "y": 1264,
+      "kind": "task",
+      "status": "todo",
+      "priority": "high",
+      "dueInDays": 12,
+      "assignee": "elena",
+      "order": 1
+    },
+    {
+      "id": "elena-agent",
+      "by": "elena",
+      "text": "Interview themes",
+      "x": 1032,
+      "y": 0,
+      "kind": "thread",
+      "size": {
+        "w": 400,
+        "h": 340
+      }
+    },
+    {
+      "id": "themes",
+      "by": "elena",
+      "text": "Research themes",
+      "x": 1512,
+      "y": 0,
+      "kind": "artifact",
+      "size": {
+        "w": 600,
+        "h": 560
+      }
+    },
+    {
+      "id": "marcus-agent",
+      "by": "marcus",
+      "text": "What fits in the phone",
+      "x": 1032,
+      "y": 768,
+      "kind": "thread",
+      "size": {
+        "w": 400,
+        "h": 340
+      }
+    },
+    {
+      "id": "fit",
+      "by": "marcus",
+      "text": "What fits: cost, battery, time",
+      "x": 1512,
+      "y": 768,
+      "kind": "artifact",
+      "size": {
+        "w": 600,
+        "h": 560
+      }
+    },
+    {
+      "id": "hana-agent",
+      "by": "hana",
+      "text": "Pick one feature",
+      "x": 2192,
+      "y": 484,
+      "kind": "thread",
+      "size": {
+        "w": 400,
+        "h": 340
+      }
+    },
+    {
+      "id": "brief",
+      "by": "hana",
+      "text": "Concept: the pocket web",
+      "x": 2672,
+      "y": 200,
+      "kind": "artifact",
+      "size": {
+        "w": 640,
+        "h": 900
+      }
+    },
+    {
+      "id": "c1",
+      "by": "marcus",
+      "text": "Whole web pages need a 3.5-inch screen. Add a keyboard and the phone is too big for a pocket.",
+      "x": 3352,
+      "y": 240,
+      "kind": "comment",
+      "replies": [
+        {
+          "id": "c1-r1",
+          "by": "hana",
+          "text": "Then the keyboard goes on the screen. That's idea 6."
+        },
+        {
+          "id": "c1-r2",
+          "by": "elena",
+          "text": "I'll test it with the thumb typists next week. Added a task."
+        }
+      ]
+    },
+    {
+      "id": "d1",
+      "by": "hana",
+      "text": "Decided: the pocket web is the bet. The music player comes second.",
+      "x": 3352,
+      "y": 500,
+      "color": "purple"
+    }
+  ],
+  "lines": [
+    {
+      "id": "l-field-elena",
+      "by": "elena",
+      "from": "field",
+      "to": "elena-agent"
+    },
+    {
+      "id": "l-elena-themes",
+      "by": "elena",
+      "from": "elena-agent",
+      "to": "themes"
+    },
+    {
+      "id": "l-ideas-marcus",
+      "by": "marcus",
+      "from": "ideas",
+      "to": "marcus-agent"
+    },
+    {
+      "id": "l-pockets-marcus",
+      "by": "marcus",
+      "from": "pockets",
+      "to": "marcus-agent"
+    },
+    {
+      "id": "l-marcus-fit",
+      "by": "marcus",
+      "from": "marcus-agent",
+      "to": "fit"
+    },
+    {
+      "id": "l-themes-hana",
+      "by": "hana",
+      "from": "themes",
+      "to": "hana-agent"
+    },
+    {
+      "id": "l-fit-hana",
+      "by": "hana",
+      "from": "fit",
+      "to": "hana-agent"
+    },
+    {
+      "id": "l-hana-brief",
+      "by": "hana",
+      "from": "hana-agent",
+      "to": "brief"
+    }
+  ],
+  "reactions": [
+    {
+      "card": "i1",
+      "by": "elena",
+      "emoji": "👍"
+    },
+    {
+      "card": "i1",
+      "by": "marcus",
+      "emoji": "👍"
+    },
+    {
+      "card": "i1",
+      "by": "hana",
+      "emoji": "👍"
+    },
+    {
+      "card": "i2",
+      "by": "marcus",
+      "emoji": "👍"
+    },
+    {
+      "card": "i4",
+      "by": "elena",
+      "emoji": "👍"
+    },
+    {
+      "card": "i6",
+      "by": "hana",
+      "emoji": "👍"
+    },
+    {
+      "card": "f5",
+      "by": "hana",
+      "emoji": "👀"
+    },
+    {
+      "card": "d1",
+      "by": "elena",
+      "emoji": "✅"
+    },
+    {
+      "card": "d1",
+      "by": "marcus",
+      "emoji": "✅"
+    }
+  ],
+  "start": "hana-agent",
+  "agentTurns": [
+    {
+      "id": "sample-elena-themes-1",
+      "by": "elena",
+      "box": "elena-agent",
+      "model": "Claude Sonnet 5.5",
+      "prompt": "Pull the field notes into three or four themes, with the quote that shows each one best.",
+      "context": ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8"],
+      "reply": "Four themes in the artifact beside me: people carry too many gadgets, the phone web isn't the real web, photos are stuck on the phone, and thumb typing matters more than we thought. Each has the quote that shows it best.",
+      "artifact": {
+        "card": "themes",
+        "body": "next-phone-2006/themes.md"
+      }
+    },
+    {
+      "id": "sample-marcus-fit-1",
+      "by": "marcus",
+      "box": "marcus-agent",
+      "model": "GPT-5.5",
+      "prompt": "For each idea, estimate the parts cost, the battery hit and the months to ship on next year's phone. Flag the ones that don't fit.",
+      "context": ["i1", "i2", "i3", "i4", "i5", "i6", "i7", "i8", "razr", "nano", "bb"],
+      "reply": "Scored all eight ideas in the table. Three fit next year's phone: the browser, the music player and photo sharing. GPS costs too much battery for now, and a two-day battery doesn't fit beside a bigger screen.",
+      "artifact": {
+        "card": "fit",
+        "body": "next-phone-2006/fit.md"
+      }
+    },
+    {
+      "id": "sample-hana-pick-1",
+      "by": "hana",
+      "box": "hana-agent",
+      "model": "Claude Opus 5.5",
+      "prompt": "Using Elena's themes and Marcus's table, pick the one feature to build first and write a one-page concept for it.",
+      "context": ["themes", "fit"],
+      "reply": "Picked the pocket web: it answers the strongest theme in Elena's research and fits Marcus's cost and battery numbers. The one-pager is on the right, with what we'd build, what we'd leave out and how we'd test it.",
+      "artifact": {
+        "card": "brief",
+        "body": "next-phone-2006/brief.html"
+      }
+    }
+  ]
+}

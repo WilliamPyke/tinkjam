@@ -93,10 +93,7 @@ function EmptyMobileClients() {
       </EmptyMedia>
       <EmptyHeader>
         <EmptyTitle>No mobile clients</EmptyTitle>
-        <EmptyDescription>
-          Install T3 Code on your phone and sign in to T3 Connect to get push notifications and Live
-          Activities.
-        </EmptyDescription>
+        <EmptyDescription>No phone or tablet is signed in to Tinkjam Connect.</EmptyDescription>
       </EmptyHeader>
     </Empty>
   );
@@ -112,7 +109,7 @@ export function MobileClientsUserProfilePage() {
   return (
     <ClerkUserProfilePage
       title="Mobile clients"
-      description="Mobile devices that get notifications from your environments."
+      description="Mobile devices that get notifications from your computers."
       action={
         <ClerkUserProfileRefreshButton
           isPending={devicesState.isPending}

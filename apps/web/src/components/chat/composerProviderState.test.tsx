@@ -11,7 +11,7 @@ import {
   getComposerReasoningStep,
   withImplicitFastModeDefault,
 } from "./composerProviderState";
-import { readPromptUltrathink } from "./TraitsPicker";
+import { readPromptUltrathink } from "./TraitsPicker.logic";
 
 const PROVIDER: ProviderDriverKind = ProviderDriverKind.make("codex");
 const MODEL = "test-model";

@@ -46,10 +46,10 @@ export function RemoveT3ConnectEnvironmentDialog({
         openAccountPage();
       }}
     >
-      T3 Connect settings
+      Tinkjam Connect settings
     </InlineButton>
   ) : (
-    "T3 Connect settings"
+    "Tinkjam Connect settings"
   );
 
   return (
@@ -64,19 +64,18 @@ export function RemoveT3ConnectEnvironmentDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {shown.label} from this device?</AlertDialogTitle>
             <AlertDialogDescription>
-              This forgets its pairing, credentials, and cached threads here.
+              This forgets the connection and removes its saved information from this device.
             </AlertDialogDescription>
             <AlertDialogDescription>
               {shown.registration === "registered" ? (
                 <>
-                  It stays on your T3 Connect account and keeps its host space. Deregister it in{" "}
-                  {accountPageLink} to free it.
+                  It stays on your Tinkjam Connect account. You can remove it in {accountPageLink}.
                 </>
               ) : shown.registration === "unregistered" ? (
-                "It's no longer on your T3 Connect account."
+                "It's no longer on your Tinkjam Connect account."
               ) : (
                 <>
-                  This doesn't change your T3 Connect account. To deregister it there, use{" "}
+                  This doesn't change your Tinkjam Connect account. To remove it there, use{" "}
                   {accountPageLink}.
                 </>
               )}

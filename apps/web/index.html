@@ -2,32 +2,100 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script id="domain-move">
+      // `moveStep`'s leaving half from src/domainMove.logic.ts, before the app loads; the build
+      // fills in ORIGINS on the hosted app and drops this elsewhere. domainMove.ts takes in an
+      // arrival. domainMove.logic.test.ts holds the two equal.
+      (() => {
+        const ORIGINS = [];
+        const MOVED_KEY = "tinkjam:moved:v1";
+        const ASKED_KEY = "tinkjam:move-asked:v1";
+        const ASKING_ENDS = Date.UTC(2027, 4, 1);
+        const { location } = window;
+        const [current, older] = ORIGINS;
+        if (older === undefined || !ORIGINS.includes(location.origin)) return;
+        if (window.top !== window) return;
+        const to = `/move?to=${encodeURIComponent(location.pathname + location.search)}`;
+        if (location.origin !== current) {
+          location.replace(`${to}${location.hash}`);
+          return;
+        }
+        if (location.hash.startsWith("#moved=")) return;
+        if (location.pathname.startsWith("/r/")) return;
+        try {
+          if (location.pathname === "/guest") {
+            let invite = "";
+            try {
+              invite = decodeURIComponent(location.hash.slice(1)).trim();
+            } catch {}
+            const shareId =
+              invite !== ""
+                ? invite.split(".")[0]
+                : new URLSearchParams(location.search).get("share");
+            const stored = window.localStorage.getItem("t3code:guest-shares:v1");
+            let held = [];
+            try {
+              held = JSON.parse(stored ?? "[]");
+            } catch {}
+            if (shareId && Array.isArray(held) && held.some((share) => share?.shareId === shareId))
+              return;
+          }
+          if (window.localStorage.getItem(MOVED_KEY) !== null) return;
+          if (window.sessionStorage.getItem(ASKED_KEY) !== null) return;
+          window.localStorage.setItem(ASKED_KEY, "1");
+          window.localStorage.removeItem(ASKED_KEY);
+          if (Date.now() >= ASKING_ENDS) return;
+          window.sessionStorage.setItem(ASKED_KEY, "1");
+        } catch {
+          return;
+        }
+        location.replace(`${older}${to}${location.hash}`);
+      })();
+    </script>
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
-    <meta name="theme-color" content="#000000" />
+    <script>
+      // iOS zooms the page into any field under 16px on focus, such as a board note, and the
+      // board's own pinch then cannot undo it. On iOS this stops that zoom, not pinch zooming.
+      if (
+        /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 1 && navigator.platform === "MacIntel")
+      )
+        document.querySelector('meta[name="viewport"]').content += ", maximum-scale=1";
+    </script>
+    <meta name="theme-color" content="#fdfcfb" />
+    <meta
+      name="description"
+      content="Tinkjam: boards where your team and your agents work side by side."
+    />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="application-name" content="Tinkjam" />
+    <meta name="apple-mobile-web-app-title" content="Tinkjam" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/tinkjam-mark.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <script>
       (() => {
-        const LIGHT_BACKGROUND = "#ffffff";
-        const DARK_BACKGROUND = "#000000";
+        const LIGHT_BACKGROUND = "#fdfcfb";
+        const DARK_BACKGROUND = "#121016";
         const CUSTOM_THEMES_STORAGE_KEY = "t3code:themes:v1";
         const THEME_FOLLOW_SYSTEM_STORAGE_KEY = "t3code:theme-follow-system";
         const THEME_APPEARANCE_MODE_STORAGE_KEY = "t3code:theme-appearance-mode";
         const THEME_HALVES_STORAGE_KEY = "t3code:theme-halves:v1";
         const SPLASH_COLORS = {
           light: {
-            background: "#ffffff",
-            foreground: "#262626",
-            accent: "#4f46e5",
+            background: "#fdfcfb",
+            foreground: "#17141c",
+            accent: "#2f5bea",
           },
           dark: {
-            background: "#000000",
-            foreground: "#f5f5f5",
-            accent: "#818cf8",
+            background: "#121016",
+            foreground: "#f6f3ee",
+            accent: "#5b7dff",
           },
         };
         // These are the runtime defaults used to complete a custom palette
@@ -434,8 +502,8 @@
       }
 
       #boot-shell-logo {
-        width: 64px;
-        height: 64px;
+        width: 56px;
+        height: 56px;
         object-fit: contain;
       }
 
@@ -668,13 +736,13 @@
         white-space: nowrap;
       }
     </style>
-    <title>T3 Code (Beta)</title>
+    <title>Tinkjam (Beta)</title>
   </head>
   <body>
     <div id="root">
       <div id="boot-shell">
-        <div id="boot-shell-card" aria-label="T3 Code splash screen">
-          <img id="boot-shell-logo" src="/apple-touch-icon.png" alt="T3 Code" />
+        <div id="boot-shell-card" aria-label="Tinkjam splash screen">
+          <img id="boot-shell-logo" src="/tinkjam-mark.svg" alt="Tinkjam" />
         </div>
       </div>
     </div>
