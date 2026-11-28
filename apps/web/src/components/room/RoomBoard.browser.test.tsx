@@ -20,6 +20,7 @@ import { CommandPalette } from "../CommandPaletteHost";
 import { toastManager } from "../ui/toast";
 
 import { RoomBoard, RoomCursors } from "./RoomBoard";
+import { RoomLiveContext, createRoomLiveStore } from "./roomBoardLive";
 import { rememberRoomBoardView } from "./roomBoardNavigation";
 
 function visit(path: string): Disposable {
@@ -2115,6 +2116,74 @@ describe("RoomBoard lines", () => {
     });
     await expect.element(screen.getByRole("button", { name: "Delete line" })).toBeVisible();
   });
+
+  it("moves a selected line's end to another card by dragging it, as one step to undo", async () => {
+    await using _viewport = await boardSizedViewport();
+    using _motion = stillMotion();
+    const board = renderBoard(
+      [
+        // Clear of the room thread's card, which sits from y 0.
+        { id: "a", text: "First", x: 0, y: -500, size: { w: 192, h: 144 } },
+        { id: "b", text: "Second", x: 400, y: -500, size: { w: 192, h: 144 } },
+        { id: "c", text: "Third", x: 400, y: -250, size: { w: 192, h: 144 } },
+      ],
+      undefined,
+      { edges: [{ id: "line", from: "note:a", to: "note:b", shape: "elbow" }] },
+    );
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const middle = (element: Element) => {
+      const rect = element.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    };
+    const card = (id: string) => {
+      const element = screen.container.querySelector(`[data-board-item="note:${id}"]`);
+      if (element === null) throw new Error(`The board did not draw note ${id}`);
+      return element;
+    };
+    // The board refits as its surface settles; press once the cards have stopped moving.
+    let before = "";
+    await vi.waitFor(() => {
+      const now = JSON.stringify(card("a").getBoundingClientRect().toJSON());
+      const stable = now === before;
+      before = now;
+      expect(stable).toBe(true);
+    });
+    const a = card("a").getBoundingClientRect();
+    const b = card("b").getBoundingClientRect();
+    const surface = screen.getByRole("application", { name: "Room board" });
+    const under = surface.element().getBoundingClientRect();
+    await userEvent.click(surface, {
+      position: { x: (a.right + b.left) / 2 - under.left, y: (a.top + a.bottom) / 2 - under.top },
+    });
+    await expect.element(screen.getByRole("button", { name: "Delete line" })).toBeVisible();
+    const handle = document.querySelector('[data-board-line-end="to"]');
+    if (handle === null) throw new Error("The selected line shows no handle on its end");
+    const grab = middle(handle);
+    const drop = middle(card("c"));
+    await commands.mouse([
+      { type: "down", ...grab },
+      { type: "move", x: (grab.x + drop.x) / 2, y: (grab.y + drop.y) / 2 },
+      { type: "move", ...drop },
+      { type: "up", ...drop },
+    ]);
+    await vi.waitFor(() =>
+      expect(onChange.mock.calls.map(([change]) => change)).toEqual([
+        { type: "edge.remove", edgeId: "line" },
+        expect.objectContaining({ type: "edge.put", from: "note:a", to: "note:c", shape: "elbow" }),
+      ]),
+    );
+    await expect.element(screen.getByRole("button", { name: "Delete line" })).toBeVisible();
+
+    await userEvent.keyboard("{Control>}z{/Control}");
+    await vi.waitFor(() => expect(onChange).toHaveBeenCalledTimes(4));
+    expect(onChange.mock.calls.slice(2).map(([change]) => change)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "edge.put", edgeId: "line", from: "note:a", to: "note:b" }),
+        expect.objectContaining({ type: "edge.remove" }),
+      ]),
+    );
+  });
 });
 
 describe("RoomBoard link cards", () => {
@@ -2227,28 +2296,35 @@ describe("RoomBoard link cards", () => {
 
 describe("RoomBoard live drags", () => {
   it("moves a card as someone else drags it, and keeps it where it landed", async () => {
+    // Its own store, as a room has: the landing it holds must not reach later tests' boards.
+    const live = createRoomLiveStore();
     const board = (x: number, drag: RoomCursor["drag"]) => (
-      <RoomBoard
-        title="Launch"
-        room={{ messages: [], board: { positions: {}, notes: [{ id: "a", text: "Hi", x, y: 0 }] } }}
-        online={[]}
-        messages={[]}
-        viewer={null}
-        ownerName={undefined}
-        cursorLayer={
-          <RoomCursors
-            cursors={drag === undefined ? [] : [{ x: 1, y: 1, drag }]}
-            views={undefined}
-            guests={[]}
-            ownerName="Ann"
-          />
-        }
-        onOpenThread={() => {}}
-        onOpenReply={() => {}}
-        onChange={async () => true}
-        onCursor={undefined}
-        onUseNote={undefined}
-      />
+      <RoomLiveContext value={live}>
+        <RoomBoard
+          title="Launch"
+          room={{
+            messages: [],
+            board: { positions: {}, notes: [{ id: "a", text: "Hi", x, y: 0 }] },
+          }}
+          online={[]}
+          messages={[]}
+          viewer={null}
+          ownerName={undefined}
+          cursorLayer={
+            <RoomCursors
+              cursors={drag === undefined ? [] : [{ x: 1, y: 1, drag }]}
+              views={undefined}
+              guests={[]}
+              ownerName="Ann"
+            />
+          }
+          onOpenThread={() => {}}
+          onOpenReply={() => {}}
+          onChange={async () => true}
+          onCursor={undefined}
+          onUseNote={undefined}
+        />
+      </RoomLiveContext>
     );
     const items = [{ ref: "note:a", x: 300, y: 0 }];
     await using screen = await render(board(0, { items }), { container: sizedContainer() });
@@ -2308,6 +2384,49 @@ describe("RoomBoard live lines", () => {
     expect(still).not.toBe("");
     await screen.rerender(board({ items: [{ ref: "note:b", x: 400, y: 300 }] }));
     await vi.waitFor(() => expect(line()).not.toBe(still));
+  });
+
+  it("keeps a line still when its cards grow without moving", async () => {
+    const board = (h: number) => (
+      <RoomBoard
+        title="Launch"
+        room={{
+          messages: [],
+          board: {
+            positions: {},
+            notes: [
+              { id: "a", text: "First", x: 0, y: -400, size: { w: 192, h } },
+              { id: "b", text: "Second", x: 400, y: -400, size: { w: 192, h } },
+            ],
+            edges: [{ id: "line", from: "note:a", to: "note:b" }],
+          },
+        }}
+        online={[]}
+        messages={[]}
+        viewer={null}
+        ownerName={undefined}
+        cursorLayer={null}
+        onOpenThread={() => {}}
+        onOpenReply={() => {}}
+        onChange={async () => true}
+        onCursor={undefined}
+        onUseNote={undefined}
+      />
+    );
+    await using screen = await render(board(144), { container: sizedContainer() });
+    // A level line between level cards, unless it is swinging: then its bend points leave the level.
+    const heights = () =>
+      (screen.container.querySelector('[data-board-edge="line"]')?.getAttribute("d") ?? "")
+        .split(/[MC,]/)
+        .flatMap((point) => {
+          const y = point.trim().split(" ")[1];
+          return y === undefined ? [] : [Number(y)];
+        });
+    await vi.waitFor(() => expect(heights()).toHaveLength(4));
+    await screen.rerender(board(320));
+    const level = heights();
+    expect(level).toHaveLength(4);
+    expect(new Set(level).size).toBe(1);
   });
 });
 
