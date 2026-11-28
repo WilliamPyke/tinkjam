@@ -19,6 +19,7 @@ export const WHATS_NEW: ReadonlyArray<WhatsNewEntry> = [
       "When an agent asks a question, its box shows the question with a button to answer it.",
       "A note waiting for someone to press Send says so and names who, instead of Waiting for approval.",
       "An agent box's Stop button says Stop.",
+      "Drag either end of a selected line onto another card to move it there. Lines stay still when a card grows, and a line's toolbar no longer covers its end.",
       "The start page leads with what Tinkjam is, and copying an invite link tells you what to do with it. Getting started ticks the invite step only once the link is really copied.",
       "Press Ctrl+K (Cmd+K) and type a board's name to open it.",
       "If someone removes you from a workspace or a board, the board says you no longer have access, instead of saying it ended.",
