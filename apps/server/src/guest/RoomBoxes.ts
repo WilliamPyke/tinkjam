@@ -38,6 +38,7 @@ import {
   roomArtifactContextRecord,
   roomCardsContextRecord,
   roomCommentContextRecord,
+  replaceComposerContextReferences,
 } from "@t3tools/shared/composerContextReferences";
 import { roomBoxOn } from "@t3tools/shared/guestRoom";
 import {
@@ -817,17 +818,22 @@ const make = Effect.gen(function* () {
     threadId: ThreadId,
     run: OrchestrationV2Run,
   ) {
-    const { thread, turnItems } = yield* orchestrator.getThreadRecords(threadId, ["turnItems"], {
-      turnItemRunIds: [run.id],
-    });
+    const { thread, turnItems, messages } = yield* orchestrator.getThreadRecords(
+      threadId,
+      ["turnItems", "messages"],
+      { turnItemRunIds: [run.id], messageIds: [run.userMessageId] },
+    );
+    // A queued run has no turn items until it starts, only the message it was sent with.
+    const sent = messages.find((message) => message.id === run.userMessageId);
     let share: ThreadRoom;
     let boxId: string;
     let asked: ThreadGuestMessage | undefined;
     if (thread.guestShare || thread.roomBoard) {
       share = threadRoomOf(thread);
       boxId = ROOM_BOARD_ROOM_BOX;
-      const guestMessageId = turnItems.find((item) => item.type === "user_message")?.context?.guest
-        ?.guestMessageId;
+      const guestMessageId = (
+        turnItems.find((item) => item.type === "user_message")?.context ?? sent?.context
+      )?.guest?.guestMessageId;
       asked = share.messages.find((message) => message.id === guestMessageId);
     } else {
       const box = yield* boxOfThread(threadId, turnItems);
@@ -845,7 +851,9 @@ const make = Effect.gen(function* () {
       commentId: roomCommentRequestOf(turnItems, share.id),
       model: roomBoxModelName(run.modelSelection, providers),
       prompt: roomBoxExcerpt(
-        asked?.text ?? roomRunPromptText(turnItems),
+        asked?.text ??
+          (roomRunPromptText(turnItems) ||
+            replaceComposerContextReferences(sent?.text ?? "", () => "")),
         ROOM_BOX_PROMPT_MAX_LENGTH,
       ),
       askedBy: asked?.guestId,

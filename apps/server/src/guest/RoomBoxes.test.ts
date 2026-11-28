@@ -57,6 +57,10 @@ const itemsByRun: Record<string, ReadonlyArray<OrchestrationV2TurnItem>> = {
     { type: "assistant_message", ordinal: 2, text: "**Fixed** it.", streaming: false },
   ] as unknown as ReadonlyArray<OrchestrationV2TurnItem>,
 };
+// A run still queued has no turn items yet, only the message it was sent with.
+const messagesById: Record<string, object> = {
+  "message:run:waiting": { id: "message:run:waiting", role: "user", text: "Then the footer" },
+};
 const thread = (id: string, fields: object = {}) => ({
   id,
   title: id,
@@ -168,6 +172,7 @@ const layerWith = (
             : Effect.succeed({
                 thread: threads[threadId],
                 turnItems: itemsByRun[filter?.turnItemRunIds?.[0] ?? ""] ?? [],
+                messages: (filter?.messageIds ?? []).flatMap((id) => messagesById[id] ?? []),
                 runs: (filter?.runIds ?? []).map((id) => ({
                   id,
                   status: "completed",
@@ -229,6 +234,7 @@ it.effect("shows each box's agent at work about once a second, and nothing once 
           },
         } as unknown as OrchestrationV2DomainEvent,
         turnItem("run:room", { type: "assistant_message", text: "", textOmitted: true }),
+        run("run:waiting", roomThreadId, "queued", "run.created"),
         run("run:stray", strayThreadId, "running", "run.created"),
         run("run:box", boxThreadId, "running", "run.created"),
       ]);
@@ -252,6 +258,13 @@ it.effect("shows each box's agent at work about once a second, and nothing once 
           model: "GPT-5.1 Codex",
           prompt: "Go",
         },
+        {
+          boxId: "thread",
+          phase: "queued",
+          startedAt: "1970-01-01T00:00:00.000Z",
+          model: "GPT-5.1 Codex",
+          prompt: "Then the footer",
+        },
       ]);
       yield* TestClock.adjust("1 second");
       const writing = yield* until((views) => of(views.owner, "thread")?.phase === "writing");
@@ -259,7 +272,7 @@ it.effect("shows each box's agent at work about once a second, and nothing once 
         preview: "# Plan Dark mode",
         draft: "# Plan\nDark mode",
       });
-      assert.lengthOf(writing.owner, 2);
+      assert.lengthOf(writing.owner, 3);
 
       yield* Queue.offerAll(events, [
         turnItem("run:box", { type: "command_execution", input: "cat ~/.ssh/id_rsa" }),
@@ -308,6 +321,7 @@ it.effect("shows each box's agent at work about once a second, and nothing once 
 
       yield* Queue.offerAll(events, [
         run("run:room", roomThreadId, "completed"),
+        run("run:waiting", roomThreadId, "interrupted"),
         run("run:box", boxThreadId, "interrupted"),
         run("run:late", lateThreadId, "completed"),
       ]);
