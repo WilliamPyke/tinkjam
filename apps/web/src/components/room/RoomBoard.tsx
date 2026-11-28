@@ -4440,6 +4440,26 @@ export function RoomBoard({
       });
     },
   );
+  // Enter on a selected line's end: the Line tool then picks the card that end moves to.
+  const pickEdgeEnd = useStableCallback((id: string, end: BoardLineEnd) => {
+    const edge = edges.find((each) => each.id === id);
+    if (edge === undefined || !canEdit) return;
+    const box = boxes.get(end === "from" ? edge.to : edge.from);
+    const moving = boxes.get(end === "from" ? edge.from : edge.to);
+    if (box === undefined || moving === undefined) return;
+    setPlacingComment(false);
+    setArmedTool(null);
+    setLineTool(true);
+    const at = { x: moving.x + moving.width / 2, y: moving.y + moving.height / 2 };
+    setLinking({
+      from: end === "from" ? edge.to : edge.from,
+      box,
+      to: at,
+      press: at,
+      again: { edge, end },
+    });
+    surfaceRef.current?.focus({ preventScroll: true });
+  });
   const startLink = (from: string, event: PointerEvent<HTMLElement>) => {
     const box = boxes.get(from);
     const at = pointerOnBoard(event);
@@ -4516,7 +4536,8 @@ export function RoomBoard({
       setLinking({ from: ref, box, to: at, press });
       return;
     }
-    addEdge(linking.from, ref);
+    if (linking.again === undefined) addEdge(linking.from, ref);
+    else moveEdgeEnd(linking.again.edge, linking.again.end, ref);
     stopLinking();
     setLineTool(false);
     surfaceRef.current?.focus({ preventScroll: true });
@@ -7032,6 +7053,7 @@ export function RoomBoard({
                           selectable={canEdit}
                           onSelect={setSelectedEdge}
                           onGrabEnd={selected && canEdit ? grabEdgeEnd : undefined}
+                          onPickEnd={pickEdgeEnd}
                           over={edgesOver}
                         />
                       );
@@ -7516,7 +7538,6 @@ export function RoomBoard({
                   );
                 })}
                 <svg
-                  aria-hidden
                   className="pointer-events-none absolute overflow-visible"
                   style={{ left: edgeArea.x, top: edgeArea.y, ...scales }}
                   width={edgeArea.width}
@@ -7784,7 +7805,9 @@ export function RoomBoard({
             >
               {linking === null
                 ? `${touchFirst() ? "Tap" : "Click"} the card the line starts from.`
-                : `Now ${touchFirst() ? "tap" : "click"} the card it points to.`}
+                : linking.again?.end === "from"
+                  ? `Now ${touchFirst() ? "tap" : "click"} the card the line starts from.`
+                  : `Now ${touchFirst() ? "tap" : "click"} the card it points to.`}
             </BoardToolHint>
           ) : null}
           {placingComment ? (

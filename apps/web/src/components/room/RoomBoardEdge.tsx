@@ -150,6 +150,8 @@ interface BoardEdgeLineProps {
   readonly onGrabEnd?:
     | ((id: string, end: BoardLineEnd, event: PointerEvent<SVGElement>) => void)
     | undefined;
+  /** Set with `onGrabEnd`: Enter or Space on an end's handle, to pick its card by keyboard. */
+  readonly onPickEnd?: ((id: string, end: BoardLineEnd) => void) | undefined;
   /** The layer above the cards. */
   readonly over: SVGGElement | null;
 }
@@ -249,6 +251,7 @@ export const BoardEdgeLine = memo(function BoardEdgeLine({
   selectable,
   onSelect,
   onGrabEnd,
+  onPickEnd,
   over,
 }: BoardEdgeLineProps) {
   const start = liveEnd(from, useBoardLineEnd(fromRef));
@@ -410,6 +413,7 @@ export const BoardEdgeLine = memo(function BoardEdgeLine({
                 data-line-id={id}
                 data-line-from={fromRef}
                 data-line-to={toRef}
+                aria-hidden
                 className="hidden data-[line-focus]:inline"
                 d={path}
                 fill="none"
@@ -423,6 +427,7 @@ export const BoardEdgeLine = memo(function BoardEdgeLine({
                 <BoardLineEndHandles
                   ends={boardLineEnds(start, end, { sides, slots })}
                   onGrab={(which, event) => onGrabEnd(id, which, event)}
+                  onPick={(which) => onPickEnd?.(id, which)}
                 />
               )}
             </>,
@@ -436,15 +441,18 @@ export const BoardEdgeLine = memo(function BoardEdgeLine({
 function BoardLineEndHandles({
   ends,
   onGrab,
+  onPick,
 }: {
   readonly ends: { readonly start: BoardPoint; readonly end: BoardPoint };
   readonly onGrab: (end: BoardLineEnd, event: PointerEvent<SVGElement>) => void;
+  readonly onPick: (end: BoardLineEnd) => void;
 }) {
   return (["from", "to"] as const).map((which) => {
     const at = which === "from" ? ends.start : ends.end;
     return (
       <g key={which}>
         <circle
+          aria-hidden
           cx={at.x}
           cy={at.y}
           fill="var(--color-background)"
@@ -453,13 +461,22 @@ function BoardLineEndHandles({
         />
         <circle
           data-board-line-end={which}
+          role="button"
+          tabIndex={0}
+          aria-label={which === "from" ? "Move the line's start" : "Move the line's end"}
           cx={at.x}
           cy={at.y}
           fill="transparent"
           pointerEvents="all"
-          className="cursor-grab"
-          style={{ r: "calc(12px * var(--board-grip-scale, 1))" }}
+          className="cursor-grab outline-none focus-visible:stroke-ring"
+          style={{ r: "calc(12px * var(--board-grip-scale, 1))", strokeWidth: boardStroke(2) }}
           onPointerDown={(event) => onGrab(which, event)}
+          onKeyDown={(event) => {
+            if ((event.key !== "Enter" && event.key !== " ") || event.repeat) return;
+            event.preventDefault();
+            event.stopPropagation();
+            onPick(which);
+          }}
         />
       </g>
     );
