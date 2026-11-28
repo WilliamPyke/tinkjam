@@ -15,6 +15,13 @@ export const WHATS_NEW: ReadonlyArray<WhatsNewEntry> = [
     date: "2026-11-28",
     title: "Questions stay in view, and Delete sits beside Share",
     items: [
+      "A selected line has a Flip button to turn its arrow round, and stays selected when you click it again.",
+      "Move a line's end with the keyboard: Tab to the end's handle, press Enter, then pick a card.",
+      "If a line cannot be moved, it stays where it was. A line pinned to someone's agent can only be moved or flipped by them.",
+      "Lists, headings and code in an agent's reply show properly on its box.",
+      "Select several notes and vote on them from the selection bar.",
+      "Deleting a comment asks first.",
+      "Coming back to a board that was empty on your first visit now shows what changed.",
       "Sending a prompt while an agent is asking a question no longer hides the question.",
       "Prompts waiting behind an agent's work show on its box as Queued, and a finished box says Done.",
       "The board's main agent box is called Main agent box and uses the same words as every other box.",
