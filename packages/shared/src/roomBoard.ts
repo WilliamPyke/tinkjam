@@ -1660,6 +1660,13 @@ export function roomBoxesReachedFrom(board: RoomBoard, ref: string): ReadonlySet
 const reachesSomeoneElsesBox = (board: RoomBoard, edge: RoomBoardEdge, person: GuestId | null) =>
   [...roomBoxesReachedFrom(board, edge.to)].some((boxId) => roomBoxPerson(board, boxId) !== person);
 
+/** Whether a line is pinned into an agent not `person`'s, so only that agent's person may redraw it. */
+export const isRoomEdgePinnedForSomeoneElse = (
+  board: RoomBoard,
+  edge: RoomBoardEdge,
+  person: GuestId | null,
+) => edge.pinned === true && reachesSomeoneElsesBox(board, edge, person);
+
 /**
  * The thread box whose changes a code window shows: the first one with a line into it, which the
  * board keeps the only one. Undefined once no box has a line to it.

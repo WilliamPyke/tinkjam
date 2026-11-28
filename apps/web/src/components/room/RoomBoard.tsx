@@ -39,6 +39,7 @@ import {
   AppWindowIcon,
   FileCode2Icon,
   ArrowLeftIcon,
+  ArrowRightLeftIcon,
   BotIcon,
   ChevronDownIcon,
   CircleCheckIcon,
@@ -198,6 +199,7 @@ import {
   boardChangeOutgrowsOlderHosts,
   boardChangeQueue,
   boardChangeQueueKey,
+  boardLineRedrawRefusal,
   boardEditSent,
   boardCommentAgentAuthor,
   boardCommentLineTo,
@@ -1490,9 +1492,6 @@ export function RoomBoard({
     markLinkTarget(null);
     setLinking(null);
   };
-  const selectEdge = useStableCallback((id: string) =>
-    setSelectedEdge((current) => (current === id ? null : id)),
-  );
   // Where this person's last choice of line shape is kept, for the next line they draw here.
   const lineBoard = viewKey ?? shareId ?? title;
   const [linkDraft, setLinkDraft] = useState<string | null>(null);
@@ -2183,7 +2182,12 @@ export function RoomBoard({
     typingSaves.current.set(key, pending);
   };
   // `after` names the queue a change waits in: a line to a new card goes once the card is there.
-  const send = (target: BoardTarget, value: BoardValue, after?: string | ReadonlyArray<string>) => {
+  const send = (
+    target: BoardTarget,
+    value: BoardValue,
+    after?: string | ReadonlyArray<string>,
+    onRefused?: () => void,
+  ) => {
     if (onChange === undefined) return;
     const key = boardEditKey(target);
     stopSavingTyping(key);
@@ -2210,6 +2214,7 @@ export function RoomBoard({
         return;
       }
       setEdits((current) => dropBoardEdit(current, target, value));
+      onRefused?.();
       if (boardChangeOutgrowsOlderHosts(change)) {
         toastManager.add({
           type: "info",
@@ -4403,11 +4408,18 @@ export function RoomBoard({
     const to = noteRef(id);
     viewArtifactAlong(from, to, to, { ...shown, notes: [...shown.notes, added] });
   };
-  const putEdge = (from: string, to: string, shape: BoardLineShape) => {
+  const putEdge = (
+    from: string,
+    to: string,
+    shape: BoardLineShape,
+    after?: string,
+    onRefused?: () => void,
+  ) => {
     const id = randomUUID();
     const line = { id, from, to, ...(shape === "elbow" ? { shape } : {}) };
-    send({ kind: "edge", id }, line);
-    viewArtifactAlong(from, to, boardChangeQueueKey(shown, { kind: "edge", id }, line));
+    const queue = boardChangeQueueKey(shown, { kind: "edge", id }, line);
+    send({ kind: "edge", id }, line, after === undefined ? undefined : [queue, after], onRefused);
+    viewArtifactAlong(from, to, queue);
     return id;
   };
   /** Draws a line between two cards, unless one is there or the board holds no more. */
@@ -4416,13 +4428,41 @@ export function RoomBoard({
     if (edges.some((edge) => edge.from === from && edge.to === to)) return;
     putEdge(from, to, lastBoardLineShape(lineBoard));
   };
-  /** Moves one end of a line to another card: a new line there in its place, as one undo step. */
-  const moveEdgeEnd = (edge: RoomBoardEdge, end: BoardLineEnd, ref: string) => {
-    const from = end === "from" ? ref : edge.from;
-    const to = end === "to" ? ref : edge.to;
+  /**
+   * A new line between `from` and `to` in a line's place, as one undo step. New, so nothing the
+   * old one carried to an agent, or its pin, comes with it. It goes out once the old one is off,
+   * and the old one comes back if the room refuses it, so the line is never lost.
+   */
+  const redrawEdge = (edge: RoomBoardEdge, from: string, to: string) => {
     if (from === to || edges.some((other) => other.from === from && other.to === to)) return;
-    send({ kind: "edge", id: edge.id }, null);
-    setSelectedEdge(putEdge(from, to, edge.shape ?? "curve"));
+    const refused = boardLineRedrawRefusal(shown, viewer, edge, from, to);
+    if (refused !== null) {
+      toastManager.add({
+        type: "info",
+        title: "The line stays where it was",
+        description: refused,
+      });
+      return;
+    }
+    const old = { kind: "edge", id: edge.id } as const;
+    const after = boardChangeQueueKey(shown, old, null);
+    send(old, null);
+    const id = putEdge(from, to, edge.shape ?? "curve", after, () => {
+      if (onChange === undefined) return;
+      const change = boardChangeOf(old, edge);
+      setEdits((current) => putBoardEdit(board, current, old, edge, false));
+      setSelectedEdge((selected) => (selected === id ? edge.id : selected));
+      void queueChange(after, (retry) => onChange(change, retry), change).then((taken) => {
+        if (!taken) setEdits((current) => dropBoardEdit(current, old, edge));
+      });
+    });
+    setSelectedEdge(id);
+  };
+  // The line as it is now: someone may have changed or deleted it while its end was moving.
+  const moveEdgeEnd = (id: string, end: BoardLineEnd, ref: string) => {
+    const edge = edges.find((each) => each.id === id);
+    if (edge === undefined) return;
+    redrawEdge(edge, end === "from" ? ref : edge.from, end === "to" ? ref : edge.to);
   };
   const grabEdgeEnd = useStableCallback(
     (id: string, end: BoardLineEnd, event: PointerEvent<SVGElement>) => {
@@ -4444,6 +4484,26 @@ export function RoomBoard({
       });
     },
   );
+  // Enter on a selected line's end: the Line tool then picks the card that end moves to.
+  const pickEdgeEnd = useStableCallback((id: string, end: BoardLineEnd) => {
+    const edge = edges.find((each) => each.id === id);
+    if (edge === undefined || !canEdit) return;
+    const box = boxes.get(end === "from" ? edge.to : edge.from);
+    const moving = boxes.get(end === "from" ? edge.from : edge.to);
+    if (box === undefined || moving === undefined) return;
+    setPlacingComment(false);
+    setArmedTool(null);
+    setLineTool(true);
+    const at = { x: moving.x + moving.width / 2, y: moving.y + moving.height / 2 };
+    setLinking({
+      from: end === "from" ? edge.to : edge.from,
+      box,
+      to: at,
+      press: at,
+      again: { edge, end },
+    });
+    surfaceRef.current?.focus({ preventScroll: true });
+  });
   const startLink = (from: string, event: PointerEvent<HTMLElement>) => {
     const box = boxes.get(from);
     const at = pointerOnBoard(event);
@@ -4468,7 +4528,9 @@ export function RoomBoard({
     dropHeldPointer();
     const { from, press, again } = linking;
     stopLinking();
-    if (again !== undefined) setSelectedEdge(again.edge.id);
+    if (again !== undefined && edges.some((edge) => edge.id === again.edge.id)) {
+      setSelectedEdge(again.edge.id);
+    }
     if (event.type === "pointercancel") return;
     const moved = Math.hypot(event.clientX - press.x, event.clientY - press.y) >= CLICK_SLOP;
     // A grip sits on the end of any line drawn from it, so a click there is the line's.
@@ -4479,7 +4541,7 @@ export function RoomBoard({
     const to = moved ? linkTargetAt(event.clientX, event.clientY, from) : null;
     if (to === null) return;
     if (again === undefined) addEdge(from, to.ref);
-    else moveEdgeEnd(again.edge, again.end, to.ref);
+    else moveEdgeEnd(again.edge.id, again.end, to.ref);
   });
   // A line drawn from a grip follows its pointer anywhere: over other cards, off the grip after
   // a fast flick, and where the browser could not capture it, such as a scripted drag.
@@ -4520,7 +4582,8 @@ export function RoomBoard({
       setLinking({ from: ref, box, to: at, press });
       return;
     }
-    addEdge(linking.from, ref);
+    if (linking.again === undefined) addEdge(linking.from, ref);
+    else moveEdgeEnd(linking.again.edge.id, linking.again.end, ref);
     stopLinking();
     setLineTool(false);
     surfaceRef.current?.focus({ preventScroll: true });
@@ -6580,7 +6643,7 @@ export function RoomBoard({
             if (edge === null) return;
             event.preventDefault();
             event.stopPropagation();
-            selectEdge(edge);
+            setSelectedEdge(edge);
           }}
           onMouseDownCapture={(event) => {
             // A press that moves, pans, selects or draws would also select the page's text, or start
@@ -7041,8 +7104,9 @@ export function RoomBoard({
                               : `url(#${markerId}-${state})`
                           }
                           selectable={canEdit}
-                          onSelect={selectEdge}
+                          onSelect={setSelectedEdge}
                           onGrabEnd={selected && canEdit ? grabEdgeEnd : undefined}
+                          onPickEnd={pickEdgeEnd}
                           over={edgesOver}
                         />
                       );
@@ -7450,12 +7514,21 @@ export function RoomBoard({
                     surfaceSize ?? { width: 600, height: 400 },
                     boardLineEnds(from, to, { slots: lineSlots.get(edge.id) }),
                   );
+                  const flipped = edges.some(
+                    (other) => other.from === edge.to && other.to === edge.from,
+                  );
                   return (
                     <div
                       key={edge.id}
                       // Kept at least its own size as the board zooms out, so it stays readable and pressable.
-                      className="absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border border-border bg-popover p-1 shadow-sm [scale:var(--board-line-scale,1)]"
+                      className="absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border border-border bg-popover p-1 shadow-sm outline-none [scale:var(--board-line-scale,1)]"
                       style={{ left: spot.x, top: spot.y, ...scales }}
+                      role="toolbar"
+                      aria-label="Line"
+                      tabIndex={-1}
+                      // The toolbar, not a button in it, so the keys work at once and no tooltip
+                      // opens. Without scrolling: the browser would scroll the moved board's box.
+                      ref={focusInPlace}
                       onPointerDown={stopPointer}
                       // On the group, so the keys work from the shape buttons too.
                       onKeyDown={(event) => {
@@ -7483,10 +7556,27 @@ export function RoomBoard({
                             <Button
                               size="xs"
                               variant="outline"
+                              aria-label="Flip line"
+                              disabled={flipped}
+                              onPointerDown={stopPointer}
+                              onClick={() => redrawEdge(edge, edge.to, edge.from)}
+                            />
+                          }
+                        >
+                          <ArrowRightLeftIcon />
+                          <span className="hidden sm:inline">Flip</span>
+                        </TooltipTrigger>
+                        <TooltipPopup side="top">
+                          {flipped ? "A line already goes the other way" : "Flip line"}
+                        </TooltipPopup>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              size="xs"
+                              variant="outline"
                               aria-label="Delete line"
-                              // Focused without scrolling: inside the moved board, the browser
-                              // would scroll the board's box to bring it into view.
-                              ref={focusInPlace}
                               onPointerDown={stopPointer}
                               onClick={() => thenBoard(() => removeEdge(edge.id))}
                             />
@@ -7501,13 +7591,16 @@ export function RoomBoard({
                   );
                 })}
                 <svg
-                  aria-hidden
                   className="pointer-events-none absolute overflow-visible"
                   style={{ left: edgeArea.x, top: edgeArea.y, ...scales }}
                   width={edgeArea.width}
                   height={edgeArea.height}
                 >
-                  <g ref={setEdgesOver} transform={`translate(${-edgeArea.x} ${-edgeArea.y})`} />
+                  <g
+                    ref={setEdgesOver}
+                    tabIndex={-1}
+                    transform={`translate(${-edgeArea.x} ${-edgeArea.y})`}
+                  />
                 </svg>
                 <BoardFollowContext value={follow}>{cursorLayer}</BoardFollowContext>
               </div>
@@ -7769,7 +7862,9 @@ export function RoomBoard({
             >
               {linking === null
                 ? `${touchFirst() ? "Tap" : "Click"} the card the line starts from.`
-                : `Now ${touchFirst() ? "tap" : "click"} the card it points to.`}
+                : linking.again?.end === "from"
+                  ? `Now ${touchFirst() ? "tap" : "click"} the card the line starts from.`
+                  : `Now ${touchFirst() ? "tap" : "click"} the card it points to.`}
             </BoardToolHint>
           ) : null}
           {placingComment ? (

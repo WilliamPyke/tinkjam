@@ -72,10 +72,11 @@ function renderBoard(
     "t3code:board-guide:v2",
     JSON.stringify({ owner: null, hidden: true, collapsed: false, done: [] }),
   );
-  const element = (
+  // A fresh element each time, as a rerender needs: the room as someone else changed its lines.
+  const withEdges = (lines: ReadonlyArray<RoomBoardEdge>) => (
     <RoomBoard
       title="Launch"
-      room={{ messages: [], board: { positions: {}, notes: [...notes], edges: [...edges] } }}
+      room={{ messages: [], board: { positions: {}, notes: [...notes], edges: [...lines] } }}
       viewKey={viewKey}
       online={[]}
       messages={messages}
@@ -92,10 +93,11 @@ function renderBoard(
       {...(cards === undefined ? {} : { cards })}
     />
   );
+  const element = withEdges(edges);
   const screen = render(withCommandMenu ? <CommandPalette>{element}</CommandPalette> : element, {
     container: sizedContainer(containerSize?.width, containerSize?.height),
   });
-  return { screen, onChange };
+  return { screen, onChange, withEdges };
 }
 
 /** A frame as big as the board, so the mouse reaches every card on it; put back when disposed. */
@@ -1984,8 +1986,11 @@ describe("RoomBoard lines", () => {
       });
     };
 
+    const toolbar = screen.getByRole("toolbar", { name: "Line" });
     await clickLine();
-    await expect.element(screen.getByRole("button", { name: "Delete line" })).toHaveFocus();
+    await expect.element(toolbar).toHaveFocus();
+    // The toolbar takes the keys, but no button in it is focused, so no tooltip shows.
+    await expect.element(screen.getByText("Delete line")).not.toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
     await expect
       .element(screen.getByRole("button", { name: "Delete line" }))
@@ -1993,8 +1998,10 @@ describe("RoomBoard lines", () => {
     await expect.element(surface).toHaveFocus();
 
     await clickLine();
-    await expect.element(screen.getByRole("button", { name: "Delete line" })).toHaveFocus();
-    await userEvent.keyboard("{Enter}");
+    await expect.element(toolbar).toHaveFocus();
+    await userEvent.keyboard("{Tab}");
+    await expect.element(screen.getByRole("button", { name: "Curved" })).toHaveFocus();
+    await userEvent.keyboard("{Delete}");
     await vi.waitFor(() =>
       expect(onChange).toHaveBeenCalledWith({ type: "edge.remove", edgeId: "line" }),
     );
@@ -2153,9 +2160,14 @@ describe("RoomBoard lines", () => {
     const b = card("b").getBoundingClientRect();
     const surface = screen.getByRole("application", { name: "Room board" });
     const under = surface.element().getBoundingClientRect();
-    await userEvent.click(surface, {
-      position: { x: (a.right + b.left) / 2 - under.left, y: (a.top + a.bottom) / 2 - under.top },
-    });
+    const onLine = {
+      x: (a.right + b.left) / 2 - under.left,
+      y: (a.top + a.bottom) / 2 - under.top,
+    };
+    await userEvent.click(surface, { position: onLine });
+    await expect.element(screen.getByRole("button", { name: "Delete line" })).toBeVisible();
+    // As in FigJam, a click on the selected line keeps it selected.
+    await userEvent.click(surface, { position: onLine });
     await expect.element(screen.getByRole("button", { name: "Delete line" })).toBeVisible();
     const handle = document.querySelector('[data-board-line-end="to"]');
     if (handle === null) throw new Error("The selected line shows no handle on its end");
@@ -2183,6 +2195,225 @@ describe("RoomBoard lines", () => {
         expect.objectContaining({ type: "edge.remove" }),
       ]),
     );
+  });
+
+  it("moves a selected line's end by keyboard: Enter on its handle, then on a card", async () => {
+    await using _viewport = await boardSizedViewport();
+    using _motion = stillMotion();
+    const board = renderBoard(
+      [
+        { id: "a", text: "First", x: 0, y: -500, size: { w: 192, h: 144 } },
+        { id: "b", text: "Second", x: 400, y: -500, size: { w: 192, h: 144 } },
+        { id: "c", text: "Third", x: 400, y: -250, size: { w: 192, h: 144 } },
+      ],
+      undefined,
+      { edges: [{ id: "line", from: "note:a", to: "note:b" }] },
+    );
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const card = (id: string) => {
+      const element = screen.container.querySelector<HTMLElement>(`[data-board-item="note:${id}"]`);
+      if (element === null) throw new Error(`The board did not draw note ${id}`);
+      return element;
+    };
+    let before = "";
+    await vi.waitFor(() => {
+      const now = JSON.stringify(card("a").getBoundingClientRect().toJSON());
+      const stable = now === before;
+      before = now;
+      expect(stable).toBe(true);
+    });
+    const a = card("a").getBoundingClientRect();
+    const surface = screen.getByRole("application", { name: "Room board" });
+    const under = surface.element().getBoundingClientRect();
+    await userEvent.click(surface, {
+      position: {
+        x: (a.right + card("b").getBoundingClientRect().left) / 2 - under.left,
+        y: (a.top + a.bottom) / 2 - under.top,
+      },
+    });
+    await expect.element(screen.getByRole("toolbar", { name: "Line" })).toHaveFocus();
+    await userEvent.keyboard("{Tab}{Tab}{Tab}{Tab}");
+    await expect
+      .element(screen.getByRole("button", { name: "Move the line's start" }))
+      .toHaveFocus();
+    await userEvent.keyboard("{Tab}");
+    await expect.element(screen.getByRole("button", { name: "Move the line's end" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(screen.getByText(/the card it points to/)).toBeVisible();
+    card("c").querySelector<HTMLElement>("button:not([data-board-link])")?.focus();
+    await userEvent.keyboard("{Enter}");
+    await vi.waitFor(() =>
+      expect(onChange.mock.calls.map(([change]) => change)).toEqual([
+        { type: "edge.remove", edgeId: "line" },
+        expect.objectContaining({ type: "edge.put", from: "note:a", to: "note:c" }),
+      ]),
+    );
+    await expect.element(screen.getByRole("toolbar", { name: "Line" })).toHaveFocus();
+  });
+
+  it("flips a selected line as a new line, as one step to undo", async () => {
+    await using _viewport = await boardSizedViewport();
+    using _motion = stillMotion();
+    const sentAt = "2026-11-01T00:00:00.000Z";
+    const board = renderBoard(
+      [
+        { id: "a", text: "First", x: 0, y: -500, size: { w: 192, h: 144 } },
+        { id: "b", text: "Second", x: 400, y: -500, size: { w: 192, h: 144 } },
+      ],
+      undefined,
+      {
+        edges: [{ id: "line", from: "note:a", to: "note:b", shape: "elbow", sentAt, pinned: true }],
+      },
+    );
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const card = (id: string) => {
+      const element = screen.container.querySelector(`[data-board-item="note:${id}"]`);
+      if (element === null) throw new Error(`The board did not draw note ${id}`);
+      return element.getBoundingClientRect();
+    };
+    let before = "";
+    await vi.waitFor(() => {
+      const now = JSON.stringify(card("a").toJSON());
+      const stable = now === before;
+      before = now;
+      expect(stable).toBe(true);
+    });
+    const a = card("a");
+    const surface = screen.getByRole("application", { name: "Room board" });
+    const under = surface.element().getBoundingClientRect();
+    await userEvent.click(surface, {
+      position: {
+        x: (a.right + card("b").left) / 2 - under.left,
+        y: (a.top + a.bottom) / 2 - under.top,
+      },
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Flip line" }));
+    await vi.waitFor(() => expect(onChange).toHaveBeenCalledTimes(2));
+    const [removed, put] = onChange.mock.calls.map(([change]) => change);
+    expect(removed).toEqual({ type: "edge.remove", edgeId: "line" });
+    expect(put).toMatchObject({ type: "edge.put", from: "note:b", to: "note:a", shape: "elbow" });
+    expect(put).not.toHaveProperty("sentAt");
+    expect(put).not.toHaveProperty("pinned");
+    await expect.element(screen.getByRole("button", { name: "Flip line" })).toBeVisible();
+
+    await userEvent.keyboard("{Control>}z{/Control}");
+    await vi.waitFor(() => expect(onChange).toHaveBeenCalledTimes(4));
+    expect(onChange.mock.calls.slice(2).map(([change]) => change)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "edge.put", edgeId: "line", from: "note:a", to: "note:b" }),
+        expect.objectContaining({ type: "edge.remove" }),
+      ]),
+    );
+  });
+
+  it("draws nothing where a line's end is dropped once someone deleted the line", async () => {
+    await using _viewport = await boardSizedViewport();
+    using _motion = stillMotion();
+    const board = renderBoard(
+      [
+        { id: "a", text: "First", x: 0, y: -500, size: { w: 192, h: 144 } },
+        { id: "b", text: "Second", x: 400, y: -500, size: { w: 192, h: 144 } },
+        { id: "c", text: "Third", x: 400, y: -250, size: { w: 192, h: 144 } },
+      ],
+      undefined,
+      { edges: [{ id: "line", from: "note:a", to: "note:b" }] },
+    );
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const card = (id: string) => {
+      const element = screen.container.querySelector(`[data-board-item="note:${id}"]`);
+      if (element === null) throw new Error(`The board did not draw note ${id}`);
+      return element;
+    };
+    const middle = (element: Element) => {
+      const rect = element.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    };
+    let before = "";
+    await vi.waitFor(() => {
+      const now = JSON.stringify(card("a").getBoundingClientRect().toJSON());
+      const stable = now === before;
+      before = now;
+      expect(stable).toBe(true);
+    });
+    const a = card("a").getBoundingClientRect();
+    const surface = screen.getByRole("application", { name: "Room board" });
+    const under = surface.element().getBoundingClientRect();
+    await userEvent.click(surface, {
+      position: {
+        x: (a.right + card("b").getBoundingClientRect().left) / 2 - under.left,
+        y: (a.top + a.bottom) / 2 - under.top,
+      },
+    });
+    const handle = document.querySelector('[data-board-line-end="to"]');
+    if (handle === null) throw new Error("The selected line shows no handle on its end");
+    const grab = middle(handle);
+    const drop = middle(card("c"));
+    await commands.mouse([
+      { type: "down", ...grab },
+      { type: "move", x: (grab.x + drop.x) / 2, y: (grab.y + drop.y) / 2 },
+    ]);
+    await screen.rerender(board.withEdges([]));
+    await commands.mouse([
+      { type: "move", ...drop },
+      { type: "up", ...drop },
+    ]);
+    await expect
+      .element(screen.getByRole("button", { name: "Delete line" }))
+      .not.toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("puts a moved line back where it was when the room refuses its new end", async () => {
+    await using _viewport = await boardSizedViewport();
+    using _motion = stillMotion();
+    const board = renderBoard(
+      [
+        { id: "a", text: "First", x: 0, y: -500, size: { w: 192, h: 144 } },
+        { id: "b", text: "Second", x: 400, y: -500, size: { w: 192, h: 144 } },
+      ],
+      undefined,
+      {
+        edges: [{ id: "line", from: "note:a", to: "note:b", shape: "elbow" }],
+        // Someone else's change got there first: the room takes the old line off, not the new one.
+        takes: async (change) => !(change.type === "edge.put" && change.edgeId !== "line"),
+      },
+    );
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const card = (id: string) => {
+      const element = screen.container.querySelector(`[data-board-item="note:${id}"]`);
+      if (element === null) throw new Error(`The board did not draw note ${id}`);
+      return element.getBoundingClientRect();
+    };
+    let before = "";
+    await vi.waitFor(() => {
+      const now = JSON.stringify(card("a").toJSON());
+      const stable = now === before;
+      before = now;
+      expect(stable).toBe(true);
+    });
+    const a = card("a");
+    const surface = screen.getByRole("application", { name: "Room board" });
+    const under = surface.element().getBoundingClientRect();
+    await userEvent.click(surface, {
+      position: {
+        x: (a.right + card("b").left) / 2 - under.left,
+        y: (a.top + a.bottom) / 2 - under.top,
+      },
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Flip line" }));
+    await vi.waitFor(() =>
+      expect(onChange.mock.calls.map(([change]) => change)).toEqual([
+        { type: "edge.remove", edgeId: "line" },
+        expect.objectContaining({ type: "edge.put", from: "note:b", to: "note:a" }),
+        { type: "edge.put", edgeId: "line", from: "note:a", to: "note:b", shape: "elbow" },
+      ]),
+    );
+    await expect.element(screen.getByRole("button", { name: "Flip line" })).toBeVisible();
+    expect(document.querySelectorAll("[data-board-line-end]")).toHaveLength(2);
   });
 });
 
