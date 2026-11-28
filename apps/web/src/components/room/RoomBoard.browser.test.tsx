@@ -72,10 +72,11 @@ function renderBoard(
     "t3code:board-guide:v2",
     JSON.stringify({ owner: null, hidden: true, collapsed: false, done: [] }),
   );
-  const element = (
+  // A fresh element each time, as a rerender needs: the room as someone else changed its lines.
+  const withEdges = (lines: ReadonlyArray<RoomBoardEdge>) => (
     <RoomBoard
       title="Launch"
-      room={{ messages: [], board: { positions: {}, notes: [...notes], edges: [...edges] } }}
+      room={{ messages: [], board: { positions: {}, notes: [...notes], edges: [...lines] } }}
       viewKey={viewKey}
       online={[]}
       messages={messages}
@@ -92,10 +93,11 @@ function renderBoard(
       {...(cards === undefined ? {} : { cards })}
     />
   );
+  const element = withEdges(edges);
   const screen = render(withCommandMenu ? <CommandPalette>{element}</CommandPalette> : element, {
     container: sizedContainer(containerSize?.width, containerSize?.height),
   });
-  return { screen, onChange };
+  return { screen, onChange, withEdges };
 }
 
 /** A frame as big as the board, so the mouse reaches every card on it; put back when disposed. */
@@ -2304,6 +2306,64 @@ describe("RoomBoard lines", () => {
         expect.objectContaining({ type: "edge.remove" }),
       ]),
     );
+  });
+
+  it("draws nothing where a line's end is dropped once someone deleted the line", async () => {
+    await using _viewport = await boardSizedViewport();
+    using _motion = stillMotion();
+    const board = renderBoard(
+      [
+        { id: "a", text: "First", x: 0, y: -500, size: { w: 192, h: 144 } },
+        { id: "b", text: "Second", x: 400, y: -500, size: { w: 192, h: 144 } },
+        { id: "c", text: "Third", x: 400, y: -250, size: { w: 192, h: 144 } },
+      ],
+      undefined,
+      { edges: [{ id: "line", from: "note:a", to: "note:b" }] },
+    );
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const card = (id: string) => {
+      const element = screen.container.querySelector(`[data-board-item="note:${id}"]`);
+      if (element === null) throw new Error(`The board did not draw note ${id}`);
+      return element;
+    };
+    const middle = (element: Element) => {
+      const rect = element.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    };
+    let before = "";
+    await vi.waitFor(() => {
+      const now = JSON.stringify(card("a").getBoundingClientRect().toJSON());
+      const stable = now === before;
+      before = now;
+      expect(stable).toBe(true);
+    });
+    const a = card("a").getBoundingClientRect();
+    const surface = screen.getByRole("application", { name: "Room board" });
+    const under = surface.element().getBoundingClientRect();
+    await userEvent.click(surface, {
+      position: {
+        x: (a.right + card("b").getBoundingClientRect().left) / 2 - under.left,
+        y: (a.top + a.bottom) / 2 - under.top,
+      },
+    });
+    const handle = document.querySelector('[data-board-line-end="to"]');
+    if (handle === null) throw new Error("The selected line shows no handle on its end");
+    const grab = middle(handle);
+    const drop = middle(card("c"));
+    await commands.mouse([
+      { type: "down", ...grab },
+      { type: "move", x: (grab.x + drop.x) / 2, y: (grab.y + drop.y) / 2 },
+    ]);
+    await screen.rerender(board.withEdges([]));
+    await commands.mouse([
+      { type: "move", ...drop },
+      { type: "up", ...drop },
+    ]);
+    await expect
+      .element(screen.getByRole("button", { name: "Delete line" }))
+      .not.toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("puts a moved line back where it was when the room refuses its new end", async () => {

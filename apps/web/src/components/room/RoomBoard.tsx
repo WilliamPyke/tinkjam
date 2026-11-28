@@ -4453,8 +4453,12 @@ export function RoomBoard({
     });
     setSelectedEdge(id);
   };
-  const moveEdgeEnd = (edge: RoomBoardEdge, end: BoardLineEnd, ref: string) =>
+  // The line as it is now: someone may have changed or deleted it while its end was moving.
+  const moveEdgeEnd = (id: string, end: BoardLineEnd, ref: string) => {
+    const edge = edges.find((each) => each.id === id);
+    if (edge === undefined) return;
     redrawEdge(edge, end === "from" ? ref : edge.from, end === "to" ? ref : edge.to);
+  };
   const grabEdgeEnd = useStableCallback(
     (id: string, end: BoardLineEnd, event: PointerEvent<SVGElement>) => {
       const edge = edges.find((each) => each.id === id);
@@ -4519,7 +4523,9 @@ export function RoomBoard({
     dropHeldPointer();
     const { from, press, again } = linking;
     stopLinking();
-    if (again !== undefined) setSelectedEdge(again.edge.id);
+    if (again !== undefined && edges.some((edge) => edge.id === again.edge.id)) {
+      setSelectedEdge(again.edge.id);
+    }
     if (event.type === "pointercancel") return;
     const moved = Math.hypot(event.clientX - press.x, event.clientY - press.y) >= CLICK_SLOP;
     // A grip sits on the end of any line drawn from it, so a click there is the line's.
@@ -4530,7 +4536,7 @@ export function RoomBoard({
     const to = moved ? linkTargetAt(event.clientX, event.clientY, from) : null;
     if (to === null) return;
     if (again === undefined) addEdge(from, to.ref);
-    else moveEdgeEnd(again.edge, again.end, to.ref);
+    else moveEdgeEnd(again.edge.id, again.end, to.ref);
   });
   // A line drawn from a grip follows its pointer anywhere: over other cards, off the grip after
   // a fast flick, and where the browser could not capture it, such as a scripted drag.
@@ -4572,7 +4578,7 @@ export function RoomBoard({
       return;
     }
     if (linking.again === undefined) addEdge(linking.from, ref);
-    else moveEdgeEnd(linking.again.edge, linking.again.end, ref);
+    else moveEdgeEnd(linking.again.edge.id, linking.again.end, ref);
     stopLinking();
     setLineTool(false);
     surfaceRef.current?.focus({ preventScroll: true });
