@@ -8,7 +8,6 @@ import {
   CheckIcon,
   ChevronDownIcon,
   CopyIcon,
-  EllipsisIcon,
   EyeIcon,
   GlobeIcon,
   LinkIcon,
@@ -72,6 +71,7 @@ import { Popover, PopoverClose, PopoverPopup, PopoverTitle, PopoverTrigger } fro
 import { Radio, RadioGroup } from "../ui/radio-group";
 import { Switch } from "../ui/switch";
 import { toastManager } from "../ui/toast";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import {
   boardLinkSharing,
@@ -504,44 +504,45 @@ export function CloudBoardSharing({
           </PopoverPopup>
         </Popover>
       )}
-      <Menu>
-        <MenuTrigger
-          render={
-            <Button
-              size="icon-xs"
-              variant="ghost-muted"
-              className="@xl/board:@max-[62rem]/board:hidden"
-              aria-label="Board options"
-            />
-          }
-          data-cloud-board-menu
-        >
-          <EllipsisIcon />
-        </MenuTrigger>
-        <MenuPopup align="end">
-          {controls.deleteBoard ? (
-            <MenuItem
-              variant="destructive"
-              disabled={busy}
-              onClick={() => void deleteBoard({ shareId: share.shareId, title })}
-              data-cloud-board-delete
-            >
-              <Trash2Icon />
-              Delete board
-            </MenuItem>
-          ) : (
-            <MenuItem
-              variant="destructive"
-              disabled={busy}
-              onClick={() => void leave()}
-              data-cloud-board-leave
-            >
-              <LogOutIcon />
-              Leave board
-            </MenuItem>
-          )}
-        </MenuPopup>
-      </Menu>
+      {controls.deleteBoard ? (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                size="icon-xs"
+                variant="ghost-muted"
+                className="@xl/board:@max-[62rem]/board:hidden"
+                aria-label="Delete board"
+                disabled={busy}
+                onClick={() => void deleteBoard({ shareId: share.shareId, title })}
+                data-cloud-board-delete
+              />
+            }
+          >
+            <Trash2Icon />
+          </TooltipTrigger>
+          <TooltipPopup side="bottom">Delete board</TooltipPopup>
+        </Tooltip>
+      ) : (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                size="icon-xs"
+                variant="ghost-muted"
+                className="@xl/board:@max-[62rem]/board:hidden"
+                aria-label="Leave board"
+                disabled={busy}
+                onClick={() => void leave()}
+                data-cloud-board-leave
+              />
+            }
+          >
+            <LogOutIcon />
+          </TooltipTrigger>
+          <TooltipPopup side="bottom">Leave board</TooltipPopup>
+        </Tooltip>
+      )}
     </span>
   );
 }
