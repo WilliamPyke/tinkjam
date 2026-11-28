@@ -1457,6 +1457,25 @@ describe("boardLineRedrawRefusal", () => {
     );
     expect(boardLineRedrawRefusal(board, null, line, "note:a", "note:plain")).toBeNull();
   });
+
+  it("leaves a line pinned into someone's agent for them alone to move or flip", () => {
+    const sam = GuestId.make("sam");
+    const pinned: RoomBoardEdge = { id: "line", from: "note:a", to: "note:box", pinned: true };
+    const board: RoomBoard = {
+      positions: {},
+      notes: [card("a"), card("b"), card("box", { kind: "thread", guestId: sam })],
+      edges: [pinned],
+    };
+    expect(boardLineRedrawRefusal(board, null, pinned, "note:b", "note:box")).toMatch(
+      /pinned to someone else's agent/,
+    );
+    expect(boardLineRedrawRefusal(board, null, pinned, "note:box", "note:a")).toMatch(
+      /pinned to someone else's agent/,
+    );
+    expect(boardLineRedrawRefusal(board, sam, pinned, "note:b", "note:box")).toBeNull();
+    const { pinned: _pinned, ...unpinned } = pinned;
+    expect(boardLineRedrawRefusal(board, null, unpinned, "note:b", "note:box")).toBeNull();
+  });
 });
 
 describe("boardLineControlSpot", () => {

@@ -42,6 +42,7 @@ import {
   applyRoomBoardChange,
   canUndoRoomAgentTurn,
   isRoomCardOwnedBy,
+  isRoomEdgePinnedForSomeoneElse,
   ROOM_BOARD_NOTE_SIZE,
   ROOM_BOARD_SECTION_SIZE,
   ROOM_BOARD_TASK_SIZE,
@@ -1283,7 +1284,10 @@ export const boardLineScale = (zoom: number): number => Math.min(4, Math.max(1, 
 
 const ANY_BOARD_CARD = { hasCard: () => true, hasPerson: () => true };
 
-/** Why the room would refuse `person` redrawing `edge` between `from` and `to`; null if it takes it. */
+/**
+ * Why the room would refuse `person` redrawing `edge` between `from` and `to`; null if it takes it.
+ * A redrawn line is new and unpinned, so a pin is its agent's person's to drop.
+ */
 export function boardLineRedrawRefusal(
   board: RoomBoard,
   person: GuestId | null,
@@ -1291,6 +1295,9 @@ export function boardLineRedrawRefusal(
   from: string,
   to: string,
 ): string | null {
+  if (isRoomEdgePinnedForSomeoneElse(board, edge, person)) {
+    return "This line is pinned to someone else's agent. Only they can move it.";
+  }
   const at = new Date(0).toISOString();
   const removed = applyRoomBoardChange(
     board,
