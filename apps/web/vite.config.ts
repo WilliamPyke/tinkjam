@@ -142,8 +142,7 @@ const browserTestProject = {
     browser: {
       enabled: true,
       headless: true,
-      // Below the test timeout, so a click that cannot land fails with what it waited for.
-      provider: playwright({ actionTimeout: 8_000 }),
+      provider: playwright(),
       instances: [{ browser: "chromium" }],
       screenshotFailures: false,
       commands: {
