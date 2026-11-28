@@ -167,6 +167,25 @@ describe("RoomBoard comments", () => {
     });
   });
 
+  it("asks once before deleting a comment thread", async () => {
+    const board = renderBoard([
+      { id: "pin", text: "Can we ship this?", x: 0, y: 0, kind: "comment" },
+    ]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    await userEvent.click(screen.getByRole("button", { name: "Comment from You" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete comment" }));
+    await expect
+      .element(screen.getByRole("button", { name: "Confirm delete comment" }))
+      .toBeVisible();
+    expect(onChange).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Confirm delete comment" }));
+    await vi.waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith({ type: "note.remove", noteId: "pin" }),
+    );
+  });
+
   it("comments by keyboard: Enter on a card with the Comment tool, or on the board itself", async () => {
     const board = renderBoard([{ id: "box", text: "Review", x: 500, y: 0, kind: "thread" }]);
     const { onChange } = board;
