@@ -198,6 +198,7 @@ import {
   boardChangeOutgrowsOlderHosts,
   boardChangeQueue,
   boardChangeQueueKey,
+  boardLineRedrawRefusal,
   boardEditSent,
   boardCommentAgentAuthor,
   boardCommentLineTo,
@@ -2176,7 +2177,12 @@ export function RoomBoard({
     typingSaves.current.set(key, pending);
   };
   // `after` names the queue a change waits in: a line to a new card goes once the card is there.
-  const send = (target: BoardTarget, value: BoardValue, after?: string | ReadonlyArray<string>) => {
+  const send = (
+    target: BoardTarget,
+    value: BoardValue,
+    after?: string | ReadonlyArray<string>,
+    onRefused?: () => void,
+  ) => {
     if (onChange === undefined) return;
     const key = boardEditKey(target);
     stopSavingTyping(key);
@@ -2203,6 +2209,7 @@ export function RoomBoard({
         return;
       }
       setEdits((current) => dropBoardEdit(current, target, value));
+      onRefused?.();
       if (boardChangeOutgrowsOlderHosts(change)) {
         toastManager.add({
           type: "info",
@@ -4396,11 +4403,18 @@ export function RoomBoard({
     const to = noteRef(id);
     viewArtifactAlong(from, to, to, { ...shown, notes: [...shown.notes, added] });
   };
-  const putEdge = (from: string, to: string, shape: BoardLineShape) => {
+  const putEdge = (
+    from: string,
+    to: string,
+    shape: BoardLineShape,
+    after?: string,
+    onRefused?: () => void,
+  ) => {
     const id = randomUUID();
     const line = { id, from, to, ...(shape === "elbow" ? { shape } : {}) };
-    send({ kind: "edge", id }, line);
-    viewArtifactAlong(from, to, boardChangeQueueKey(shown, { kind: "edge", id }, line));
+    const queue = boardChangeQueueKey(shown, { kind: "edge", id }, line);
+    send({ kind: "edge", id }, line, after === undefined ? undefined : [queue, after], onRefused);
+    viewArtifactAlong(from, to, queue);
     return id;
   };
   /** Draws a line between two cards, unless one is there or the board holds no more. */
@@ -4411,12 +4425,33 @@ export function RoomBoard({
   };
   /**
    * A new line between `from` and `to` in a line's place, as one undo step. New, so nothing the
-   * old one carried to an agent, or its pin, comes with it.
+   * old one carried to an agent, or its pin, comes with it. It goes out once the old one is off,
+   * and the old one comes back if the room refuses it, so the line is never lost.
    */
   const redrawEdge = (edge: RoomBoardEdge, from: string, to: string) => {
     if (from === to || edges.some((other) => other.from === from && other.to === to)) return;
-    send({ kind: "edge", id: edge.id }, null);
-    setSelectedEdge(putEdge(from, to, edge.shape ?? "curve"));
+    const refused = boardLineRedrawRefusal(shown, viewer, edge, from, to);
+    if (refused !== null) {
+      toastManager.add({
+        type: "info",
+        title: "The line stays where it was",
+        description: refused,
+      });
+      return;
+    }
+    const old = { kind: "edge", id: edge.id } as const;
+    const after = boardChangeQueueKey(shown, old, null);
+    send(old, null);
+    const id = putEdge(from, to, edge.shape ?? "curve", after, () => {
+      if (onChange === undefined) return;
+      const change = boardChangeOf(old, edge);
+      setEdits((current) => putBoardEdit(board, current, old, edge, false));
+      setSelectedEdge((selected) => (selected === id ? edge.id : selected));
+      void queueChange(after, (retry) => onChange(change, retry), change).then((taken) => {
+        if (!taken) setEdits((current) => dropBoardEdit(current, old, edge));
+      });
+    });
+    setSelectedEdge(id);
   };
   const moveEdgeEnd = (edge: RoomBoardEdge, end: BoardLineEnd, ref: string) =>
     redrawEdge(edge, end === "from" ? ref : edge.from, end === "to" ? ref : edge.to);

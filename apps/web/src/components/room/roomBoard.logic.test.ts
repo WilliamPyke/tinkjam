@@ -92,6 +92,7 @@ import {
   boardHistoryQueues,
   boardLineSlots,
   boardLineControlSpot,
+  boardLineRedrawRefusal,
   boardHistoryRemember,
   boardStepBefore,
   boardHistoryWith,
@@ -1426,6 +1427,35 @@ describe("boardConnector", () => {
       "bottom",
       "top",
     ]);
+  });
+});
+
+describe("boardLineRedrawRefusal", () => {
+  const card = (id: string, extra: Partial<RoomBoardNote> = {}): RoomBoardNote => ({
+    id,
+    text: id,
+    x: 0,
+    y: 0,
+    ...extra,
+  });
+
+  it("refuses moving a line onto a code window another box already shows, as the room would", () => {
+    const line: RoomBoardEdge = { id: "line", from: "note:a", to: "note:w1" };
+    const board: RoomBoard = {
+      positions: {},
+      notes: [
+        card("a", { kind: "thread" }),
+        card("b", { kind: "thread" }),
+        card("w1", { kind: "code" }),
+        card("w2", { kind: "code" }),
+        card("plain"),
+      ],
+      edges: [line, { id: "other", from: "note:b", to: "note:w2" }],
+    };
+    expect(boardLineRedrawRefusal(board, null, line, "note:a", "note:w2")).toMatch(
+      /code window shows one thread box/,
+    );
+    expect(boardLineRedrawRefusal(board, null, line, "note:a", "note:plain")).toBeNull();
   });
 });
 

@@ -39,6 +39,7 @@ import {
   type ThreadGuestMessage,
 } from "@t3tools/contracts";
 import {
+  applyRoomBoardChange,
   canUndoRoomAgentTurn,
   isRoomCardOwnedBy,
   ROOM_BOARD_NOTE_SIZE,
@@ -67,6 +68,7 @@ import {
   boardSectionColumns,
 } from "@t3tools/shared/boardLayout";
 import { roomEmbedOf } from "@t3tools/shared/roomEmbed";
+import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 
 import {
@@ -1278,6 +1280,35 @@ export function boardConnector(
 
 /** Lines stay thick enough to follow when zoomed out: drawn this much thicker, up to 4 times. */
 export const boardLineScale = (zoom: number): number => Math.min(4, Math.max(1, 1 / zoom));
+
+const ANY_BOARD_CARD = { hasCard: () => true, hasPerson: () => true };
+
+/** Why the room would refuse `person` redrawing `edge` between `from` and `to`; null if it takes it. */
+export function boardLineRedrawRefusal(
+  board: RoomBoard,
+  person: GuestId | null,
+  edge: RoomBoardEdge,
+  from: string,
+  to: string,
+): string | null {
+  const at = new Date(0).toISOString();
+  const removed = applyRoomBoardChange(
+    board,
+    ANY_BOARD_CARD,
+    person,
+    { type: "edge.remove", edgeId: edge.id },
+    at,
+  );
+  if (Result.isFailure(removed)) return removed.failure;
+  const put = applyRoomBoardChange(
+    removed.success,
+    ANY_BOARD_CARD,
+    person,
+    { type: "edge.put", edgeId: edge.id, from, to },
+    at,
+  );
+  return Result.isFailure(put) ? put.failure : null;
+}
 
 const LINE_CONTROL_WIDTH = 240;
 const LINE_CONTROL_HEIGHT = 32;
