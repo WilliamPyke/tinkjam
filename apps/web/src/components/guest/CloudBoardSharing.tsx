@@ -348,7 +348,11 @@ export function CloudBoardSharing({
     );
   const shareMark: ReactNode = (
     <>
-      {here.length === 0 ? <UsersIcon aria-hidden /> : null}
+      {here.length === 0 ? (
+        <UsersIcon aria-hidden />
+      ) : (
+        <UsersIcon aria-hidden className="@xl/board:hidden" />
+      )}
       <span className="@max-xl/board:hidden">Share</span>
     </>
   );
