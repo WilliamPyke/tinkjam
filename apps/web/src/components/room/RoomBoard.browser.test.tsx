@@ -20,6 +20,7 @@ import { CommandPalette } from "../CommandPaletteHost";
 import { toastManager } from "../ui/toast";
 
 import { RoomBoard, RoomCursors } from "./RoomBoard";
+import { RoomLiveContext, createRoomLiveStore } from "./roomBoardLive";
 import { rememberRoomBoardView } from "./roomBoardNavigation";
 
 function visit(path: string): Disposable {
@@ -2295,28 +2296,35 @@ describe("RoomBoard link cards", () => {
 
 describe("RoomBoard live drags", () => {
   it("moves a card as someone else drags it, and keeps it where it landed", async () => {
+    // Its own store, as a room has: the landing it holds must not reach later tests' boards.
+    const live = createRoomLiveStore();
     const board = (x: number, drag: RoomCursor["drag"]) => (
-      <RoomBoard
-        title="Launch"
-        room={{ messages: [], board: { positions: {}, notes: [{ id: "a", text: "Hi", x, y: 0 }] } }}
-        online={[]}
-        messages={[]}
-        viewer={null}
-        ownerName={undefined}
-        cursorLayer={
-          <RoomCursors
-            cursors={drag === undefined ? [] : [{ x: 1, y: 1, drag }]}
-            views={undefined}
-            guests={[]}
-            ownerName="Ann"
-          />
-        }
-        onOpenThread={() => {}}
-        onOpenReply={() => {}}
-        onChange={async () => true}
-        onCursor={undefined}
-        onUseNote={undefined}
-      />
+      <RoomLiveContext value={live}>
+        <RoomBoard
+          title="Launch"
+          room={{
+            messages: [],
+            board: { positions: {}, notes: [{ id: "a", text: "Hi", x, y: 0 }] },
+          }}
+          online={[]}
+          messages={[]}
+          viewer={null}
+          ownerName={undefined}
+          cursorLayer={
+            <RoomCursors
+              cursors={drag === undefined ? [] : [{ x: 1, y: 1, drag }]}
+              views={undefined}
+              guests={[]}
+              ownerName="Ann"
+            />
+          }
+          onOpenThread={() => {}}
+          onOpenReply={() => {}}
+          onChange={async () => true}
+          onCursor={undefined}
+          onUseNote={undefined}
+        />
+      </RoomLiveContext>
     );
     const items = [{ ref: "note:a", x: 300, y: 0 }];
     await using screen = await render(board(0, { items }), { container: sizedContainer() });
