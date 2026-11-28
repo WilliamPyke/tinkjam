@@ -2184,6 +2184,62 @@ describe("RoomBoard lines", () => {
       ]),
     );
   });
+
+  it("flips a selected line as a new line, as one step to undo", async () => {
+    await using _viewport = await boardSizedViewport();
+    using _motion = stillMotion();
+    const sentAt = "2026-11-01T00:00:00.000Z";
+    const board = renderBoard(
+      [
+        { id: "a", text: "First", x: 0, y: -500, size: { w: 192, h: 144 } },
+        { id: "b", text: "Second", x: 400, y: -500, size: { w: 192, h: 144 } },
+      ],
+      undefined,
+      {
+        edges: [{ id: "line", from: "note:a", to: "note:b", shape: "elbow", sentAt, pinned: true }],
+      },
+    );
+    const { onChange } = board;
+    await using screen = await board.screen;
+    const card = (id: string) => {
+      const element = screen.container.querySelector(`[data-board-item="note:${id}"]`);
+      if (element === null) throw new Error(`The board did not draw note ${id}`);
+      return element.getBoundingClientRect();
+    };
+    let before = "";
+    await vi.waitFor(() => {
+      const now = JSON.stringify(card("a").toJSON());
+      const stable = now === before;
+      before = now;
+      expect(stable).toBe(true);
+    });
+    const a = card("a");
+    const surface = screen.getByRole("application", { name: "Room board" });
+    const under = surface.element().getBoundingClientRect();
+    await userEvent.click(surface, {
+      position: {
+        x: (a.right + card("b").left) / 2 - under.left,
+        y: (a.top + a.bottom) / 2 - under.top,
+      },
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Flip line" }));
+    await vi.waitFor(() => expect(onChange).toHaveBeenCalledTimes(2));
+    const [removed, put] = onChange.mock.calls.map(([change]) => change);
+    expect(removed).toEqual({ type: "edge.remove", edgeId: "line" });
+    expect(put).toMatchObject({ type: "edge.put", from: "note:b", to: "note:a", shape: "elbow" });
+    expect(put).not.toHaveProperty("sentAt");
+    expect(put).not.toHaveProperty("pinned");
+    await expect.element(screen.getByRole("button", { name: "Flip line" })).toBeVisible();
+
+    await userEvent.keyboard("{Control>}z{/Control}");
+    await vi.waitFor(() => expect(onChange).toHaveBeenCalledTimes(4));
+    expect(onChange.mock.calls.slice(2).map(([change]) => change)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "edge.put", edgeId: "line", from: "note:a", to: "note:b" }),
+        expect.objectContaining({ type: "edge.remove" }),
+      ]),
+    );
+  });
 });
 
 describe("RoomBoard link cards", () => {

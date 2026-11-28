@@ -39,6 +39,7 @@ import {
   AppWindowIcon,
   FileCode2Icon,
   ArrowLeftIcon,
+  ArrowRightLeftIcon,
   BotIcon,
   ChevronDownIcon,
   CircleCheckIcon,
@@ -4411,14 +4412,17 @@ export function RoomBoard({
     if (edges.some((edge) => edge.from === from && edge.to === to)) return;
     putEdge(from, to, lastBoardLineShape(lineBoard));
   };
-  /** Moves one end of a line to another card: a new line there in its place, as one undo step. */
-  const moveEdgeEnd = (edge: RoomBoardEdge, end: BoardLineEnd, ref: string) => {
-    const from = end === "from" ? ref : edge.from;
-    const to = end === "to" ? ref : edge.to;
+  /**
+   * A new line between `from` and `to` in a line's place, as one undo step. New, so nothing the
+   * old one carried to an agent, or its pin, comes with it.
+   */
+  const redrawEdge = (edge: RoomBoardEdge, from: string, to: string) => {
     if (from === to || edges.some((other) => other.from === from && other.to === to)) return;
     send({ kind: "edge", id: edge.id }, null);
     setSelectedEdge(putEdge(from, to, edge.shape ?? "curve"));
   };
+  const moveEdgeEnd = (edge: RoomBoardEdge, end: BoardLineEnd, ref: string) =>
+    redrawEdge(edge, end === "from" ? ref : edge.from, end === "to" ? ref : edge.to);
   const grabEdgeEnd = useStableCallback(
     (id: string, end: BoardLineEnd, event: PointerEvent<SVGElement>) => {
       const edge = edges.find((each) => each.id === id);
@@ -7438,6 +7442,9 @@ export function RoomBoard({
                     surfaceSize ?? { width: 600, height: 400 },
                     boardLineEnds(from, to, { slots: lineSlots.get(edge.id) }),
                   );
+                  const flipped = edges.some(
+                    (other) => other.from === edge.to && other.to === edge.from,
+                  );
                   return (
                     <div
                       key={edge.id}
@@ -7465,6 +7472,26 @@ export function RoomBoard({
                         <Toggle value="curve">Curved</Toggle>
                         <Toggle value="elbow">Elbow</Toggle>
                       </ToggleGroup>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              aria-label="Flip line"
+                              disabled={flipped}
+                              onPointerDown={stopPointer}
+                              onClick={() => redrawEdge(edge, edge.to, edge.from)}
+                            />
+                          }
+                        >
+                          <ArrowRightLeftIcon />
+                          <span className="hidden sm:inline">Flip</span>
+                        </TooltipTrigger>
+                        <TooltipPopup side="top">
+                          {flipped ? "A line already goes the other way" : "Flip line"}
+                        </TooltipPopup>
+                      </Tooltip>
                       <Tooltip>
                         <TooltipTrigger
                           render={
