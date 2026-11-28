@@ -97,12 +97,12 @@ it("unknown shell addresses say they do not exist", async () => {
   }
 });
 
-it("a board address keeps its own message", async () => {
+it("a board address says who it works for", async () => {
   using _setup = setup();
   await page.viewport(1400, 900);
   await using _app = await mountApp("/b/share-1");
 
   await expect
-    .element(page.getByText("This board has ended, or the link is not valid"))
+    .element(page.getByText("This link only works for people already on this board"))
     .toBeVisible();
 });

@@ -186,6 +186,7 @@ import {
   boardArtifactVersionNote,
   boardArtifactViewSource,
   boardArtifactWriting,
+  boardAgentWorkLabel,
   boardBoxAgentLabel,
   boardBoxName,
   boardAgentTurnLine,
@@ -1879,7 +1880,7 @@ export function RoomBoard({
     if (work === undefined) return undefined;
     const box = threadBoxes.find((candidate) => candidate.id === work.boxId);
     return {
-      name: box === undefined ? "Agent" : box.title || boardBoxName(box, people),
+      name: boardAgentWorkLabel(box, people),
       color: boardCursorColor(guests, box?.guestId),
       stamp: work.stamp,
     };

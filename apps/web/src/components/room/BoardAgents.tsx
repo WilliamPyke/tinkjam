@@ -555,7 +555,7 @@ export function BoardAgents({
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
-      <span className="flex shrink-0">
+      <span className="flex shrink-0 @max-xl/board:hidden">
         <Tooltip>
           <TooltipTrigger
             render={

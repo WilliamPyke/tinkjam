@@ -1383,3 +1383,13 @@ export function sortScopedProjectsForSidebar<
       left.id.localeCompare(right.id),
   );
 }
+
+/** Which workbench rows the sidebar's foot offers. Boards-only keeps them out, apart from pull requests once a computer is here. */
+export function sidebarUtilityRows(input: {
+  readonly advanced: boolean;
+  readonly boardsOnly: boolean;
+  readonly hasComputer: boolean;
+}): { readonly pullRequests: boolean; readonly usage: boolean } {
+  const workbench = input.advanced && !input.boardsOnly;
+  return { pullRequests: workbench || input.hasComputer, usage: workbench };
+}

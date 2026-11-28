@@ -53,6 +53,7 @@ import {
 } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPreferences";
+import { sidebarUtilityRows } from "../Sidebar.logic";
 import { isSidebarUtilityPage, useNavigateToMainApp } from "./mainAppLocation";
 import { SidebarThreadUndoNotice } from "./SidebarThreadUndoNotice";
 import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
@@ -246,7 +247,11 @@ function SidebarFootRow({
   );
 }
 
-const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
+const SidebarUtilityMenu = memo(function SidebarUtilityMenu({
+  boardsOnly,
+}: {
+  readonly boardsOnly: boolean;
+}) {
   const navigate = useNavigate();
   const navigateToMainApp = useNavigateToMainApp();
   const { isMobile, setOpenMobile } = useSidebar();
@@ -267,6 +272,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   };
   const whatsNew = useWhatsNewSeen();
   const beforeFirstBoard = useBeforeFirstBoard();
+  const utilityRows = sidebarUtilityRows({ advanced, boardsOnly, hasComputer });
 
   return (
     <SidebarMenu>
@@ -281,7 +287,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
         />
       ) : (
         <>
-          {pullRequestsSupported && (advanced || hasComputer) ? (
+          {pullRequestsSupported && utilityRows.pullRequests ? (
             <SidebarFootRow
               icon={<PullRequestGlyph.pullRequest />}
               label="Pull requests"
@@ -291,7 +297,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
               }}
             />
           ) : null}
-          {advanced ? (
+          {utilityRows.usage ? (
             <SidebarFootRow icon={<ChartNoAxesColumnIcon />} label="Usage" onClick={go("/usage")} />
           ) : null}
           <SidebarFootRow
@@ -425,7 +431,11 @@ function useOwnComputer() {
   return environments.find((environment) => !isGuestEnvironment(environment.environmentId)) ?? null;
 }
 
-export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
+export const SidebarChromeFooter = memo(function SidebarChromeFooter({
+  boardsOnly,
+}: {
+  readonly boardsOnly: boolean;
+}) {
   const simple = useShellMode() === "simple";
   return (
     <SidebarFooter>
@@ -433,7 +443,7 @@ export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
       <SidebarUpdateArchitectureWarning />
       <div className="flex flex-col gap-px border-t border-sidebar-border pt-2.5">
         <SidebarConnectComputer />
-        <SidebarUtilityMenu />
+        <SidebarUtilityMenu boardsOnly={boardsOnly} />
       </div>
     </SidebarFooter>
   );

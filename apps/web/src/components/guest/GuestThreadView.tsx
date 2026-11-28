@@ -436,6 +436,11 @@ export function GuestThreadRoute({ threadRef }: { readonly threadRef: ScopedThre
       guestShareIdOfEnvironment(threadRef.environmentId) ?? "",
     ) ?? null;
   // A cloud board opened at its long address (a bookmark, an old link) moves to its own.
+  const atOwnAddress = useParams({
+    strict: false,
+    select: (params) =>
+      params.shareId !== undefined && params.environmentId === threadRef.environmentId,
+  });
   const atLongAddress = useParams({
     strict: false,
     select: (params) =>
@@ -467,8 +472,16 @@ export function GuestThreadRoute({ threadRef }: { readonly threadRef: ScopedThre
         <SignedOutBoardNotice />
       ) : share === null || share.threadId !== threadRef.threadId ? (
         <GuestNotice
-          title="This board has ended, or the link is not valid"
-          detail="Ask whoever shared it with you for a new link."
+          title={
+            atOwnAddress
+              ? "This link only works for people already on this board"
+              : "This board has ended, or the link is not valid"
+          }
+          detail={
+            atOwnAddress
+              ? "Ask whoever sent it for an invite link. They can copy one from Share → Copy invite link."
+              : "Ask whoever shared it with you for a new link."
+          }
         >
           <GoToTinkjam />
         </GuestNotice>

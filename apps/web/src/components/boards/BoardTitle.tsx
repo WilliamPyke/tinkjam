@@ -94,7 +94,7 @@ export function BoardTitle({
           <span className="min-w-0 truncate">{title}</span>
           <PencilIcon
             aria-hidden
-            className="size-3 shrink-0 text-muted-foreground opacity-60 group-hover/title:opacity-100"
+            className="size-3 shrink-0 text-muted-foreground opacity-60 group-hover/title:opacity-100 @max-xl/board:hidden"
           />
         </TooltipTrigger>
         <TooltipPopup side="bottom">{title}</TooltipPopup>
