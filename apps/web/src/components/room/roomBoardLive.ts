@@ -428,3 +428,9 @@ export function useBoardNow(): number {
   const store = use(RoomLiveContext);
   return useSyncExternalStore(store.subscribeClock, store.now);
 }
+
+/** The prompts waiting behind a box's run; a new array only when they change. */
+export function useBoxQueued(boxId: string): ReadonlyArray<RoomBoxProgress> {
+  const store = use(RoomLiveContext);
+  return useSyncExternalStore(store.subscribe, () => store.queued(boxId));
+}

@@ -500,6 +500,7 @@ import {
   boardLiveStyle,
   useBoardLiveDrag,
   useBoxProgress,
+  useBoxQueued,
   useRoomHasProgress,
   useRoomRunning,
 } from "./roomBoardLive";
@@ -9188,9 +9189,15 @@ function RoomCode({
 }
 
 function ThreadMessages({ messages }: { readonly messages: ReadonlyArray<BoardMessage> }) {
-  const running = useBoxProgress(ROOM_BOARD_ROOM_BOX) !== undefined;
-  if (messages.length === 0) {
-    return running ? null : <p className="text-xs text-muted-foreground">No messages yet.</p>;
+  const running = useBoxProgress(ROOM_BOARD_ROOM_BOX);
+  const queued = [
+    ...(running?.phase === "queued" ? [running] : []),
+    ...useBoxQueued(ROOM_BOARD_ROOM_BOX),
+  ].filter((run) => (run.prompt ?? "") !== "");
+  if (messages.length === 0 && queued.length === 0) {
+    return running !== undefined ? null : (
+      <p className="text-xs text-muted-foreground">No messages yet.</p>
+    );
   }
   return (
     <ol className="flex flex-col gap-2">
@@ -9198,6 +9205,12 @@ function ThreadMessages({ messages }: { readonly messages: ReadonlyArray<BoardMe
         <li key={message.id} className="text-xs">
           <span className="font-medium text-muted-foreground">{message.author ?? "Agent"}</span>
           <p className="line-clamp-3 [overflow-wrap:anywhere]">{message.text}</p>
+        </li>
+      ))}
+      {queued.map((run) => (
+        <li key={run.startedAt} className="text-xs text-muted-foreground">
+          <span className="font-medium">Queued</span>
+          <p className="line-clamp-2 [overflow-wrap:anywhere]">{run.prompt}</p>
         </li>
       ))}
     </ol>
