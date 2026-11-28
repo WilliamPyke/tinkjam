@@ -65,6 +65,7 @@ import {
   boardCommentUnread,
   boardArtifactWriting,
   boardBoxAgentLabel,
+  boardAgentWorkLabel,
   boardBoxName,
   boardBoxRequests,
   boardThreadBoxTitle,
@@ -2887,6 +2888,20 @@ describe("thread boxes", () => {
     expect(boardBoxName({ id: "b2", guestId: sam, title: "" }, { guests, viewer: null })).toBe(
       "Sam's agent box",
     );
+  });
+
+  it("says whose agent worked on a card, not whose card it is", () => {
+    expect(boardAgentWorkLabel({ guestId: sam }, { guests, viewer: null })).toBe(
+      "Sam's agent worked here",
+    );
+    expect(boardAgentWorkLabel({ guestId: sam }, { guests, viewer: sam })).toBe(
+      "Your agent worked here",
+    );
+    expect(boardAgentWorkLabel({}, { guests, viewer: null })).toBe("Your agent worked here");
+    expect(boardAgentWorkLabel({}, { guests, viewer: sam, ownerName: "Alex" })).toBe(
+      "Alex's agent worked here",
+    );
+    expect(boardAgentWorkLabel(undefined, { guests, viewer: null })).toBe("Agent worked here");
   });
 
   it.each([

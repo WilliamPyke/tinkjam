@@ -3207,6 +3207,17 @@ export function boardBoxAgentLabel(
     : `${possessive} agent`;
 }
 
+/** What the brief mark over a card an agent just changed says: who worked, not whose card it is. */
+export function boardAgentWorkLabel(
+  box: Pick<BoardThreadBox, "guestId"> | undefined,
+  people: BoardPeople,
+): string {
+  if (box === undefined) return "Agent worked here";
+  // The box's own agent did the work here; the routing cases of boardBoxAgentLabel are not shown.
+  const ownTurn = box.guestId === undefined ? {} : { guestId: box.guestId };
+  return `${boardBoxAgentLabel(box, people, ownTurn)} worked here`;
+}
+
 const BOX_TITLE_MAX_LENGTH = 80;
 
 /** The title a thread box takes from the thread it is added for: one line, cut short. */
