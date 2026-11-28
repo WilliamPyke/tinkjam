@@ -18,6 +18,7 @@ import {
   resolveThreadStatusPill,
   resolveWorkingStartedAt,
   searchSidebarThreads,
+  sidebarUtilityRows,
   shouldRecedeSidebarThread,
   sortInboxThreadsByReturn,
   resolveSidebarDropTarget,
@@ -1679,5 +1680,22 @@ describe("shouldCreateNewThreadInCurrentProject", () => {
     expect(shouldCreateNewThreadInCurrentProject(false, 1, 3)).toBe(true);
     expect(shouldCreateNewThreadInCurrentProject(false, 0, 0)).toBe(true);
     expect(shouldCreateNewThreadInCurrentProject(true, 2, 2)).toBe(true);
+  });
+});
+
+describe("sidebarUtilityRows", () => {
+  it("keeps workbench rows away from someone with boards only, except pull requests with a computer", () => {
+    expect(sidebarUtilityRows({ advanced: true, boardsOnly: true, hasComputer: false })).toEqual({
+      pullRequests: false,
+      usage: false,
+    });
+    expect(sidebarUtilityRows({ advanced: false, boardsOnly: true, hasComputer: true })).toEqual({
+      pullRequests: true,
+      usage: false,
+    });
+    expect(sidebarUtilityRows({ advanced: true, boardsOnly: false, hasComputer: false })).toEqual({
+      pullRequests: true,
+      usage: true,
+    });
   });
 });

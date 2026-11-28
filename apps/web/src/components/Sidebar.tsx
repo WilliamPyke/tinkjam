@@ -3740,7 +3740,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           </>
         )}
       </SidebarContent>
-      <SidebarChromeFooter />
+      <SidebarChromeFooter boardsOnly={boardsOnly} />
     </>
   );
 }
