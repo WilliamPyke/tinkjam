@@ -536,7 +536,7 @@ export function CommentThreadPanel({
                 ? `Confirm delete ${replies.length === 0 ? "comment" : "comments"}`
                 : `Delete ${replies.length === 0 ? "comment" : "comments"}`
             }
-            {...(replies.length === 0 ? { onClick: onDelete } : confirm.props("thread", onDelete))}
+            {...confirm.props("thread", onDelete)}
           >
             <Trash2Icon />
             {deleteArmed ? "Delete?" : null}

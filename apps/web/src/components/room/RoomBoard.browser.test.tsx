@@ -169,6 +169,25 @@ describe("RoomBoard comments", () => {
     });
   });
 
+  it("asks once before deleting a comment thread", async () => {
+    const board = renderBoard([
+      { id: "pin", text: "Can we ship this?", x: 0, y: 0, kind: "comment" },
+    ]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    await userEvent.click(screen.getByRole("button", { name: "Comment from You" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete comment" }));
+    await expect
+      .element(screen.getByRole("button", { name: "Confirm delete comment" }))
+      .toBeVisible();
+    expect(onChange).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Confirm delete comment" }));
+    await vi.waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith({ type: "note.remove", noteId: "pin" }),
+    );
+  });
+
   it("comments by keyboard: Enter on a card with the Comment tool, or on the board itself", async () => {
     const board = renderBoard([{ id: "box", text: "Review", x: 500, y: 0, kind: "thread" }]);
     const { onChange } = board;
@@ -199,6 +218,36 @@ describe("RoomBoard comments", () => {
     await userEvent.keyboard("On the board{Enter}");
     await vi.waitFor(() => expect(onChange).toHaveBeenCalledTimes(3));
     expect(onChange.mock.calls[2]?.[0]).toMatchObject({ type: "note.put", text: "On the board" });
+  });
+});
+
+describe("RoomBoard catch-up", () => {
+  it("counts a first visit to an empty board when someone returns to changes", async () => {
+    const viewKey = "catchup-test:empty-first";
+    {
+      const first = renderBoard([], viewKey);
+      await using screen = await first.screen;
+      await expect.element(screen.getByRole("application", { name: "Room board" })).toBeVisible();
+    }
+
+    const sam = GuestId.make("sam");
+    const at = "2026-01-01T10:00:00.000Z";
+    const second = renderBoard(
+      [
+        {
+          id: "away",
+          text: "While you were away",
+          x: 0,
+          y: 0,
+          guestId: sam,
+          createdAt: at,
+          changed: { at, guestId: sam },
+        },
+      ],
+      viewKey,
+    );
+    await using screen = await second.screen;
+    await expect.element(screen.getByText(/since you were here/)).toBeVisible();
   });
 });
 
@@ -591,6 +640,35 @@ describe("RoomBoard selection", () => {
       ]);
     });
     await expect.element(screen.getByRole("status")).toHaveTextContent("2 selected");
+  });
+
+  it("votes for every selected note from the selection bar", async () => {
+    const board = renderBoard([
+      { id: "a", text: "First", x: 0, y: 400 },
+      { id: "b", text: "Second", x: 300, y: 400 },
+    ]);
+    const { onChange } = board;
+    await using screen = await board.screen;
+    await userEvent.keyboard("{Shift>}");
+    for (const id of ["a", "b"]) {
+      const header = screen.container.querySelector(`[data-board-item="note:${id}"] > div`);
+      if (header === null) throw new Error(`The board did not draw note ${id}`);
+      await userEvent.click(header);
+    }
+    await userEvent.keyboard("{/Shift}");
+    await expect.element(screen.getByRole("status")).toHaveTextContent("2 selected");
+    const bar = screen.container.querySelector<HTMLElement>("[data-selection-bar]");
+    const vote = [...(bar?.querySelectorAll("button") ?? [])].find(
+      (button) => button.textContent?.trim() === "Vote",
+    );
+    if (vote === undefined) throw new Error("The selection bar has no Vote action");
+    await userEvent.click(vote);
+    await vi.waitFor(() => {
+      const votes = onChange.mock.calls.flatMap(([change]) =>
+        change.type === "note.react" && change.emoji === "👍" ? [change.noteId] : [],
+      );
+      expect(votes.toSorted()).toEqual(["a", "b"]);
+    });
   });
 
   it("colours every selected note at once from the selection bar", async () => {
