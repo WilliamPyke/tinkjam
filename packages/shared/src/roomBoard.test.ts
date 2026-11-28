@@ -13,6 +13,7 @@ import {
   ROOM_BOARD_MAX_THREADS,
   ROOM_BOARD_MARK_SELECTOR_MAX_LENGTH,
   ROOM_BOARD_ROOM_BOX,
+  ROOM_BOX_REPLY_MAX_LENGTH,
   ROOM_COMMENT_AGENT_REPLY_MAX_LENGTH,
   ROOM_COMMENT_MAX_REACTIONS,
   RoomBoard,
@@ -47,6 +48,7 @@ import {
   roomBoardStartNote,
   roomBoxCodeWindows,
   roomBoxExcerpt,
+  roomBoxReply,
   roomBoxRequestOf,
   roomCommentAnswer,
   roomCommentRequestOf,
@@ -1877,6 +1879,19 @@ describe("roomCommentAnswer", () => {
     const answer = roomCommentAnswer(`Here:\n\`\`\`ts\n${"const a = 1;\n".repeat(200)}\`\`\``);
     expect(answer.endsWith("…\n```")).toBe(true);
     expect(answer.length).toBeLessThanOrEqual(max);
+  });
+});
+
+describe("roomBoxReply", () => {
+  it("keeps a reply's markdown and line breaks, cut to what a box keeps", () => {
+    expect(roomBoxReply("Done:\r\n\n- Reads the manifest\n- Asks **once**\n")).toBe(
+      "Done:\n\n- Reads the manifest\n- Asks **once**",
+    );
+    const long = roomBoxReply(`intro\n${"word ".repeat(400)}`);
+    expect(long.endsWith(" word…")).toBe(true);
+    expect(long.length).toBeLessThanOrEqual(ROOM_BOX_REPLY_MAX_LENGTH);
+    const page = "<!DOCTYPE html>\n<html><body>Hi</body></html>";
+    expect(roomBoxReply(`Here:\n\n\`\`\`html\n${page}\n\`\`\``)).toBe(page);
   });
 });
 

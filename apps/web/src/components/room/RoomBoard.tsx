@@ -474,6 +474,7 @@ import {
 } from "./BoardChrome";
 import {
   BoxBoardWork,
+  BoxMarkdown,
   BoxProgress,
   BoxRequests,
   BoxStateEdge,
@@ -9308,9 +9309,17 @@ function ThreadMessages({ messages }: { readonly messages: ReadonlyArray<BoardMe
   return (
     <ol className="flex flex-col gap-2">
       {messages.map((message) => (
-        <li key={message.id} className="text-xs">
-          <span className="font-medium text-muted-foreground">{message.author ?? "Agent"}</span>
-          <p className="line-clamp-3 [overflow-wrap:anywhere]">{message.text}</p>
+        <li key={message.id} className="flex flex-col gap-1 text-sm">
+          <span className="text-2xs font-medium text-muted-foreground">
+            {message.author ?? "Agent"}
+          </span>
+          {message.markdown === undefined ? (
+            <p className="line-clamp-3 border-s-2 border-primary/40 ps-2 [overflow-wrap:anywhere]">
+              {message.text}
+            </p>
+          ) : (
+            <BoxMarkdown text={message.markdown} />
+          )}
         </li>
       ))}
       {queued.map((run) => (

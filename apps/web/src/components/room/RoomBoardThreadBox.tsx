@@ -12,6 +12,7 @@ import {
   type ScopedThreadRef,
   type ThreadGuestMessage,
 } from "@t3tools/contracts";
+import { shouldPreserveAssistantLineBreaks } from "@t3tools/shared/assistantLineBreaks";
 import { roomBoxExcerpt } from "@t3tools/shared/roomBoard";
 import { AppWindowIcon, MessagesSquareIcon, SquareIcon } from "lucide-react";
 import { type PointerEvent, type ReactNode, use, useState, useSyncExternalStore } from "react";
@@ -21,6 +22,7 @@ import { useEnvironmentScope } from "~/state/session";
 import { environmentThreadDetails, threadEnvironment } from "~/state/threads";
 import { useAtomCommand } from "~/state/use-atom-command";
 
+import { LazyChatMarkdown } from "../LazyChatMarkdown";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
@@ -51,6 +53,18 @@ const APPROVAL_FALLBACK = {
   "mcp-elicitation": "App access approval",
 } as const;
 
+/** An agent's reply on a box, as markdown from someone's machine, so without raw HTML. */
+export function BoxMarkdown({ text }: { readonly text: string }) {
+  return (
+    <LazyChatMarkdown
+      text={text}
+      cwd={undefined}
+      lineBreaks={shouldPreserveAssistantLineBreaks(text)}
+      parseRawHtml={false}
+    />
+  );
+}
+
 /**
  * A box's reply: as written, or, when it is a whole HTML page, what the page is called, with its
  * source a press away and, for the last reply, a way to put the page in an artifact window.
@@ -64,7 +78,7 @@ function BoxReply({
 }) {
   const [source, setSource] = useState(false);
   if (!isBoardHtmlArtifact(reply)) {
-    return <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{reply}</p>;
+    return <BoxMarkdown text={reply} />;
   }
   const title = boardHtmlTitle(reply);
   return (

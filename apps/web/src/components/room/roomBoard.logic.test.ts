@@ -1601,9 +1601,9 @@ describe("boardMessages", () => {
       3,
     );
     expect(messages).toEqual([
-      { id: "2", author: null, text: "Old answer" },
+      { id: "2", author: null, text: "Old answer", markdown: "Old answer" },
       { id: "4", author: "Sam", text: "Why 15 minutes?" },
-      { id: "5", author: null, text: "The token TTL is 900s." },
+      { id: "5", author: null, text: "The token TTL is 900s.", markdown: "The token TTL is 900s." },
     ]);
 
     const reply = [
@@ -1620,7 +1620,13 @@ describe("boardMessages", () => {
       "| a.ts | **fixed** |",
     ].join("\n");
     expect(boardMessages([{ id: "7", type: "assistant_message", text: reply }], 1)).toEqual([
-      { id: "7", author: null, text: "Done: Fixed a.ts, see the diff. File Change a.ts fixed" },
+      {
+        id: "7",
+        author: null,
+        text: "Done: Fixed a.ts, see the diff. File Change a.ts fixed",
+        // The agent box shows the reply as written.
+        markdown: reply,
+      },
     ]);
     // A reply that is only code still shows something.
     expect(

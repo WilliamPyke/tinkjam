@@ -50,6 +50,7 @@ import {
   roomBoardCardChangedAt,
   roomBoardNoteOfRef,
   roomBoxIdOfRef,
+  roomBoxReply,
   roomCardEditor,
   roomLinkLabel,
   roomLinkPromptText,
@@ -2319,6 +2320,8 @@ export interface BoardMessage {
   /** Who wrote it: null for the agent, the owner's label, a guest's name otherwise. */
   readonly author: string | null;
   readonly text: string;
+  /** An agent's reply as its box shows it: markdown, cut to what a box keeps. */
+  readonly markdown?: string;
 }
 
 interface MessageItem {
@@ -2405,7 +2408,14 @@ export function boardMessages(
       if (text !== "") messages.push({ id: item.id, author: guest?.name ?? owner, text });
     } else if (item.type === "assistant_message") {
       const text = textOf(item.text);
-      if (text !== "") messages.push({ id: item.id, author: null, text });
+      if (text !== "") {
+        messages.push({
+          id: item.id,
+          author: null,
+          text,
+          markdown: roomBoxReply(String(item.text)),
+        });
+      }
     }
   }
   return messages.toReversed();

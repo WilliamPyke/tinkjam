@@ -1019,7 +1019,7 @@ it.effect(
         assert.deepInclude((shown as { turn: object }).turn, {
           id: "run:asked",
           prompt: "Make it dark",
-          reply: "Dark plan",
+          reply: "# Dark plan",
           cards: ["Note from Cam"],
           model: "GPT-5.1 Codex",
           askedBy: sam,
