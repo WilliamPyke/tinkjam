@@ -1869,9 +1869,10 @@ const FENCE_LINE = /^ {0,3}(?:`{3,}|~{3,})/gm;
  * What an agent's reply posts in a comment thread: its markdown without hidden characters, cut
  * at a line or a word break to what the thread keeps. A code block the cut leaves open is closed.
  */
-export function roomCommentAnswer(reply: string): string {
-  const text = sanitizeLinkedPrompt(reply).text;
-  const max = ROOM_COMMENT_AGENT_REPLY_MAX_LENGTH;
+export const roomCommentAnswer = (reply: string): string =>
+  markdownCut(sanitizeLinkedPrompt(reply).text, ROOM_COMMENT_AGENT_REPLY_MAX_LENGTH);
+
+function markdownCut(text: string, max: number): string {
   if (text.length <= max) return text;
   // Room for "…" and a closing fence.
   const head = text.slice(0, max - 5);
@@ -1926,7 +1927,10 @@ export function roomArtifactBody(reply: string): {
 
 /**
  * A finished reply as its thread box keeps it: the page it wrote, when it holds a whole one, so
- * the box can show it as a page by name, or else its words.
+ * the box can show it as a page by name, or else its markdown, cut like a comment's answer.
  */
 export const roomBoxReply = (reply: string): string =>
-  roomBoxExcerpt(htmlDocumentBlock(reply) ?? reply, ROOM_BOX_REPLY_MAX_LENGTH);
+  markdownCut(
+    htmlDocumentBlock(reply) ?? sanitizeLinkedPrompt(reply).text,
+    ROOM_BOX_REPLY_MAX_LENGTH,
+  );

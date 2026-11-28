@@ -426,7 +426,7 @@ it.effect("puts an existing thread on the board as a box, linked in the same cha
           id: "run:last",
           prompt: "Fix the login",
           model: "GPT-5.1 Codex",
-          reply: "Fixed it.",
+          reply: "**Fixed** it.",
           at: "1970-01-01T00:01:00.000Z",
         },
       });
