@@ -5534,6 +5534,7 @@ export function RoomBoard({
       id: box.id,
       name: box.title || "Untitled agent box",
       whose: boardPersonName(people, box.guestId),
+      sender: people.ownerName ?? "the owner",
       color: boardCursorColor(guests, box.guestId),
       model: isRoom
         ? (roomModel ?? work?.model)

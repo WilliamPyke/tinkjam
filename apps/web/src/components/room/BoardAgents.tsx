@@ -56,6 +56,8 @@ export interface BoardAgentEntry {
   readonly name: string;
   /** Whose box it is, as the board names them: "You", "Sam", the owner. */
   readonly whose: string;
+  /** Who presses Send on a prompt waiting in it, as the board names them. */
+  readonly sender: string;
   readonly color: string;
   /** The model it last ran on or was last set to. */
   readonly model: string | undefined;
@@ -228,12 +230,12 @@ function StatusChip({
   status,
   run,
   offlineOwn,
-  whose,
+  sender,
 }: {
   readonly status: BoardAgentStatus;
   readonly run: BoardAgentRun | undefined;
   readonly offlineOwn?: "away" | "absent" | undefined;
-  readonly whose: string;
+  readonly sender: string;
 }) {
   const chip = (
     <BoardChip
@@ -255,7 +257,7 @@ function StatusChip({
       <TooltipTrigger render={<span />}>{chip}</TooltipTrigger>
       <TooltipPopup side="top">
         {status.kind === "unsent"
-          ? `It goes to the agent when ${whose} presses Send.`
+          ? `It goes to the agent when ${sender} presses Send.`
           : status.kind === "offline"
             ? offlineOwn === "away"
               ? "Your computer is not connected. Wake it, or open Tinkjam Sync on it. Your agent comes back by itself."
@@ -610,7 +612,7 @@ export function BoardAgents({
                         status={status}
                         run={run}
                         offlineOwn={entry.offlineOwn}
-                        whose={entry.whose}
+                        sender={entry.sender}
                       />
                     </span>
                     <span className="truncate ps-4 text-xs text-muted-foreground">
