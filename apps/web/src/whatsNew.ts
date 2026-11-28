@@ -12,6 +12,20 @@ export interface WhatsNewEntry {
 /** Newest first. Shortcuts are written for Windows and Linux with the Mac key in brackets. */
 export const WHATS_NEW: ReadonlyArray<WhatsNewEntry> = [
   {
+    date: "2026-11-28",
+    title: "Questions stay in view, and Delete sits beside Share",
+    items: [
+      "Sending a prompt while an agent is asking a question no longer hides the question.",
+      "Prompts waiting behind an agent's work show on its box as Queued, and a finished box says Done.",
+      "The board's main agent box is called Main agent box and uses the same words as every other box.",
+      "Delete board and Leave board are buttons beside Share, and each asks first.",
+      "A board's address only works for people already on it. Anyone else who opens it is told to ask for an invite link.",
+      "On a phone, a board's title has more room and Share keeps its icon.",
+      "If you only use boards, the sidebar leaves out Usage and Pull requests until you connect a computer.",
+      "When an agent has just worked on a card, the mark says whose agent it was.",
+    ],
+  },
+  {
     date: "2026-11-27",
     title: "Search finds your boards, and clearer access messages",
     items: [

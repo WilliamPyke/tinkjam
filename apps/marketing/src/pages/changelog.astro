@@ -1,6 +1,29 @@
 ---
 import Layout from "../layouts/Layout.astro";
 
+const nov28 = [
+  {
+    title: "A question stays in view",
+    text: "Sending a prompt while an agent is asking a question no longer hides the question. Prompts waiting behind the agent's work show on its box as Queued, and a finished box says Done.",
+  },
+  {
+    title: "Delete and Leave beside Share",
+    text: "Delete board and Leave board are buttons beside Share, and each asks first. The separate Board options menu is gone.",
+  },
+  {
+    title: "A board address explains itself",
+    text: "A board's address only works for people already on the board. Someone else who opens it is now told to ask for an invite link, instead of that the board has ended.",
+  },
+  {
+    title: "More room on a phone",
+    text: "A board's title has more room on a phone, and Share keeps its icon.",
+  },
+  {
+    title: "Only what you use",
+    text: "If you only use boards, the sidebar leaves out Usage and Pull requests until you connect a computer.",
+  },
+];
+
 const nov27 = [
   {
     title: "Watching an agent is clearer",
@@ -284,6 +307,18 @@ const entries = [
     <article class="prose changelog">
       <h1>What's new</h1>
       <p>What is new in Tinkjam, in plain words.</p>
+
+      <h2>28 November</h2>
+      <ul class="changelog__list">
+        {
+          nov28.map((entry) => (
+            <li>
+              <b>{entry.title}</b>
+              <span>{entry.text}</span>
+            </li>
+          ))
+        }
+      </ul>
 
       <h2>27 November</h2>
       <ul class="changelog__list">
