@@ -200,6 +200,36 @@ describe("RoomBoard comments", () => {
   });
 });
 
+describe("RoomBoard catch-up", () => {
+  it("counts a first visit to an empty board when someone returns to changes", async () => {
+    const viewKey = "catchup-test:empty-first";
+    {
+      const first = renderBoard([], viewKey);
+      await using screen = await first.screen;
+      await expect.element(screen.getByRole("application", { name: "Room board" })).toBeVisible();
+    }
+
+    const sam = GuestId.make("sam");
+    const at = "2026-01-01T10:00:00.000Z";
+    const second = renderBoard(
+      [
+        {
+          id: "away",
+          text: "While you were away",
+          x: 0,
+          y: 0,
+          guestId: sam,
+          createdAt: at,
+          changed: { at, guestId: sam },
+        },
+      ],
+      viewKey,
+    );
+    await using screen = await second.screen;
+    await expect.element(screen.getByText(/since you were here/)).toBeVisible();
+  });
+});
+
 describe("RoomBoard view", () => {
   it("reopens where it was left, and fits the cards when that view shows none", async () => {
     const notes = [{ id: "a", text: "First", x: 0, y: 0 }];

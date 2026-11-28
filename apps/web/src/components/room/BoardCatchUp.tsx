@@ -128,7 +128,7 @@ export function useBoardCatchUp(
           people,
           seen: current.seen,
         });
-  const loaded = notes.length > 0;
+  const loaded = notes.length > 0 || current.since === undefined;
   const pending = away.length > 0;
   const cards = cardsOf(notes);
   const last = useRef<{
