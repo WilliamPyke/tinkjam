@@ -48,6 +48,22 @@ describe("createRoomLiveStore", () => {
     expect(live.hasProgress()).toBe(false);
   });
 
+  it("keeps a box's run in flight in view when another prompt queues behind it", () => {
+    const live = createRoomLiveStore();
+    const asking = run("a", { phase: "approval", prompt: "Plan the launch" });
+    const next = run("a", {
+      phase: "queued",
+      startedAt: "2026-11-12T10:01:00.000Z",
+      prompt: "Then the FAQ",
+    });
+    live.setBoxes([asking, next]);
+    expect(live.box("a")?.phase).toBe("approval");
+    expect(live.queued("a").map((entry) => entry.prompt)).toEqual(["Then the FAQ"]);
+    live.setBoxes([next]);
+    expect(live.box("a")?.phase).toBe("queued");
+    expect(live.queued("a")).toEqual([]);
+  });
+
   it("ticks its clock once a second only while a run is in flight", () => {
     using _timers = { [Symbol.dispose]: () => vi.useRealTimers() };
     vi.useFakeTimers();
