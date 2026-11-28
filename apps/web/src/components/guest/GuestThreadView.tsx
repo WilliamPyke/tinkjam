@@ -399,8 +399,8 @@ function SignedOutBoardNotice() {
   const { openAuthPrompt } = useT3ConnectAuthPrompt();
   return (
     <GuestNotice
-      title="Sign in to open this board"
-      detail="If you were given a link to it instead, open that link, or ask whoever shared it for a new one."
+      title="This address only works for people already on this board"
+      detail="If someone sent it to you, ask them for an invite link. They can copy one from Share. If you are already on this board, sign in."
     >
       <Button type="button" onClick={openAuthPrompt}>
         Sign in

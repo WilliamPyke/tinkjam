@@ -515,7 +515,7 @@ export function CloudBoardSharing({
               <Button
                 size="icon-xs"
                 variant="ghost-muted"
-                className="@xl/board:@max-[62rem]/board:hidden"
+                className="ms-2 @xl/board:@max-[62rem]/board:hidden"
                 aria-label="Delete board"
                 disabled={busy}
                 onClick={() => void deleteBoard({ shareId: share.shareId, title })}
@@ -534,7 +534,7 @@ export function CloudBoardSharing({
               <Button
                 size="icon-xs"
                 variant="ghost-muted"
-                className="@xl/board:@max-[62rem]/board:hidden"
+                className="ms-2 @xl/board:@max-[62rem]/board:hidden"
                 aria-label="Leave board"
                 disabled={busy}
                 onClick={() => void leave()}
