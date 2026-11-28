@@ -163,7 +163,10 @@ export interface RoomLiveStore {
   readonly subscribeClock: (listener: () => void) => () => void;
   readonly running: () => ReadonlyArray<RoomAgentActivity>;
   readonly hasProgress: () => boolean;
+  /** A box's run in flight, or, when none has started, the first queued behind it. */
   readonly box: (boxId: string) => RoomBoxProgress | undefined;
+  /** The prompts queued behind the run a box shows, oldest first. */
+  readonly queued: (boxId: string) => ReadonlyArray<RoomBoxProgress>;
   readonly artifact: (artifactId: string) => RoomBoxProgress | undefined;
   readonly comment: (commentId: string) => RoomBoxProgress | undefined;
   readonly now: () => number;
@@ -184,6 +187,8 @@ export interface RoomLiveStore {
   readonly pointers: () => ReadonlyArray<BoardPointer>;
 }
 
+const NO_QUEUED: ReadonlyArray<RoomBoxProgress> = [];
+
 const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 export function createRoomLiveStore(): RoomLiveStore {
@@ -192,6 +197,7 @@ export function createRoomLiveStore(): RoomLiveStore {
   let running = NO_RUNNING;
   let boxes: ReadonlyArray<RoomBoxProgress> | undefined;
   let byBox = new Map<string, RoomBoxProgress>();
+  let queuedByBox = new Map<string, ReadonlyArray<RoomBoxProgress>>();
   let byArtifact = new Map<string, RoomBoxProgress>();
   let byComment = new Map<string, RoomBoxProgress>();
   let now = Date.now();
@@ -253,11 +259,28 @@ export function createRoomLiveStore(): RoomLiveStore {
     setBoxes: (next) => {
       // An entry that did not change keeps its identity, so only its own card renders again.
       const nextByBox = new Map<string, RoomBoxProgress>();
+      const nextQueued = new Map<string, Array<RoomBoxProgress>>();
       for (const entry of next ?? []) {
+        const held = nextByBox.get(entry.boxId);
+        // A prompt sent while the box's agent works waits behind it; the run in flight shows.
+        if (held !== undefined && (entry.phase === "queued" || held.phase !== "queued")) {
+          nextQueued.set(entry.boxId, [...(nextQueued.get(entry.boxId) ?? []), entry]);
+          continue;
+        }
+        if (held !== undefined)
+          nextQueued.set(entry.boxId, [held, ...(nextQueued.get(entry.boxId) ?? [])]);
         const previous = byBox.get(entry.boxId);
         nextByBox.set(
           entry.boxId,
           previous !== undefined && sameJson(previous, entry) ? previous : entry,
+        );
+      }
+      const nextQueuedByBox = new Map<string, ReadonlyArray<RoomBoxProgress>>();
+      for (const [boxId, entries] of nextQueued) {
+        const previous = queuedByBox.get(boxId);
+        nextQueuedByBox.set(
+          boxId,
+          previous !== undefined && sameJson(previous, entries) ? previous : entries,
         );
       }
       const nextByArtifact = new Map<string, RoomBoxProgress>();
@@ -278,9 +301,12 @@ export function createRoomLiveStore(): RoomLiveStore {
       const changed =
         (boxes === undefined) !== (next === undefined) ||
         nextByBox.size !== byBox.size ||
-        [...nextByBox].some(([id, entry]) => byBox.get(id) !== entry);
+        [...nextByBox].some(([id, entry]) => byBox.get(id) !== entry) ||
+        nextQueuedByBox.size !== queuedByBox.size ||
+        [...nextQueuedByBox].some(([id, entries]) => queuedByBox.get(id) !== entries);
       boxes = next;
       byBox = nextByBox;
+      queuedByBox = nextQueuedByBox;
       byArtifact = nextByArtifact;
       byComment = nextByComment;
       runClock(nextByBox.size > 0);
@@ -297,6 +323,7 @@ export function createRoomLiveStore(): RoomLiveStore {
     running: () => running,
     hasProgress: () => boxes !== undefined,
     box: (boxId) => byBox.get(boxId),
+    queued: (boxId) => queuedByBox.get(boxId) ?? NO_QUEUED,
     artifact: (artifactId) => byArtifact.get(artifactId),
     comment: (commentId) => byComment.get(commentId),
     now: () => now,
@@ -400,4 +427,10 @@ export function useBoardPointers(): ReadonlyArray<BoardPointer> {
 export function useBoardNow(): number {
   const store = use(RoomLiveContext);
   return useSyncExternalStore(store.subscribeClock, store.now);
+}
+
+/** The prompts waiting behind a box's run; a new array only when they change. */
+export function useBoxQueued(boxId: string): ReadonlyArray<RoomBoxProgress> {
+  const store = use(RoomLiveContext);
+  return useSyncExternalStore(store.subscribe, () => store.queued(boxId));
 }

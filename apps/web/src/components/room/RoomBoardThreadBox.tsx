@@ -37,7 +37,7 @@ import {
   boardPersonName,
   isBoardHtmlArtifact,
 } from "./roomBoard.logic";
-import { RoomLiveContext, useBoxProgress } from "./roomBoardLive";
+import { RoomLiveContext, useBoxProgress, useBoxQueued } from "./roomBoardLive";
 
 const stopPointer = (event: PointerEvent) => event.stopPropagation();
 
@@ -121,9 +121,13 @@ export function BoxTurns({
   readonly onPageToArtifact?: ((title: string | null) => void) | undefined;
 }) {
   const running = useBoxProgress(boxId);
+  const queued = useBoxQueued(boxId);
   if (turns.length === 0 && running === undefined) {
     return <p className="text-sm text-muted-foreground">No prompts yet.</p>;
   }
+  const asked = [...(running === undefined ? [] : [running]), ...queued].filter(
+    (run) => run.prompt !== undefined && run.prompt !== "",
+  );
   return (
     <ol className="flex flex-col gap-2.5">
       {turns.map((turn, index) => (
@@ -148,16 +152,24 @@ export function BoxTurns({
           )}
         </li>
       ))}
-      {running?.prompt === undefined || running.prompt === "" ? null : (
-        <li className="flex flex-col gap-1 text-sm">
+      {asked.map((run) => (
+        <li key={run.startedAt} className="flex flex-col gap-1 text-sm">
           <span className="text-2xs font-medium text-muted-foreground">
-            {boardPersonName(people, running.askedBy ?? running.guestId)}
+            {boardPersonName(people, run.askedBy ?? run.guestId)}
+            {run.phase === "queued" ? " · Queued" : ""}
           </span>
-          <p className="line-clamp-2 border-s-2 border-primary/40 ps-2 [overflow-wrap:anywhere]">
-            {running.prompt}
+          <p
+            className={cn(
+              "line-clamp-2 border-s-2 ps-2 [overflow-wrap:anywhere]",
+              run.phase === "queued"
+                ? "border-foreground/20 text-muted-foreground"
+                : "border-primary/40",
+            )}
+          >
+            {run.prompt}
           </p>
         </li>
-      )}
+      ))}
     </ol>
   );
 }
@@ -264,11 +276,11 @@ export function BoxProgress({
   const progress = useBoxProgress(boxId);
   if (progress === undefined) {
     if (fallback != null) return fallback;
-    if (ended !== "stopped" && ended !== "failed") return null;
+    if (ended === undefined || ended === "ended") return null;
     return (
       <div role="status" className="flex items-center">
-        <BoardChip tone={ended === "failed" ? "error" : "neutral"}>
-          {ended === "failed" ? "Failed" : "Stopped"}
+        <BoardChip tone={ended === "failed" ? "error" : ended === "done" ? "success" : "neutral"}>
+          {ended === "failed" ? "Failed" : ended === "done" ? "Done" : "Stopped"}
         </BoardChip>
       </div>
     );

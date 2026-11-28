@@ -500,6 +500,7 @@ import {
   boardLiveStyle,
   useBoardLiveDrag,
   useBoxProgress,
+  useBoxQueued,
   useRoomHasProgress,
   useRoomRunning,
 } from "./roomBoardLive";
@@ -613,6 +614,9 @@ const keepReplyCards = (cards: Readonly<Record<string, string>>) => {
   } catch {}
   return cards;
 };
+
+/** The board's own agent box, named like the boxes people add rather than after its chat. */
+const MAIN_BOX_TITLE = "Main agent box";
 
 const stopPointer = (event: PointerEvent) => event.stopPropagation();
 
@@ -1867,7 +1871,7 @@ export function RoomBoard({
       ),
   ]);
   const threadBoxes =
-    cards === undefined && holds.agents ? boardThreadBoxes(shown, title, holds.room) : [];
+    cards === undefined && holds.agents ? boardThreadBoxes(shown, MAIN_BOX_TITLE, holds.room) : [];
   // Where an agent is working: the cards its turn just added or changed, in its box's colour.
   const agentWork = useBoardAgentWork(room === null ? null : (shown.agentTurns ?? NO_AGENT_TURNS));
   const agentWorkOf = (noteId: string) => {
@@ -4951,7 +4955,7 @@ export function RoomBoard({
     return [
       ...(box === undefined ? [] : boxMenuActions(box)),
       ...(ref === cardRef(ROOM_BOARD_THREAD_CARD)
-        ? [{ label: "Open chat", run: onOpenThread }]
+        ? [{ label: "Open conversation", run: onOpenThread }]
         : []),
       ...(guest === undefined ? [] : followAction(guest)),
       ...(workingOn === undefined || workedOn === null
@@ -5366,6 +5370,12 @@ export function RoomBoard({
       ...(conversation === undefined ? [] : [{ label: "Open conversation", run: conversation }]),
     ];
   };
+  /** The box has replied or changed the board at least once. */
+  const boxAnswered = (boxId: string) =>
+    (boxId === ROOM_BOARD_ROOM_BOX
+      ? messages.some((message) => message.author === null)
+      : (shown.notes.find((note) => note.id === boxId)?.thread?.turns.length ?? 0) > 0) ||
+    (shown.agentTurns ?? []).some((turn) => turn.boxId === boxId);
   /** What a thread box shows below its title, and its prompt box for the person it belongs to. */
   const boxParts = (box: BoardThreadBox, tail: ReactNode, fallback?: ReactNode) => {
     const context = contexts.get(box.id);
@@ -5409,7 +5419,7 @@ export function RoomBoard({
           fallback={fallback}
           approval={renderBoxApproval?.(box.id)}
           onStop={stopBox?.(box.id)}
-          ended={boxRunEnd?.(box.id)?.outcome}
+          ended={boxRunEnd?.(box.id)?.outcome ?? (boxAnswered(box.id) ? "done" : undefined)}
         />
         {work === undefined ? null : (
           <BoxBoardWork
@@ -5507,7 +5517,7 @@ export function RoomBoard({
                 {viewer === null ? "Waiting for your approval" : "Waiting for the owner's approval"}
               </p>
               <Button size="xs" onPointerDown={stopPointer} onClick={onOpenThread}>
-                Open chat
+                Open conversation
               </Button>
             </div>
           ) : undefined,
@@ -7070,7 +7080,7 @@ export function RoomBoard({
                 {roomParts !== null ? (
                   <BoardCard
                     at={positions[ROOM_BOARD_THREAD_CARD]!}
-                    title={title}
+                    title={MAIN_BOX_TITLE}
                     kind={
                       hasProgress
                         ? "agent box"
@@ -7104,9 +7114,9 @@ export function RoomBoard({
                     />
                     {!hasProgress && needsApproval ? null : (
                       <div>
-                        <Button size="xs" variant="outline" onClick={onOpenThread}>
+                        <Button size="micro" variant="outline" onClick={onOpenThread}>
                           <MessagesSquareIcon />
-                          Open chat
+                          Open conversation
                         </Button>
                       </div>
                     )}
@@ -9188,9 +9198,15 @@ function RoomCode({
 }
 
 function ThreadMessages({ messages }: { readonly messages: ReadonlyArray<BoardMessage> }) {
-  const running = useBoxProgress(ROOM_BOARD_ROOM_BOX) !== undefined;
-  if (messages.length === 0) {
-    return running ? null : <p className="text-xs text-muted-foreground">No messages yet.</p>;
+  const running = useBoxProgress(ROOM_BOARD_ROOM_BOX);
+  const queued = [
+    ...(running?.phase === "queued" ? [running] : []),
+    ...useBoxQueued(ROOM_BOARD_ROOM_BOX),
+  ].filter((run) => (run.prompt ?? "") !== "");
+  if (messages.length === 0 && queued.length === 0) {
+    return running !== undefined ? null : (
+      <p className="text-sm text-muted-foreground">No prompts yet.</p>
+    );
   }
   return (
     <ol className="flex flex-col gap-2">
@@ -9198,6 +9214,12 @@ function ThreadMessages({ messages }: { readonly messages: ReadonlyArray<BoardMe
         <li key={message.id} className="text-xs">
           <span className="font-medium text-muted-foreground">{message.author ?? "Agent"}</span>
           <p className="line-clamp-3 [overflow-wrap:anywhere]">{message.text}</p>
+        </li>
+      ))}
+      {queued.map((run) => (
+        <li key={run.startedAt} className="text-xs text-muted-foreground">
+          <span className="font-medium">Queued</span>
+          <p className="line-clamp-2 [overflow-wrap:anywhere]">{run.prompt}</p>
         </li>
       ))}
     </ol>
