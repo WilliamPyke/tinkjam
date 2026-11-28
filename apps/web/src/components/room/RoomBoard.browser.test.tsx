@@ -1984,8 +1984,11 @@ describe("RoomBoard lines", () => {
       });
     };
 
+    const toolbar = screen.getByRole("toolbar", { name: "Line" });
     await clickLine();
-    await expect.element(screen.getByRole("button", { name: "Delete line" })).toHaveFocus();
+    await expect.element(toolbar).toHaveFocus();
+    // The toolbar takes the keys, but no button in it is focused, so no tooltip shows.
+    await expect.element(screen.getByText("Delete line")).not.toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
     await expect
       .element(screen.getByRole("button", { name: "Delete line" }))
@@ -1993,8 +1996,10 @@ describe("RoomBoard lines", () => {
     await expect.element(surface).toHaveFocus();
 
     await clickLine();
-    await expect.element(screen.getByRole("button", { name: "Delete line" })).toHaveFocus();
-    await userEvent.keyboard("{Enter}");
+    await expect.element(toolbar).toHaveFocus();
+    await userEvent.keyboard("{Tab}");
+    await expect.element(screen.getByRole("button", { name: "Curved" })).toHaveFocus();
+    await userEvent.keyboard("{Delete}");
     await vi.waitFor(() =>
       expect(onChange).toHaveBeenCalledWith({ type: "edge.remove", edgeId: "line" }),
     );

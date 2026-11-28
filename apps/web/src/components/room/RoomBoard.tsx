@@ -7449,8 +7449,14 @@ export function RoomBoard({
                     <div
                       key={edge.id}
                       // Kept at least its own size as the board zooms out, so it stays readable and pressable.
-                      className="absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border border-border bg-popover p-1 shadow-sm [scale:var(--board-line-scale,1)]"
+                      className="absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-lg border border-border bg-popover p-1 shadow-sm outline-none [scale:var(--board-line-scale,1)]"
                       style={{ left: spot.x, top: spot.y, ...scales }}
+                      role="toolbar"
+                      aria-label="Line"
+                      tabIndex={-1}
+                      // The toolbar, not a button in it, so the keys work at once and no tooltip
+                      // opens. Without scrolling: the browser would scroll the moved board's box.
+                      ref={focusInPlace}
                       onPointerDown={stopPointer}
                       // On the group, so the keys work from the shape buttons too.
                       onKeyDown={(event) => {
@@ -7499,9 +7505,6 @@ export function RoomBoard({
                               size="xs"
                               variant="outline"
                               aria-label="Delete line"
-                              // Focused without scrolling: inside the moved board, the browser
-                              // would scroll the board's box to bring it into view.
-                              ref={focusInPlace}
                               onPointerDown={stopPointer}
                               onClick={() => thenBoard(() => removeEdge(edge.id))}
                             />
